@@ -1,0 +1,331 @@
+---
+title: "vitoria-project"
+author: "vitoria"
+date: "2025-04-02"
+output: html_document
+---
+
+# Load libraries
+
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+library(httr2)
+library(jsonlite)
+library(ggplot2)
+library(readxl)
+library(rvest)
+library(readr)
+library(stringr)
+library(tidyr)
+library(scales)
+library(httr)
+library(xml2)
+```
+
+# Functions to get SMILES from CID
+
+```{r message=FALSE, warning=FALSE}
+# Try to get CID from compound name
+# If not possible, try to get CID from SID
+# Param - name: compound name (character)
+# Return - compound_cid: CID (integer)
+get_cid <- function(name) {
+  if (is.na(name) || name == "") return(NA)  # Handle missing names
+  
+  encoded_name <- URLencode(name, reserved = TRUE)
+  
+  # Try getting CID using compound name endpoint
+  url_cid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/", 
+                    encoded_name, "/cids/JSON")
+  response_cid <- tryCatch({
+    req <- request(url_cid) |> req_perform()
+    if (resp_status(req) == 200) {
+      data <- resp_body_json(req)
+      if (!is.null(data$IdentifierList$CID)) {
+        compound_id <- data$IdentifierList$CID[[1]]
+        returncompound_id  # Return first CID
+      }
+    }
+    return(NA)
+  }, error = function(e) return(NA))
+  
+  # If a CID was found, return it immediately
+  if (!is.na(response_cid)) {
+    return(response_cid)
+  }
+  
+  # Pause to respect API rate limits
+  Sys.sleep(0.5)  
+  
+  # Try getting SID using substance name endpoint
+  url_sid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/substance/name/", encoded_name, "/sids/JSON")
+  response_sid <- tryCatch({
+    req <- request(url_sid) |> req_perform()
+    if (resp_status(req) == 200) {
+      data <- resp_body_json(req)
+      if (!is.null(data$IdentifierList$SID) && length(data$IdentifierList$SID) > 0) {
+        data$IdentifierList$SID[[1]]  # Store the SID 
+      } else {
+        NA
+      }
+    } else {
+      NA
+    }
+  }, error = function(e) return(NA))
+  
+  # Pause to respect API rate limits
+  Sys.sleep(0.5)  
+  
+  # Try getting CID using SID
+  url_sid_cid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/substance/sid/", 
+                        response_sid, "/JSON")
+  response_cid <- tryCatch({
+    req <- request(url_sid_cid) |> req_perform()
+    if (resp_status(req) == 200) {
+      data <- resp_body_json(req)
+      if (!is.null(data$PC_Substances[[1]]$compound[[2]]$id$id$cid) && length(data$PC_Substances[[1]]$compound[[2]]$id$id$cid) > 0) {
+        # print("Found CID using SID") 
+        compound_id <- data$PC_Substances[[1]]$compound[[2]]$id$id$cid[[1]]
+        return(compound_id)  # Return CID
+      } 
+    }
+    return(NA)
+  }, error = function(e) return(NA))
+}
+
+# Get SMILES from Compound ID
+# Param - compound_id: CID (integer) 
+# Return (character): SMILES for the compound
+get_smiles_from_cid <- function(compound_id) {
+
+  url <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/", compound_id, "/property/CanonicalSMILES/JSON")
+  
+  response <- request(url) |> req_perform()
+  
+  # If there was a response, get the data
+  if (resp_status(response) == 200) {
+    data <- resp_body_json(response)
+    if (!is.null(data$PropertyTable$Properties[[1]]$CanonicalSMILES)) {
+      compound_smiles <- data$PropertyTable$Properties[[1]]$CanonicalSMILES
+      return(compound_smiles)
+    }
+  }
+  
+  return(NA)
+}
+```
+
+# Read and preprocess the data from gutMGene
+
+```{r}
+# Read the CSV file from gutMGene
+gutmgene <- read.csv("data/gutmgene.csv", stringsAsFactors = FALSE)
+
+# Rename columns to avoid special character issues
+colnames(gutmgene) <- c("Host_Species", "Gut_Microbe_ID", "Rank",
+                        "Metabolite_ID", "Evidence_Type", "Evidence_Amount")
+
+cat("N metabolites raw file:",
+    length(gutmgene$Metabolite_ID), "\n")
+
+unique_species_count <- gutmgene %>% filter(Rank == 'genus') %>%
+  summarise(count = n_distinct(Gut_Microbe_ID)) %>% pull(count)
+cat("N microbes in raw file:", unique_species_count, "\n")
+
+cat("N of unique genera:", sum(gutmgene$Rank == 'genus'), "\n")
+
+# Extract the metabolite name from the "Metabolite_ID" column
+gutmgene <- gutmgene %>%
+  mutate(
+    Metabolite_Name = str_remove(Metabolite_ID, "\\([^()]*\\)$"), # Removes last set of parentheses and content
+    Metabolite_Name = str_trim(Metabolite_Name), # Trims whitespace
+    Gut_Microbe_Name = str_extract(Gut_Microbe_ID, "^[^(]+"), # Extracts text before '('
+    Gut_Microbe_ID = as.integer(str_extract(Gut_Microbe_ID, "(?<=\\().*(?=\\))")), # Extracts numbers inside '()'
+  )
+
+# Get CID with vectorized function
+get_cid_vec <- Vectorize(get_cid)
+gutmgene <- gutmgene %>%
+  mutate(
+    Metabolite_CID = get_cid_vec(Metabolite_Name) # Obtains CID for the metabolite name
+  )
+```
+
+# Build plots of raw data
+
+## Plot 1 - Distribution of genera among metabolites
+
+```{r}
+# Filter only genus-level microbes
+gutmgene_filtered <- gutmgene[gutmgene$Rank == "genus", ]
+
+# Count occurrences of each genus
+genus_counts <- table(gutmgene_filtered$Gut_Microbe_Name)
+
+# Filter to only include genera with frequency > 5
+genus_to_keep <- names(genus_counts[genus_counts > 5])
+gutmgene_filtered <- gutmgene_filtered[gutmgene_filtered$Gut_Microbe_Name %in% genus_to_keep, ]
+
+# Order from most frequent to less frequent
+gutmgene_filtered_count <- gutmgene_filtered %>%
+  count(Gut_Microbe_Name) %>%
+  mutate(Gut_Microbe_Name = reorder(Gut_Microbe_Name, -n))
+
+# Create the plot
+microbe_distribution <- ggplot(gutmgene_filtered_count,
+                               aes(x = Gut_Microbe_Name, y = n)) +
+  geom_bar(stat = "identity", fill = "gray30", width = 0.5) +
+  theme_minimal() +  
+  theme(
+    axis.title.y = element_text(size = 16),
+    axis.title.x = element_text(size = 16),
+    axis.text.y = element_text(size = 16),
+    axis.text.x = element_text(size = 16, angle = 60, hjust = 1),
+    panel.grid = element_blank(),  # Remove grid lines
+    axis.line.x = element_line(color = "black", linewidth = 0.5),  # Only X-axis line
+    axis.line.y = element_line(color = "black", linewidth = 0.5),  # Only Y-axis line
+    axis.ticks = element_line(color = "black", linewidth = 1)      # Ensure ticks are visible
+  ) +
+  labs(x = "Gut Microbe (Genus)", 
+       y = "Count") +
+  scale_y_continuous(breaks = seq(0,max(gutmgene_filtered_count$n),
+                                  by = 5)) +                       # Sety axis scale
+  coord_cartesian(ylim = c(0, max(gutmgene_filtered_count$n)))     # Set the grid's height
+
+# Create a directory for plots if it doesn't exist
+if (!dir.exists("plots")) {
+  dir.create("plots")
+}
+
+# Save plot as PNG
+png("plots/microbe_distribution.png", width = 350, height = 300)
+print(microbe_distribution)
+dev.off()
+```
+
+## Plot 2 - Distribution of how many evidences the metabolite-microbe rows have
+
+```{r}
+evidence_amount_counts <- gutmgene %>%
+  count(Evidence_Amount)  # Count each unique value
+
+# Create the plot
+evidence_amount <- ggplot(evidence_amount_counts, aes(x = factor(Evidence_Amount), y = n)) +  
+  geom_col(fill = "gray30", width = 0.5) +
+  geom_text(aes(label = n), vjust = -0.5, size = 5, color = "black") +  # Add text labels
+  theme_minimal() +  
+  theme(
+    axis.title.y = element_text(size = 16),
+    axis.title.x = element_text(size = 16),
+    axis.text.y = element_text(size = 16),
+    axis.text.x = element_text(size = 16, hjust = 1),
+    panel.grid = element_blank(),
+    axis.line.x = element_line(color = "black", linewidth = 0.5),
+    axis.line.y = element_line(color = "black", linewidth = 0.5),
+    axis.ticks = element_line(color = "black", linewidth = 1)
+  ) +
+  scale_y_continuous(breaks = pretty_breaks(n = 7)) +             # Set y axis scale
+  labs(x = "Evidence Amount", 
+       y = "Count") +  
+  coord_cartesian(ylim = c(0, max(evidence_amount_counts)*1.03))  # Set the grid's height
+
+# Save plot as PNG
+png("plots/evidence_amount.png", width = 350, height = 300)
+print(pevidence_amount)
+dev.off()
+```
+
+## Plot 3 - Distribution of evidence types (causally or correlatively)
+
+```{r}
+# Split the 'Evidence' column by commas, then count occurrences of each type of evidence
+evidence_count <- gutmgene %>%
+  separate_rows(Evidence_Type, sep = ";") %>%  # Split 
+  count(Evidence_Type) %>%  # Count
+  filter(Evidence_Type %in% c("causally", "correlatively"))
+
+# Create the plot
+evidence_types <- ggplot(evidence_count, aes(x = "", y = n, fill = Evidence_Type)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +    # Pie chart
+  theme_void() +                # No axes
+  scale_fill_manual(values = c("causally" = "gray30", "correlatively" = "gray50")) +
+  geom_text(aes(label = paste(n, "(", round(n / sum(n) * 100, 1), "%)", sep = "")),  # Add percentages
+            position = position_stack(vjust = 0.5), size = 6, color = "white") +     # Add labels
+  theme(
+    plot.title = element_text(size = 14, hjust = 0),
+    legend.text = element_text(size = 14),  # Set legend size
+    legend.title = element_text(size = 14)  
+  )
+
+# Save plot as PNG
+png("plots/evidence_types.png", width = 350, height = 300)
+print(evidence_types)
+dev.off()
+```
+
+# Clean the data
+
+```{r}
+# Remove NAs
+if (nrow(gutmgene%>%filter(is.na(Metabolite_CID))) != 0){
+  cat("Removing", nrow(gutmgene%>%filter(is.na(Metabolite_CID))), "Metabolite_CID NAs\n")
+  gutmgene_na <- gutmgene %>%
+    filter(!is.na(Metabolite_CID))
+} else{
+  cat("There are", nrow(gutmgene%>%filter(is.na(Metabolite_CID))), "Metabolite_CID NAs\n")
+}
+
+cat("N metabolites before removing duplicates:", length(gutmgene$Metabolite_CID), "\n")
+# Remove duplicates
+gutmgene_clean <- gutmgene_na %>%
+  distinct(Metabolite_CID, .keep_all=TRUE)
+cat("N metabolites without duplicates:", length(gutmgene_clean$Metabolite_CID), "\n")
+```
+
+# Get SMILES
+
+```{r}
+# Run the get_smiles_from_cid() for each metabolite CID
+smiles <- sapply(gutmgene_clean$Metabolite_CID, get_smiles_from_cid)
+cat(length(smiles), "SMILES were obtained\n")
+
+# Create dataframe to store SMILES and CIDs for target prediction
+df_smiles_ids <- data.frame(SMILES=smiles,
+                         pubchem_ids=paste0("cid", gutmgene_clean$Metabolite_CID),
+                         stringsAsFactors=FALSE)
+
+# Save the dataframe as text file
+write.table(df_smiles_ids, file="smiles_ids.txt",
+            row.names=FALSE, col.names=FALSE,
+            quote=FALSE, sep=" ")
+```
+
+# Parsing SEA results
+
+After running SEA with smiles_ids.txt, read the results.
+
+```{r}
+# Read SEA dataframe
+sea_result <- read.csv("data/sea-results.xls")
+
+# Rename columns to avoid special character issues
+colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
+                          "Max_Tc", "Cut_Sum", "Z_Score", "Name", "Description", "Query_Smiles")
+
+# Get only the human targets 
+sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target_ID), ]
+
+# Remove duplicates
+sea_targets <- sea_result[!duplicated(sea_result$Target_ID), ]
+cat("There are", length(sea_targets$Target_ID), "targets predicted with SEA\n")
+
+
+# Filter for p <= 0.01
+p_value <- 0.01
+sea_targets_filtered <- sea_targets[sea_targets$P_Value <= p_value, ]
+cat(length(sea_targets_filtered$Target_ID), "targets with SEA with p <= 0.01\n")
+```
+
+# Parsing STP results
+
