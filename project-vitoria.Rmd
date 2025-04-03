@@ -20,9 +20,13 @@ library(tidyr)
 library(scales)
 library(httr)
 library(xml2)
+library(GEOquery)
+library(Seurat)
+library(SeuratDisk)
+library(Matrix)
 ```
-
-# Functions to get SMILES from CID
+# Target prediction
+## Functions to get SMILES from CID
 
 ```{r message=FALSE, warning=FALSE}
 # Try to get CID from compound name
@@ -115,7 +119,7 @@ get_smiles_from_cid <- function(compound_id) {
 }
 ```
 
-# Read and preprocess the data from gutMGene
+## Read and preprocess the data from gutMGene
 
 ```{r}
 # Read the CSV file from gutMGene
@@ -151,9 +155,9 @@ gutmgene <- gutmgene %>%
   )
 ```
 
-# Build plots of raw data
+## Build plots of raw data
 
-## Plot 1 - Distribution of genera among metabolites
+### Plot 1 - Distribution of genera among metabolites
 
 ```{r}
 # Filter only genus-level microbes
@@ -203,7 +207,7 @@ print(microbe_distribution)
 dev.off()
 ```
 
-## Plot 2 - Distribution of how many evidences the metabolite-microbe rows have
+### Plot 2 - Distribution of how many evidences the metabolite-microbe rows have
 
 ```{r}
 evidence_amount_counts <- gutmgene %>%
@@ -235,7 +239,7 @@ print(pevidence_amount)
 dev.off()
 ```
 
-## Plot 3 - Distribution of evidence types (causally or correlatively)
+### Plot 3 - Distribution of evidence types (causally or correlatively)
 
 ```{r}
 # Split the 'Evidence' column by commas, then count occurrences of each type of evidence
@@ -264,7 +268,7 @@ print(evidence_types)
 dev.off()
 ```
 
-# Clean the data
+## Clean the data
 
 ```{r}
 # Remove NAs
@@ -283,7 +287,7 @@ gutmgene_clean <- gutmgene_na %>%
 cat("N metabolites without duplicates:", length(gutmgene_clean$Metabolite_CID), "\n")
 ```
 
-# Get SMILES
+## Get SMILES
 
 ```{r}
 # Run the get_smiles_from_cid() for each metabolite CID
@@ -301,7 +305,7 @@ write.table(df_smiles_ids, file="smiles_ids.txt",
             quote=FALSE, sep=" ")
 ```
 
-# Parsing SEA results
+## Parsing SEA results
 
 After running SEA with smiles_ids.txt, read the results.
 
@@ -327,5 +331,57 @@ sea_targets_filtered <- sea_targets[sea_targets$P_Value <= p_value, ]
 cat(length(sea_targets_filtered$Target_ID), "targets with SEA with p <= 0.01\n")
 ```
 
-# Parsing STP results
+## Parsing STP results
+
+
+# snRNA-seq data
+
+```{r}
+# Acession numbers from GEO DataSets
+acession_numbers <- c("GSE246443", "GSE204683", "GSE244618", "GSE144136")
+```
+```{r}
+dir.create("data/GSE204683")
+# Baixar o arquivo
+download.file("https://ftp.ncbi.nlm.nih.gov/geo/series/GSE204nnn/GSE204683/suppl/GSE204683_count_matrix.RDS.gz",
+              destfile = "data/GSE204683/count_matrix.RDS.gz", mode = "wb", method = "libcurl")
+
+# Descompactar o arquivo
+R.utils::gunzip("data/GSE204683/count_matrix.RDS.gz", overwrite = TRUE)
+
+# Carregar no R
+GSE204683_counts <- readRDS("data/GSE204683/count_matrix.RDS")
+
+# Ver dimensões (genes x células)
+dim(count_matrix)
+```
+```{r}
+dir.create("data/GSE225158")
+# Baixar o arquivo H5Seurat
+download.file("https://ftp.ncbi.nlm.nih.gov/geo/series/GSE225nnn/GSE225158/suppl/GSE225158_BU_OUD_Striatum_refined_all_SeuratObj_N22.h5Seurat",
+              destfile = "GSE225158.h5Seurat", mode = "wb")
+
+# Carregar o objeto Seurat
+seurat_obj <- LoadH5Seurat("GSE225158.h5Seurat")
+
+# Ver informação básica
+seurat_obj
+
+```
+```{r}
+# Criar uma pasta para armazenar os dados
+dir.create("data/GSE144136")
+
+# Baixar a matriz de contagem
+download.file("https://ftp.ncbi.nlm.nih.gov/geo/series/GSE144nnn/GSE144136/suppl/GSE144136_GeneBarcodeMatrix_Annotated.mtx.gz",
+              destfile = "GSE144136_data/matrix.mtx.gz", mode = "wb")
+
+# Baixar os nomes dos genes
+download.file("https://ftp.ncbi.nlm.nih.gov/geo/series/GSE144nnn/GSE144136/suppl/GSE144136_GeneNames.csv.gz",
+              destfile = "GSE144136_data/genes.csv.gz", mode = "wb")
+
+# Baixar os nomes das células
+download.file("https://ftp.ncbi.nlm.nih.gov/geo/series/GSE144nnn/GSE144136/suppl/GSE144136_CellNames.csv.gz",
+              destfile = "GSE144136_data/cells.csv.gz", mode = "wb")
+```
 
