@@ -16,7 +16,7 @@ get_cid <- function(name) {
   
   encoded_name <- URLencode(name, reserved = TRUE)
   
-  # 1. Try getting CID using compound name endpoint
+  # Try getting CID using compound name endpoint
   url_cid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/", 
                     encoded_name, "/cids/JSON")
   response_cid <- tryCatch({
@@ -32,13 +32,12 @@ get_cid <- function(name) {
   
   # If a CID was found, return it immediately
   if (!is.na(response_cid)) {
-    # print("Found CID")
     return(response_cid)
   }
   
   Sys.sleep(0.5)  # Pause to respect API rate limits
   
-  # 2. Try getting SID using compound name endpoint
+  # Try getting SID using compound name endpoint
   url_sid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/substance/name/", encoded_name, "/sids/JSON")
   response_sid <- tryCatch({
     req <- request(url_sid) |> req_perform()
@@ -54,14 +53,9 @@ get_cid <- function(name) {
     }
   }, error = function(e) return(NA))
   
-  # Save the SID to a variable (if found)
-  # if (!is.na(response_sid)) {
-  #   print(paste("Found SID:", response_sid))  # Print SID for clarity
-  # }
-  # 
   Sys.sleep(0.5)  # Pause to respect API rate limits
   
-  # 3. Try getting CID using SID
+  # Try getting CID using SID
   url_sid_cid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/substance/sid/", 
                         response_sid, "/JSON")
   response_cid <- tryCatch({
@@ -69,7 +63,7 @@ get_cid <- function(name) {
     if (resp_status(req) == 200) {
       data <- resp_body_json(req)
       if (!is.null(data$PC_Substances[[1]]$compound[[2]]$id$id$cid) && length(data$PC_Substances[[1]]$compound[[2]]$id$id$cid) > 0) {
-        # print("Found CID using SID")  # Print CID found using SID
+        # print("Found CID using SID")  
         return(data$PC_Substances[[1]]$compound[[2]]$id$id$cid[[1]])  # Return first CID
       } else{
         print(data)
@@ -275,11 +269,19 @@ write.table(df_smiles_ids, file="smiles_ids.txt",
 
 # Read SEA results
 sea_result <- read.csv("data/sea-results.xls")
+colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
+                          "Max_Tc", "Cut_Sum", "Z_Score", "Name", "Description", "Query_Smiles")
 
 # Get only the human targets 
-sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target.ID), ]
-sea_targets <- unique(sea_result$Target.ID)
-cat("There are", length(sea_targets), "targets predicted with SEA")
+sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target_ID), ]
+sea_targets <- sea_result[!duplicated(sea_result$Target_ID), ]
+
+# sea_targets <- unique(sea_result$Target.ID)
+cat("There are", length(sea_targets$Target_ID), "targets predicted with SEA")
+
+sea_targets_filtered <- sea_targets[sea_targets$P_Value <= 0.01, ]
+cat("There are", length(sea_targets_filtered$Target_ID), "targets predicted with SEA with p <= 0.01")
+
 
 # Get STP results
 smiles_list <- c("CC(=O)Oc1ccccc1C(=O)O", "C1=CC=CC=C1")  # Your SMILES list
