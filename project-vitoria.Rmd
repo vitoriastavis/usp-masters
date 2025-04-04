@@ -20,7 +20,7 @@ library(tidyr)
 library(scales)
 library(httr)
 library(xml2)
-library(GEOquery)
+# library(GEOquery)
 library(Seurat)
 library(SeuratDisk)
 library(Matrix)
@@ -303,6 +303,12 @@ df_smiles_ids <- data.frame(SMILES=smiles,
 write.table(df_smiles_ids, file="smiles_ids.txt",
             row.names=FALSE, col.names=FALSE,
             quote=FALSE, sep=" ")
+
+# Save a list of just the SMILES without CIDs
+write.table(data.frame(SMILES=smiles),
+            file="smiles.txt",
+            row.names=FALSE, col.names=FALSE,
+            quote=FALSE, sep=" ")
 ```
 
 ## Parsing SEA results
@@ -340,11 +346,16 @@ cat(length(sea_targets_filtered$Target_ID), "targets with SEA with p <= 0.01\n")
 # Acession numbers from GEO DataSets
 acession_numbers <- c("GSE246443", "GSE204683", "GSE244618", "GSE144136")
 ```
+
+## Acession number 1: GSE204683
+
 ```{r}
-dir.create("data/GSE204683")
+dir.create("data/snrnaseq/GSE204683")
+
 # Baixar o arquivo
 download.file("https://ftp.ncbi.nlm.nih.gov/geo/series/GSE204nnn/GSE204683/suppl/GSE204683_count_matrix.RDS.gz",
-              destfile = "data/GSE204683/count_matrix.RDS.gz", mode = "wb", method = "libcurl")
+              destfile = "data/snrnaseq/GSE204683/count_matrix.RDS.gz",
+              mode = "wb", method = "libcurl")
 
 # Descompactar o arquivo
 R.utils::gunzip("data/GSE204683/count_matrix.RDS.gz", overwrite = TRUE)
@@ -355,6 +366,8 @@ GSE204683_counts <- readRDS("data/GSE204683/count_matrix.RDS")
 # Ver dimensões (genes x células)
 dim(count_matrix)
 ```
+
+
 ```{r}
 dir.create("data/GSE225158")
 # Baixar o arquivo H5Seurat
