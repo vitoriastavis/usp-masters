@@ -1,11 +1,10 @@
 instalar sra conforme
 https://github.com/ncbi/sra-tools/wiki/02.-Installing-SRA-Toolkit
 
-prefetch
+prefetch SRR19374522
 
 fastq-dump --split-files --gzip SRR19374522
+ou
+fasterq-dump SRR19374522
 
-Se não precisar de tudo, use fasterq-dump com limite:
-fasterq-dump --split-files --progress SRR19374522 -O output_folder
-Caso tenha problemas de espaço, pode usar a opção --concatenate-reads para combinar as leituras.
-
+fazer script para baixar todas bash

@@ -272,41 +272,46 @@ dev.off()
 
 ```{r}
 # Remove NAs
-if (nrow(gutmgene%>%filter(is.na(Metabolite_CID))) != 0){
-  cat("Removing", nrow(gutmgene%>%filter(is.na(Metabolite_CID))), "Metabolite_CID NAs\n")
-  gutmgene_na <- gutmgene %>%
-    filter(!is.na(Metabolite_CID))
-} else{
-  cat("There are", nrow(gutmgene%>%filter(is.na(Metabolite_CID))), "Metabolite_CID NAs\n")
+if (nrow(gutmgene %>% filter(is.na(Metabolite_CID))) != 0) {
+  gutmgene_na <- gutmgene %>% filter(is.na(Metabolite_CID))
+  gutmgene_clean <- gutmgene %>% filter(!is.na(Metabolite_CID))
+  cat("Removed", nrow(gutmgene_na), "Metabolite_CID NAs\n")
+} else {
+  gutmgene_clean <- gutmgene
+  gutmgene_na <- data.frame()
+  cat("No Metabolite_CID NAs found\n")
 }
 
 cat("N metabolites before removing duplicates:", length(gutmgene$Metabolite_CID), "\n")
 # Remove duplicates
-gutmgene_clean <- gutmgene_na %>%
+gutmgene_nodup <- gutmgene_clean %>%
   distinct(Metabolite_CID, .keep_all=TRUE)
-cat("N metabolites without duplicates:", length(gutmgene_clean$Metabolite_CID), "\n")
+cat("N metabolites without duplicates:", length(gutmgene_nodup$Metabolite_CID), "\n")
 ```
 
 ## Get SMILES
 
 ```{r}
 # Run the get_smiles_from_cid() for each metabolite CID
-smiles <- sapply(gutmgene_clean$Metabolite_CID, get_smiles_from_cid)
+smiles <- sapply(gutmgene_nodup$Metabolite_CID, get_smiles_from_cid)
 cat(length(smiles), "SMILES were obtained\n")
 
 # Create dataframe to store SMILES and CIDs for target prediction
 df_smiles_ids <- data.frame(SMILES=smiles,
-                         pubchem_ids=paste0("cid", gutmgene_clean$Metabolite_CID),
+                         pubchem_ids=paste0("cid", gutmgene_nodup$Metabolite_CID),
                          stringsAsFactors=FALSE)
-
 # Save the dataframe as text file
 write.table(df_smiles_ids, file="smiles_ids.txt",
             row.names=FALSE, col.names=FALSE,
             quote=FALSE, sep=" ")
 
-# Save a list of just the SMILES without CIDs
-write.table(data.frame(SMILES=smiles),
-            file="smiles.txt",
+# Create dataframe to store names and CIDs of the metabolites 
+# that are not on PubChem to find the SMILES
+df_names_ids <- data.frame(name=gutmgene_na$Metabolite_Name,
+                         pubchem_id=paste0("nocid", 1:length(gutmgene_na$Metabolite_Name)),
+                         stringsAsFactors=FALSE)
+# Save the dataframe as text file
+write.table(df_names_ids, file="names_ids.txt",
             row.names=FALSE, col.names=FALSE,
             quote=FALSE, sep=" ")
 ```
@@ -326,15 +331,16 @@ colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Valu
 # Get only the human targets 
 sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target_ID), ]
 
-# Remove duplicates
+# Sort the data frame by Target_ID and then by P_Value (ascending)
+sea_result <- sea_result[order(sea_result$Target_ID, sea_result$P_Value), ]
+# Keep only the first occurrence of each Target_ID (which now has the lowest P_Value)
 sea_targets <- sea_result[!duplicated(sea_result$Target_ID), ]
 cat("There are", length(sea_targets$Target_ID), "targets predicted with SEA\n")
 
-
-# Filter for p <= 0.01
-p_value <- 0.01
+# Filter for p <= 0.001
+p_value <- 0.0001
 sea_targets_filtered <- sea_targets[sea_targets$P_Value <= p_value, ]
-cat(length(sea_targets_filtered$Target_ID), "targets with SEA with p <= 0.01\n")
+cat(length(sea_targets_filtered$Target_ID), "targets with SEA with p <=", p_value, "\n")
 ```
 
 ## Parsing STP results
