@@ -8,6 +8,21 @@ output: html_document
 # Load libraries
 
 ```{r message=FALSE, warning=FALSE}
+# List of libraries to install
+libraries <- c("dplyr", "httr2", "jsonlite", "ggplot2", "readxl", "rvest", 
+               "readr", "stringr", "tidyr", "scales", "httr", "xml2")
+
+# Function to install missing libraries
+install_if_missing <- function(lib) {
+  if (!require(lib, character.only = TRUE)) {
+    install.packages(lib, dependencies = TRUE)
+    library(lib, character.only = TRUE)
+  }
+}
+
+# Apply the function to all libraries
+sapply(libraries, install_if_missing)
+
 library(dplyr)
 library(httr2)
 library(jsonlite)
@@ -20,10 +35,7 @@ library(tidyr)
 library(scales)
 library(httr)
 library(xml2)
-# library(GEOquery)
-library(Seurat)
-library(SeuratDisk)
-library(Matrix)
+library(biomaRt)
 ```
 # Target prediction
 ## Functions to get SMILES from CID
@@ -334,17 +346,81 @@ sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target_ID), ]
 # Sort the data frame by Target_ID and then by P_Value (ascending)
 sea_result <- sea_result[order(sea_result$Target_ID, sea_result$P_Value), ]
 # Keep only the first occurrence of each Target_ID (which now has the lowest P_Value)
-sea_targets <- sea_result[!duplicated(sea_result$Target_ID), ]
-cat("There are", length(sea_targets$Target_ID), "targets predicted with SEA\n")
+sea_result <- sea_result[!duplicated(sea_result$Target_ID), ]
+cat("There are", length(sea_result$Target_ID), "targets predicted with SEA\n")
 
 # Filter for p <= 0.001
 p_value <- 0.0001
-sea_targets_filtered <- sea_targets[sea_targets$P_Value <= p_value, ]
-cat(length(sea_targets_filtered$Target_ID), "targets with SEA with p <=", p_value, "\n")
+sea_result_filtered <- sea_result[sea_result$P_Value <= p_value, ]
+cat(length(sea_result_filtered$Target_ID), "targets with SEA with p <=", p_value, "\n")
+
+sea_targets <- sea_result$Target_ID
+sea_targets <- gsub("_HUMAN", "", sea_targets)
 ```
 
 ## Parsing STP results
 
+```{r}
+# Directory with STP .csv files
+directory <- "C:/Users/vitor/Documents/usp/usp-masters/data/stp"
+
+# Get the files
+files <- list.files(path = directory, pattern = "\\.csv$", full.names = TRUE)
+
+# Iterate over the files creating dataframes
+dataframes <- list()
+for (file_path in files) {
+  if (file.info(file_path)$size > 0) {
+    df <- read_csv(file_path, show_col_types = FALSE)
+    dataframes[[length(dataframes) + 1]] <- df
+  } else {
+    cat("No targets predicted:", basename(file_path), "\n")
+  }
+}
+
+# Concatenate dataframes
+stp_result <- bind_rows(dataframes)
+
+# Write final dataframe
+write_csv(stp_result, file.path(directory, "stp-result.csv"))
+```
+
+```{r}
+# Read STP dataframe
+stp_result <- read.csv("data/stp/stp-results.csv")
+
+# Rename columns to avoid special character issues
+colnames(stp_result) <- c("Name", "Common_name", "Uniprot_ID",
+                          "ChEMBL_ID", "Class",
+                          "Probability", "Known_Actives")
+
+# Remove targets with probability = 0
+stp_result <- stp_result[stp_result$Probability != 0, ]
+
+# Filter the rows with higher probability
+stp_result <- stp_result[order(stp_result$Uniprot_ID, stp_result$Probability), ]
+
+# Get unique targets
+stp_result <- stp_result %>% distinct(Uniprot_ID, .keep_all=TRUE)
+stp_targets <- stp_result$Uniprot_ID
+```
+
+```{r}
+# Connect to Ensembl
+mart <- useMart("ensembl", dataset="hsapiens_gene_ensembl")
+
+# Convert UniProt ID to HGNC symbol (gene name)
+uniprot_to_symbol <- getBM(
+  attributes=c("hgnc_symbol"),
+  filters="uniprotswissprot",
+  values=stp_targets,
+  mart=mart
+)
+
+stp_targets_hgnc <- uniprot_to_symbol$hgnc_symbol
+
+intersect(sea_targets, stp_targets_hgnc)
+```
 
 # snRNA-seq data
 
