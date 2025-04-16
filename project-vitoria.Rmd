@@ -44,6 +44,7 @@ library(httr)
 library(xml2)
 library(biomaRt)
 ```
+
 # Target prediction
 ## Functions to get SMILES from CID
 
@@ -142,22 +143,14 @@ get_smiles_from_cid <- function(compound_id) {
 
 ```{r}
 # Read the CSV file from gutMGene
-gutmgene <- read.csv("data/gutmgene.csv", stringsAsFactors = FALSE)
+gutmgene <- read.csv("data/gutmgene/gutmgene.csv", stringsAsFactors = FALSE)
 
 # Rename columns to avoid special character issues
 colnames(gutmgene) <- c("Host_Species", "Gut_Microbe_ID", "Rank",
                         "Metabolite_ID", "Evidence_Type", "Evidence_Amount")
 
-cat("N metabolites raw file:",
-    length(gutmgene$Metabolite_ID), "\n")
-
-unique_species_count <- gutmgene %>% filter(Rank == 'genus') %>%
-  summarise(count = n_distinct(Gut_Microbe_ID)) %>% pull(count)
-cat("N microbes in raw file:", unique_species_count, "\n")
-
-cat("N of unique genera:", sum(gutmgene$Rank == 'genus'), "\n")
-
 # Extract the metabolite name from the "Metabolite_ID" column
+# and microbe name from "Gut_Microbe_ID"
 gutmgene <- gutmgene %>%
   mutate(
     Metabolite_Name = str_remove(Metabolite_ID, "\\([^()]*\\)$"), # Removes last set of parentheses and content
@@ -166,12 +159,26 @@ gutmgene <- gutmgene %>%
     Gut_Microbe_ID = as.integer(str_extract(Gut_Microbe_ID, "(?<=\\().*(?=\\))")), # Extracts numbers inside '()'
   )
 
-# Get CID with vectorized function
-get_cid_vec <- Vectorize(get_cid)
-gutmgene <- gutmgene %>%
-  mutate(
-    Metabolite_CID = get_cid_vec(Metabolite_Name) # Obtains CID for the metabolite name
-  )
+# Remove a possibly incorrect microorganism (it's actually an insect)
+gutmgene <- gutmgene[!grepl("Bacteria Latreille et al. 1825", gutmgene$Gut_Microbe_Name), ]
+# Remove not identified species?
+gutmgene <- gutmgene[!grepl("CEBAS", gutmgene$Gut_Microbe_Name), ]
+
+# How many metabolites
+cat("N metabolites (repeated):",
+    length(gutmgene$Metabolite_ID), "\n")
+cat("N metabolites (unique):",
+    length(unique(gutmgene$Metabolite_ID)), "\n")
+
+# Number of unique species
+unique_species_count <- gutmgene %>% filter(Rank == 'species') %>%
+  summarise(count = n_distinct(Gut_Microbe_ID)) %>% pull(count)
+cat("N unique microbe IDs for species:", unique_species_count, "\n")
+
+# Number of unique genera
+gutmgene$Microbe_Genus <- sub(" .*", "", gutmgene$Gut_Microbe_Name)
+gutmgene$Microbe_Genus <- gsub("\\[|\\]", "", gutmgene$Microbe_Genus)
+cat("N unique genera:", length(unique(gutmgene$Microbe_Genus)), "\n")
 ```
 
 ## Build plots of raw data
@@ -179,119 +186,65 @@ gutmgene <- gutmgene %>%
 ### Plot 1 - Distribution of genera among metabolites
 
 ```{r}
-# Filter only genus-level microbes
-gutmgene_filtered <- gutmgene[gutmgene$Rank == "genus", ]
-
 # Count occurrences of each genus
-genus_counts <- table(gutmgene_filtered$Gut_Microbe_Name)
+genus_counts <- table(gutmgene$Microbe_Genus)
 
 # Filter to only include genera with frequency > 5
-genus_to_keep <- names(genus_counts[genus_counts > 2])
-gutmgene_filtered <- gutmgene_filtered[gutmgene_filtered$Gut_Microbe_Name %in% genus_to_keep, ]
+genera_to_keep <- names(genus_counts[genus_counts >= 5])
+gutmgene_filtered <- gutmgene[gutmgene$Microbe_Genus %in% genera_to_keep, ]
 
 # Order from most frequent to less frequent
 gutmgene_filtered_count <- gutmgene_filtered %>%
-  count(Gut_Microbe_Name) %>%
-  mutate(Gut_Microbe_Name = reorder(Gut_Microbe_Name, -n))
+  count(Microbe_Genus) %>%
+  mutate(Microbe_Genus = reorder(Microbe_Genus, -n))
+
+title_portuguese <- "Distribuição dos microorganismos da microbiota intestinal"
+x_axis_portuguese <- "Microorganismo (gênero)"
+y_axis_portuguese <- "Número de metabólitos produzidos"
 
 # Create the plot
 microbe_distribution <- ggplot(gutmgene_filtered_count,
-                               aes(x = Gut_Microbe_Name, y = n)) +
+                               aes(x = Microbe_Genus, y = n)) +
   geom_bar(stat = "identity", fill = "gray30", width = 0.5) +
   theme_minimal() + 
-  ggtitle("Distribution of Gut Microorganisms") +  
+  ggtitle(title_portuguese) +  
   theme(
     plot.title = element_text(size = 18, hjust = 0.5),  
     axis.title.y = element_text(size = 16),
     axis.title.x = element_text(size = 16),
     axis.text.y = element_text(size = 16),
-    axis.text.x = element_text(size = 16, angle = 60, hjust = 1, face = "italic"),
+    axis.text.x = element_text(size = 16, angle = 60, hjust = 1),
     panel.grid = element_blank(),  # Remove grid lines
     axis.line.x = element_line(color = "black", linewidth = 0.5),  # Only X-axis line
     axis.line.y = element_line(color = "black", linewidth = 0.5),  # Only Y-axis line
     axis.ticks = element_line(color = "black", linewidth = 1)      # Ensure ticks are visible
   ) +
-  labs(x = "Gut Microbe (Genus)", 
-       y = "Count") +
+  labs(x = x_axis_portuguese, 
+       y = y_axis_portuguese) +
   scale_y_continuous(breaks = seq(0,max(gutmgene_filtered_count$n),
-                                  by = 5)) +                       # Sety axis scale
-  coord_cartesian(ylim = c(0, max(gutmgene_filtered_count$n)))     # Set the grid's height
-
+                                  by = 5))
 # Create a directory for plots if it doesn't exist
 if (!dir.exists("plots")) {
   dir.create("plots")
 }
 
-# # Save plot as PNG
-# png("plots/microbe_distribution.png", width = 350, height = 300)
-# print(microbe_distribution)
-# dev.off()
-```
-
-### Plot 2 - Distribution of how many evidences the metabolite-microbe rows have
-
-```{r}
-evidence_amount_counts <- gutmgene %>%
-  count(Evidence_Amount)  # Count each unique value
-
-# Create the plot
-evidence_amount <- ggplot(evidence_amount_counts, aes(x = factor(Evidence_Amount), y = n)) +  
-  geom_col(fill = "gray30", width = 0.5) +
-  geom_text(aes(label = n), vjust = -0.5, size = 5, color = "black") +  # Add text labels
-  theme_minimal() +  
-  theme(
-    axis.title.y = element_text(size = 16),
-    axis.title.x = element_text(size = 16),
-    axis.text.y = element_text(size = 16),
-    axis.text.x = element_text(size = 16, hjust = 1),
-    panel.grid = element_blank(),
-    axis.line.x = element_line(color = "black", linewidth = 0.5),
-    axis.line.y = element_line(color = "black", linewidth = 0.5),
-    axis.ticks = element_line(color = "black", linewidth = 1)
-  ) +
-  scale_y_continuous(breaks = pretty_breaks(n = 7)) +             # Set y axis scale
-  labs(x = "Evidence Amount", 
-       y = "Count") +  
-  coord_cartesian(ylim = c(0, max(evidence_amount_counts)*1.03))  # Set the grid's height
-
 # Save plot as PNG
-png("plots/evidence_amount.png", width = 350, height = 300)
-print(pevidence_amount)
-dev.off()
-```
-
-### Plot 3 - Distribution of evidence types (causally or correlatively)
-
-```{r}
-# Split the 'Evidence' column by commas, then count occurrences of each type of evidence
-evidence_count <- gutmgene %>%
-  separate_rows(Evidence_Type, sep = ";") %>%  # Split 
-  count(Evidence_Type) %>%  # Count
-  filter(Evidence_Type %in% c("causally", "correlatively"))
-
-# Create the plot
-evidence_types <- ggplot(evidence_count, aes(x = "", y = n, fill = Evidence_Type)) +
-  geom_bar(stat = "identity", width = 1) +
-  coord_polar(theta = "y") +    # Pie chart
-  theme_void() +                # No axes
-  scale_fill_manual(values = c("causally" = "gray30", "correlatively" = "gray50")) +
-  geom_text(aes(label = paste(n, "(", round(n / sum(n) * 100, 1), "%)", sep = "")),  # Add percentages
-            position = position_stack(vjust = 0.5), size = 6, color = "white") +     # Add labels
-  theme(
-    plot.title = element_text(size = 14, hjust = 0),
-    legend.text = element_text(size = 14),  # Set legend size
-    legend.title = element_text(size = 14)  
-  )
-
-# Save plot as PNG
-png("plots/evidence_types.png", width = 350, height = 300)
-print(evidence_types)
+png("plots/microbe_distribution-portuguese.png", width = 800, height = 500)
+print(microbe_distribution)
 dev.off()
 ```
 
 ## Clean the data
 
 ```{r}
+# Parse Compound ID (CID)
+# with vectorized function
+get_cid_vec <- Vectorize(get_cid)
+gutmgene <- gutmgene %>%
+  mutate(
+    Metabolite_CID = get_cid_vec(Metabolite_Name) # Obtains CID for the metabolite name
+  )
+
 # Remove NAs
 if (nrow(gutmgene %>% filter(is.na(Metabolite_CID))) != 0) {
   gutmgene_na <- gutmgene %>% filter(is.na(Metabolite_CID))
@@ -308,6 +261,10 @@ cat("N metabolites before removing duplicates:", length(gutmgene$Metabolite_CID)
 gutmgene_nodup <- gutmgene_clean %>%
   distinct(Metabolite_CID, .keep_all=TRUE)
 cat("N metabolites without duplicates:", length(gutmgene_nodup$Metabolite_CID), "\n")
+
+# Save processed dataframe
+save(gutmgene_nodup, file = "data/gutmgene_nodup.RData")  # No duplicated metabolites
+save(gutmgene_na, file = "data/gutmgene_na.RData")        # Only the NAs
 ```
 
 ## Get SMILES
@@ -327,7 +284,7 @@ write.table(df_smiles_ids, file="smiles_ids.txt",
             quote=FALSE, sep=" ")
 
 # Create dataframe to store names and CIDs of the metabolites 
-# that are not on PubChem to find the SMILES
+# that are not on PubChem to find the SMILES by the name
 df_names_ids <- data.frame(name=gutmgene_na$Metabolite_Name,
                          pubchem_id=paste0("nocid", 1:length(gutmgene_na$Metabolite_Name)),
                          stringsAsFactors=FALSE)
@@ -343,7 +300,7 @@ After running SEA with smiles_ids.txt, read the results.
 
 ```{r}
 # Read SEA dataframe
-sea_result <- read.csv("data/sea-results.xls")
+sea_result <- read.csv("data/sea/sea-results.xls")
 
 # Rename columns to avoid special character issues
 colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
@@ -356,12 +313,12 @@ sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target_ID), ]
 sea_result <- sea_result[order(sea_result$Target_ID, sea_result$P_Value), ]
 # Keep only the first occurrence of each Target_ID (which now has the lowest P_Value)
 sea_result <- sea_result[!duplicated(sea_result$Target_ID), ]
-cat("There are", length(sea_result$Target_ID), "targets predicted with SEA\n")
+cat(length(sea_result$Target_ID), "targets were predicted with SEA\n")
 
-# Filter for p <= 0.001
+# Filter for p <= 0.0001
 p_value <- 0.0001
 sea_result_filtered <- sea_result[sea_result$P_Value <= p_value, ]
-cat(length(sea_result_filtered$Target_ID), "targets with SEA with p <=", p_value, "\n")
+cat(length(sea_result_filtered$Target_ID), "targets with p <=", p_value, "\n")
 
 sea_targets <- sea_result$Target_ID
 sea_targets <- gsub("_HUMAN", "", sea_targets)
@@ -371,7 +328,7 @@ sea_targets <- gsub("_HUMAN", "", sea_targets)
 
 ```{r}
 # Directory with STP .csv files
-directory <- "C:/Users/vitor/Documents/usp/usp-masters/data/stp"
+directory <- "data/stp"
 
 # Get the files
 files <- list.files(path = directory, pattern = "\\.csv$", full.names = TRUE)
@@ -412,6 +369,8 @@ stp_result <- stp_result[order(stp_result$Uniprot_ID, stp_result$Probability), ]
 # Get unique targets
 stp_result <- stp_result %>% distinct(Uniprot_ID, .keep_all=TRUE)
 stp_targets <- stp_result$Uniprot_ID
+
+cat(length(stp_result$Uniprot_ID), "targets were predicted with STP\n")
 ```
 
 ```{r}
