@@ -11,8 +11,6 @@ if (!require("BiocManager", quietly = TRUE))
 
 
 
-
-
 if (!require("GenomeInfoDb", quietly = TRUE))
     BiocManager::install("GenomeInfoDb")
 if (!require("GenomicRanges", quietly = TRUE))
