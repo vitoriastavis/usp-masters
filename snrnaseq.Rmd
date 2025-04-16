@@ -1,0 +1,233 @@
+---
+title: "Untitled"
+author: "vitoria"
+date: "2025-04-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+
+
+
+
+if (!require("GenomeInfoDb", quietly = TRUE))
+    BiocManager::install("GenomeInfoDb")
+if (!require("GenomicRanges", quietly = TRUE))
+    BiocManager::install("GenomicRanges")
+if (!require("Matrix", quietly = TRUE))
+    BiocManager::install("Matrix")
+if (!require("Rsamtools", quietly = TRUE))
+    BiocManager::install("Rsamtools")
+  BiocManager::install("Rsamtools")
+
+
+if (!require("patchwork", quietly = TRUE))
+    install.packages("patchwork")
+if (!require("Seurat", quietly = TRUE))
+    install.packages("Seurat")
+
+if (!requireNamespace("remotes", quietly = TRUE))
+    install.packages("remotes")
+remotes::install_github("stuart-lab/signac", ref = "develop")
+
+```
+
+
+```{r}
+# Load necessary libraries
+library(Seurat)
+library(Signac)
+library(GenomeInfoDb)
+library(ggplot2)
+library(patchwork)
+library(Matrix)
+```
+```{r}
+# Read in matrix
+expr_matrix <- readMM("GSE213982_combined_counts_matrix.mtx.gz")
+
+# Read gene names and cell barcodes
+genes <- read.csv("GSE213982_combined_counts_matrix_genes_rows.csv.gz", header = FALSE)
+cells <- read.csv("GSE213982_combined_counts_matrix_cells_columns.csv.gz", header = FALSE)
+
+# Assign row and column names
+rownames(expr_matrix) <- make.unique(genes$V1)
+colnames(expr_matrix) <- cells$V1
+a
+
+```
+
+
+```{r}
+# ------------ Data Import for RNA ------------
+# Replace 'path_to_rna_data' with your 10X RNA count matrix folder or h5 file.
+rna_counts <- Read10X(data.dir = "path_to_rna_data")
+
+# Create a Seurat object for RNA
+seurat_obj <- CreateSeuratObject(counts = rna_counts, project = "snMultiome", min.cells = 3, min.features = 200)
+
+# ------------ Data Import for ATAC ------------
+# Replace these paths with your data file paths:
+atac_counts <- Read10X_h5("path_to_atac_data.h5")   # the ATAC count matrix in h5 format
+fragments_file <- "path_to_fragments.tsv.gz"         # fragments file from the ATAC assay
+
+# Create a ChromatinAssay for ATAC data. Note the 'sep' parameter may require adjustment depending on how the peak coordinates are formatted.
+chrom_assay <- CreateChromatinAssay(
+  counts = atac_counts,
+  sep = c(":", "-"),
+  genome = 'hg38',            # or your genome of choice,
+  fragments = fragments_file
+)
+
+# Add the ATAC assay to your Seurat object
+seurat_obj[["ATAC"]] <- chrom_assay
+
+# It can be useful to add some modality-specific metadata later.
+
+```
+
+```{r, echo=FALSE}
+# ---- RNA QC ----
+# Calculate % mitochondrial genes (genes starting with "MT-")
+seurat_obj[["percent.mt"]] <- PercentageFeatureSet(seurat_obj, pattern = "^MT-")
+
+# Visualize RNA QC metrics
+VlnPlot(seurat_obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+# Filter RNA cells (adjust thresholds as needed)
+seurat_obj <- subset(seurat_obj, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
+
+# ---- ATAC QC ----
+# Set the default assay to ATAC for downstream ATAC QC
+DefaultAssay(seurat_obj) <- "ATAC"
+
+# You might want to examine total fragments (stored in nCount_ATAC)
+VlnPlot(seurat_obj, features = "nCount_ATAC")
+# Additional QC metrics (if computed):
+#   - TSSEnrichment(): Compute TSS enrichment score.
+#   - NucleosomeSignal(): Compute nucleosome banding patterns.
+# For example:
+seurat_obj <- TSSEnrichment(seurat_obj)
+seurat_obj <- NucleosomeSignal(seurat_obj)
+
+# Filter ATAC cells (thresholds are dataset dependent)
+seurat_obj <- subset(seurat_obj, subset = nCount_ATAC > 5000 & TSSEnrichment > 2)
+
+```
+
+
+```{r}
+# Set default assay to RNA and normalize data
+DefaultAssay(seurat_obj) <- "RNA"
+seurat_obj <- NormalizeData(seurat_obj, normalization.method = "LogNormalize", scale.factor = 10000)
+
+# Identify variable features (commonly ~2000 features)
+seurat_obj <- FindVariableFeatures(seurat_obj, selection.method = "vst", nfeatures = 2000)
+
+# Scale data (regress out unwanted effects, e.g., percent.mt if desired)
+seurat_obj <- ScaleData(seurat_obj, vars.to.regress = "percent.mt")
+
+# Run PCA for RNA (dimensionality reduction)
+seurat_obj <- RunPCA(seurat_obj, features = VariableFeatures(object = seurat_obj))
+```
+```{r}
+# Set default assay to ATAC
+DefaultAssay(seurat_obj) <- "ATAC"
+
+# (Optional) Limit peaks to those with at least some minimal counts (here, peaks with >100 total counts across cells)
+peak_counts <- Matrix::rowSums(seurat_obj[["ATAC"]]@counts)
+VariableFeatures(seurat_obj[["ATAC"]]) <- names(which(peak_counts > 100))
+
+# Run TF-IDF normalization and then LSI:
+seurat_obj <- RunTFIDF(seurat_obj)
+seurat_obj <- FindTopFeatures(seurat_obj, min.cutoff = 'q0')
+seurat_obj <- RunSVD(seurat_obj, reduction.key = "LSI_")
+
+# UMAP on LSI space (often skip the first LSI component if it captures technical variation)
+seurat_obj <- RunUMAP(seurat_obj, reduction = "lsi", dims = 2:50)
+```
+
+```{r}
+# It’s typical to use the RNA assay as the reference, since gene expression data is more direct.
+# Reset default assay to RNA for the reference.
+DefaultAssay(seurat_obj) <- "RNA"
+
+# Identify variable features from the RNA data (if not already done)
+# (Assume these have been identified in the RNA normalization section.)
+
+# Now, set the query assay for integration to be the gene activity derived from ATAC.
+# Often (for paired multiome) you calculate a gene activity matrix from the ATAC reads.
+# If you have computed gene activity and stored it (for example, in an assay named "ACTIVITY"),
+# you can use that; if not, one common strategy is to impute RNA expression for ATAC cells using TransferData.
+
+# For demonstration, let’s assume you have computed a gene activity matrix and stored it as an assay:
+# (If not, see the Signac vignette “Integrating scRNA-seq and scATAC-seq data”.)
+#
+# Then run the anchor finding. We use CCA as the reduction method for cross-modality analysis.
+transfer.anchors <- FindTransferAnchors(
+  reference = seurat_obj,           # RNA assay is the reference
+  query = seurat_obj,               # ATAC data (gene activity) is the query
+  features = VariableFeatures(object = seurat_obj),
+  reference.assay = "RNA",
+  query.assay = "ACTIVITY",         # The gene activity assay from ATAC
+  reduction = "cca"                 # canonical correlation analysis better captures cross-modal relationships
+)
+```
+```{r}
+# Transfer cell type labels (assuming seurat_obj$celltype contains RNA-based annotations)
+celltype.predictions <- TransferData(
+  anchorset = transfer.anchors,
+  refdata = seurat_obj$celltype,
+  weight.reduction = seurat_obj[["lsi"]]
+)
+# Add predictions to object metadata
+seurat_obj <- AddMetaData(seurat_obj, metadata = celltype.predictions)
+
+# Optionally, you can filter cells by prediction confidence:
+hist(seurat_obj$prediction.score.max)
+seurat_obj.filtered <- subset(seurat_obj, subset = prediction.score.max > 0.5)
+```
+
+```{r}
+# Impute RNA expression for ATAC cells using the transfer anchors.
+genes.use <- VariableFeatures(object = seurat_obj)
+ref_rna_data <- GetAssayData(seurat_obj, assay = "RNA", slot = "data")[genes.use, ]
+
+imputed_rna <- TransferData(
+  anchorset = transfer.anchors,
+  refdata = ref_rna_data,
+  weight.reduction = seurat_obj[["lsi"]]
+)
+# Store the imputed data as an RNA assay in the ATAC data.
+seurat_obj[["RNA_imputed"]] <- CreateAssayObject(counts = imputed_rna)
+
+# Merge (if your two modalities were in separate objects, you could merge them here).
+# Then, run scaling and dimensional reduction again (PCA/UMAP) using the imputed RNA values.
+DefaultAssay(seurat_obj) <- "RNA_imputed"
+seurat_obj <- ScaleData(seurat_obj, features = genes.use)
+seurat_obj <- RunPCA(seurat_obj, features = genes.use)
+seurat_obj <- RunUMAP(seurat_obj, dims = 1:30)
+DimPlot(seurat_obj, reduction = "umap", group.by = "celltype", label = TRUE)
+```
+
+
+```{r}
+# Set the identity class to cell type (or cluster) based on RNA annotations:
+Idents(seurat_obj) <- seurat_obj$celltype
+
+# Find differentially expressed genes between two cell types (for example, "B" versus "T cells"):
+markers <- FindMarkers(seurat_obj, ident.1 = "B", ident.2 = "T", test.use = "wilcox")
+
+# View top markers
+head(markers)
+```
+```{r}
+# UMAP colored by cell type
+DimPlot(seurat_obj, reduction = "umap", group.by = "celltype", label = TRUE) + ggtitle("Cell type annotation")
+
+# Feature plots of canonical marker genes
+FeaturePlot(seurat_obj, features = c("CD3D", "MS4A1", "GNLY"), cols = c("lightgrey", "red"), reduction = "umap")
+```
