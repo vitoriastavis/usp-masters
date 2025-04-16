@@ -12,6 +12,11 @@ output: html_document
 libraries <- c("dplyr", "httr2", "jsonlite", "ggplot2", "readxl", "rvest", 
                "readr", "stringr", "tidyr", "scales", "httr", "xml2")
 
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+if (!require("biomaRt", quietly = TRUE))
+    install.packages("biomaRt")
+
 # Function to install missing libraries
 install_if_missing <- function(lib) {
   if (!require(lib, character.only = TRUE)) {
@@ -181,7 +186,7 @@ gutmgene_filtered <- gutmgene[gutmgene$Rank == "genus", ]
 genus_counts <- table(gutmgene_filtered$Gut_Microbe_Name)
 
 # Filter to only include genera with frequency > 5
-genus_to_keep <- names(genus_counts[genus_counts > 10])
+genus_to_keep <- names(genus_counts[genus_counts > 2])
 gutmgene_filtered <- gutmgene_filtered[gutmgene_filtered$Gut_Microbe_Name %in% genus_to_keep, ]
 
 # Order from most frequent to less frequent
@@ -193,12 +198,14 @@ gutmgene_filtered_count <- gutmgene_filtered %>%
 microbe_distribution <- ggplot(gutmgene_filtered_count,
                                aes(x = Gut_Microbe_Name, y = n)) +
   geom_bar(stat = "identity", fill = "gray30", width = 0.5) +
-  theme_minimal() +  
+  theme_minimal() + 
+  ggtitle("Distribution of Gut Microorganisms") +  
   theme(
+    plot.title = element_text(size = 18, hjust = 0.5),  
     axis.title.y = element_text(size = 16),
     axis.title.x = element_text(size = 16),
     axis.text.y = element_text(size = 16),
-    axis.text.x = element_text(size = 16, angle = 60, hjust = 1),
+    axis.text.x = element_text(size = 16, angle = 60, hjust = 1, face = "italic"),
     panel.grid = element_blank(),  # Remove grid lines
     axis.line.x = element_line(color = "black", linewidth = 0.5),  # Only X-axis line
     axis.line.y = element_line(color = "black", linewidth = 0.5),  # Only Y-axis line
@@ -215,10 +222,10 @@ if (!dir.exists("plots")) {
   dir.create("plots")
 }
 
-# Save plot as PNG
-png("plots/microbe_distribution.png", width = 350, height = 300)
-print(microbe_distribution)
-dev.off()
+# # Save plot as PNG
+# png("plots/microbe_distribution.png", width = 350, height = 300)
+# print(microbe_distribution)
+# dev.off()
 ```
 
 ### Plot 2 - Distribution of how many evidences the metabolite-microbe rows have
