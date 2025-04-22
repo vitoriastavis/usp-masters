@@ -5,31 +5,31 @@ projeto-vitoria
 │
 ├── data/
 │   ├── gutmgene/
-│   │   ├── gutmgene.csv                  # Tabela da base de dados GutMGene
-│   │   ├── gutmgene_na.RData             # GutMGene com apenas NAs
-│   │   └── gutmgene_nodup.RData          # GutMGene sem duplicados e sem NAs
+│   │   ├── gutmgene.csv                    # Tabela da base de dados GutMGene
+│   │   ├── gutmgene_na.RData               # GutMGene com apenas NAs
+│   │   └── gutmgene_nodup.RData            # GutMGene sem duplicados e sem NAs
 │   ├── sea/
-│   │   ├── cid.xls                       # Predições de alvos com CID
-│   │   ├── nocid.xls                     # Predições de alvos sem CID
-│   │   └── sea-results.xls               # Predições consolidadas (CID + noCID)
+│   │   ├── cid.xls                         # Predições de alvos com CID
+│   │   ├── nocid.xls                       # Predições de alvos sem CID
+│   │   └── sea-results.xls                 # Predições consolidadas (CID + noCID)
 │   ├── stp/
-│   │   ├── *.csv                         # Um arquivo por metabólito (246 no total)
-│   │   └── stp-results.csv               # Resultados concatenados do STP (sem processamento)
-│   ├── smiles_ids.txt                    # Lista de SMILES e CIDs ou IDs
-│   ├── names_ids.txt                     # Nomes e identificadores dos metabólitos sem CID
-│   └── targets_intersection.RData        # Interseção dos alvos preditos por SEA e STP
+│   │   ├── *.csv                           # Um arquivo por metabólito (246 no total)
+│   │   └── stp-results.csv                 # Resultados concatenados do STP (sem processamento)
+│   ├── smiles_ids.txt                      # Lista de SMILES e CIDs ou IDs
+│   ├── names_ids.txt                       # Nomes e identificadores dos metabólitos sem CID
+│   └── targets_intersection.RData          # Interseção dos alvos preditos por SEA e STP
 │
 ├── plots/
 │   ├── gutmgene/
-│   │   └── microbe_distribution.png      # Histograma de distribuição microbiana
+│   │   └── microbe_distribution.png        # Histograma de distribuição microbiana
 │   └── enrichment-predicted-genes/
 │       ├── filtered/                 
-│       	 └── *.png / *.pdf            # Grafos e gráficos de barra (filtrando termos TDM)
-│       └── *.png / *.pdf                 # Grafos e gráficos de barra do enriquecimento
+│       	 └── *.png / *.pdf              # Grafos e gráficos de barra (filtrando termos TDM)
+│       └── *.png / *.pdf                   # Grafos e gráficos de barra para os enriquecimentos
 │
-├── enrichment_ora.Rmd                    # Enriquecimento funcional (ORA)
-├── target_prediction.Rmd                 # Processamento de GutMGene e processamento da predição de alvos
-└── get_smiles.ipynb                      # Obtenção de SMILES a partir de nomes/IDs dos metabólitos em CID
+├── enrichment_ora.Rmd                      # Enriquecimento funcional (ORA)
+├── target_prediction.Rmd                   # Processamento de GutMGene e processamento da predição de alvos
+└── get_smiles.ipynb                        # Obtenção de SMILES a partir de nomes/IDs dos metabólitos em CID
 
 Primeiro, foi rodado o script target_prediction.Rmd até gerar os SMILES. Como alguns metabólitos não possuem
 CID para gerar diretamente o SMILES pelo PubChem, foi obtida uma lista em data/names_ids.txt. Essa lista foi
