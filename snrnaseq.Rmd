@@ -9,8 +9,6 @@ output: html_document
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-
-
 if (!require("GenomeInfoDb", quietly = TRUE))
     BiocManager::install("GenomeInfoDb")
 if (!require("GenomicRanges", quietly = TRUE))
@@ -20,7 +18,6 @@ if (!require("Matrix", quietly = TRUE))
 if (!require("Rsamtools", quietly = TRUE))
     BiocManager::install("Rsamtools")
   BiocManager::install("Rsamtools")
-
 
 if (!require("patchwork", quietly = TRUE))
     install.packages("patchwork")
