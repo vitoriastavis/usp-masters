@@ -86,7 +86,7 @@ enrichment_go <- function(gene_ids, ontology,
                     pAdjustMethod = "BH",
                     pvalueCutoff = p_value,
                     qvalueCutoff = q_value,
-                    readable = F,
+                    readable = T,
                     minGSSize = minGSSize,
                     maxGSSize = maxGSSize)
   
@@ -134,7 +134,7 @@ run_enrichment <- function(gene_ids, p_value,
                         pAdjustMethod = "BH",
                         pvalueCutoff = p_value,
                         qvalueCutoff = q_value,
-                        use_internal_data = F,
+                        use_internal_data = T,
                         minGSSize = minGSSize,
                         maxGSSize = maxGSSize)
   cat('KEGG ')
@@ -144,36 +144,23 @@ run_enrichment <- function(gene_ids, p_value,
                    pAdjustMethod = "BH",
                    pvalueCutoff = p_value,
                    qvalueCutoff = q_value,
-                   readable = F,
+                   readable = T,
                    minGSSize = minGSSize,
                    maxGSSize = maxGSSize)
   cat('DGN ')
-
-  # # Disease Ontology
-  do <- enrichDO(gene = gene_ids,
-                 ont = "HPO",
-                 organism = "hsa",
-                  pAdjustMethod = "BH",
-                  pvalueCutoff = p_value,
-                  qvalueCutoff = q_value,
-                  readable = F,
-                  minGSSize = minGSSize,
-                  maxGSSize = maxGSSize)
-  
-  cat('DO ')
 
   # Reactome
   react <- enrichPathway(gene = gene_ids,
                           pAdjustMethod = "BH",
                           pvalueCutoff = p_value,
                           qvalueCutoff = q_value,
-                          readable = F,
+                          readable = T,
                           minGSSize = minGSSize,
                           maxGSSize = maxGSSize)
   cat('REACTOME ')
 
   enrichments <- list(MF = mf, BP = bp, CC = cc, KEGG = kegg,
-                      REACTOME = react, DGN = dgn, DO = do)
+                      REACTOME = react, DGN = dgn)
   
   return(enrichments)
 }
@@ -185,23 +172,26 @@ run_enrichment <- function(gene_ids, p_value,
 # Param - key_terms: vector of chosen key terms (character)
 # Param - categories: vector of enriched categories (character)
 # Return - filtered_list: vector of categories of interest (character)
-compare_categories <- function(key_terms, categories){
-  
+compare_categories <- function(key_terms, categories) {
   filtered_list <- c()
-  
-  # for each keyterm
-  for (term in key_terms){
-    for (cat in categories){
-      # if any words in the key term are in the category
-      if (grepl(term, cat, ignore.case = FALSE) && !(cat %in% filtered_list)){
-        # cat(term, "->", cat, "\n")
-        
-        # add the category to a vector
+
+  for (term in key_terms) {
+    # split the term into first letter and the rest
+    first <- substr(term, 1, 1)
+    rest <- substr(term, 2, nchar(term))
+
+    # create patterns with lowercase and uppercase first letter
+    pattern1 <- paste0("\\b", tolower(first), rest, "\\b")
+    pattern2 <- paste0("\\b", toupper(first), rest, "\\b")
+
+    for (cat in categories) {
+      # check for matches with either pattern, and avoid duplicates
+      if (((grepl(pattern1, cat) || grepl(pattern2, cat)) && !(cat %in% filtered_list))) {
         filtered_list <- c(filtered_list, cat)
       }
     }
   }
-  
+
   return(filtered_list)
 }
 ```
@@ -267,8 +257,7 @@ create_barplot <- function(enrichment, title,
     
     # creates barplot
     suppressMessages({
-      bar_plot <- barplot(enrichment, showCategory = categories,
-                          sortBy = "x", order = TRUE) + 
+      bar_plot <- barplot(enrichment, showCategory = categories) + 
                      ggtitle(title) + 
                      labs(subtitle = subtitle) +
                      xlab("Gene count") +
@@ -427,7 +416,7 @@ save_files <- function(barplot, graph, geneset,
   base_filename <- paste0(path, geneset)
 
   if (is.null(graph)){
-    warning(paste0("the plots are empty for ", method))
+    warning(paste0("the plots are empty for ", geneset))
     return()
   } else{
     ggsave(paste0(base_filename, "_graph", ".jpg"),
@@ -456,7 +445,7 @@ plot_subtitle <- paste0("Considerando ", n_gene_ids,
 
 # key terms for filtering - create a list of as many key terms related to your
 # study as you can, i.e. proteins, pathways, diseases, regions
-key_terms <- c('neurotoxicity', 'neurodegeneration', 'neuron death',
+key_terms <- c('neurotoxicity', 'neurodegeneration', 'neuron death', 
                'neuroinflammation', 'depression', 'prefrontal cortex',
                'neuronal', 'neuroplasticity', 'synapse', 'depressive',
                'nucleus accumbens', 'hippocampus', 'hypothalamus', 'amygdala',
@@ -468,14 +457,13 @@ key_terms <- c('neurotoxicity', 'neurodegeneration', 'neuron death',
                'kynurenine', 'IL-6', 'TNF-alpha', 'CRP', 'cortisol', 'FKBP5',
                'SERT', '5-HT', 'NR3C1', 'glucocorticoid receptor',
                'NLRP3', 'IL-1β', 'IL-18', 'NF-κB', 'TNFR', 'IL-10', 'COX-2',
-               'iNOS',  'synaptic pruning', 'myelination',
+               'iNOS',  'synaptic pruning', 'myelination', 'Depression', 
                'white matter', 'gray matter', 'M1', 'M2', 'A1', 'A2',
                'brain-derived', 'cytokines', 'neuroimmune', 'neurotrophic')
 
 
 # or use number of categories
 n_categories <- 50
-
 
 # directory to save the plots
 output_path <- 'plots/enrichment-predicted-targets/'
@@ -490,87 +478,302 @@ cat("-- Processing ids\n")
 gene_ids <- convert_ids(targets_intersection, 'SYMBOL', 'ENTREZID')
 
 cat("-- Running enrichments: ")
-enrichments <- run_enrichment(gene_ids)
+enrichments <- run_enrichment(gene_ids, p_value)
 ```
 
-## Process Without considering key terms
+## Process without considering key terms
 
 ```{r message=FALSE, warning=FALSE}
-for (method in names(enrichments)){
+output_path_nofilter <- paste0(output_path, "nofilter/")
+table_nofilter <- NULL
+
+for (geneset in names(enrichments)){
  
-  cat(paste0("-- Creating pictures for ", method, "\n"))
+  cat(paste0("-- Creating pictures for ", geneset, "\n"))
 
   # get the enrichment
-  e <- enrichments[[method]]
+  e <- enrichments[[geneset]]
   
   # filter 25 categories for the barplot
-  categories <- filter_categories(e, 25)
+  categories <- filter_categories(e, p_value, 25)
   
   # creating barplot 
-  bar_plot <- create_barplot(e, plot_title,
-                            plot_subtitle, method,
-                            categories)
+  # bar_plot <- create_barplot(e, plot_title,
+  #                           plot_subtitle, geneset,
+  #                           categories)
 
   # filter less categories for the graph
-  if (method %in% c('MF', 'BP', 'REACTOME')) {
-    categories <- filter_categories(e, p_value, 15)
-  } else if(method %in% c('DGN')){
-    categories <- filter_categories(e, p_value, 8)
-  } else{
-  }
+  # if (geneset %in% c('MF', 'BP', 'REACTOME')) {
+  #   categories <- filter_categories(e, p_value, 15)
+  # } else if(geneset %in% c('DGN')){
+  #   categories <- filter_categories(e, p_value, 8)
+  # } else{
+  # }
   
   if (is.null(categories)) next
   
+  table_nofilter <- add_to_table(e, geneset, categories, table_nofilter)
+
   # creating graph
-  graph <- create_graph(e, plot_title,
-                        plot_subtitle, method,
-                        categories)
+  # graph <- create_graph(e, plot_title,
+  #                       plot_subtitle, geneset,
+  #                       categories)
   
-  if (method %in% c('CC')) {
-    save_files(bar_plot, graph, method, output_path, 10)
-  } else{
-    save_files(bar_plot, graph, method, output_path)
-  }  
+  # if (geneset %in% c('CC')) {
+  #   save_files(bar_plot, graph, geneset, output_path_nofilter, 10)
+  # } else if (geneset %in% c('KEGG')) {
+  #   save_files(bar_plot, graph, geneset, output_path_nofilter, 20)
+  # } else{
+  #   save_files(bar_plot, graph, geneset, output_path_nofilter)
+  # }  
+  save_table(table_nofilter, output_path = output_path_filter, plot_subtitle = plot_subtitle)
 } 
 ```
 
 ## Filter with key_terms
 
 ```{r message=FALSE, warning=FALSE}
-output_path <- paste0(output_path, 'filtered/')
+output_path_filter <- paste0(output_path, 'filtered/')
 plot_subtitle <- paste0("Considerando ", n_gene_ids,
-                        " alvos preditos, valor de p <= ", p_value,
-                        " e filtrando termos relacionados ao TDM")
-for (method in names(enrichments)){
+                        " alvos preditos, filtrando termos relacionados ao TDM, p <= ", p_value)
+tabela_final <- NULL
+
+for (geneset in names(enrichments)){
  
-  cat(paste0("-- Creating pictures for ", method, "\n"))
+  cat(paste0("-- Creating pictures for ", geneset, "\n"))
 
   # get the enrichment
-  e <- enrichments[[method]]
+  e <- enrichments[[geneset]]
   
   # filter considering key terms
   categories <- filter_categories(e, p_value, 50, key_terms)
   if (is.null(categories)) next
 
-  # creating barplot 
-  bar_plot <- create_barplot(e, plot_title,
-                            plot_subtitle, method,
-                            categories)
-  # creating graph
-  graph <- create_graph(e, plot_title,
-                        plot_subtitle, method,
-                        categories)
-  
+  # creating barplot
+  # bar_plot <- create_barplot(e, plot_title,
+  #                           plot_subtitle, geneset,
+  #                           categories)
+  # # creating graph
+  # graph <- create_graph(e, plot_title,
+  #                       plot_subtitle, geneset,
+  #                       categories)
+  tabela_final <- add_to_table(e, geneset, categories, tabela_final)
 
-  if (method %in% c('MF')) {
-    save_files(bar_plot, graph, method, output_path, 30)
-  } else{
-    save_files(bar_plot, graph, method, output_path)
-  }  
+  # create_table(e, categories, output_path_filter,
+  #              plot_subtitle, geneset)
+  # 
+# 
+#   if (geneset %in% c('MF', 'DGN')) {
+#     save_files(bar_plot, graph, geneset, output_path_filter, 10)
+#   } else{
+#     save_files(bar_plot, graph, geneset, output_path_filter)
+#   }
+  save_table(tabela_final, output_path = output_path_filter, plot_subtitle = plot_subtitle)
 
 } 
 ```
 
 ```{r message=FALSE, warning=FALSE}
 save(enrichments, file = paste0(output_path,'enrichments.RData'))
+```
+
+
+```{r message=FALSE, warning=FALSE}
+library(clusterProfiler)
+library(dplyr)
+library(tidyr)
+library(stringr)
+
+create_table <- function(enrich_result, categorias_interesse,
+                        output_path, plot_subtitle, geneset) {
+  df <- as.data.frame(enrich_result)
+  
+  df_filtrado <- df %>%
+    filter(Description %in% categorias_interesse) %>%
+    select(Description, geneID)
+  
+  # Organiza os genes em strings separadas por vírgula
+  df_formatado <- df_filtrado %>%
+    mutate(geneID = str_replace_all(geneID, "/", ", ")) %>%
+    rename(Categoria = Description, Genes = geneID)
+    
+  # Define o nome do arquivo para salvar
+  output_file <- paste0(output_path, geneset, "_enriched_categories.png")
+  
+  # Número de categorias = linhas
+  n_categorias <- nrow(df_formatado)
+
+  max_genes_por_categoria <- max(str_count(df_formatado$Genes, ",") + 1)
+  max_categoria_len <- max(nchar(df_formatado$Categoria))
+
+  largura_genes <- max_genes_por_categoria * 100
+  largura_categoria <- max_categoria_len * 10
+  width <- largura_genes + largura_categoria + 200
+
+  height <- 50 * n_categorias + 200 
+
+  # Cria a imagem da tabela usando gridExtra e grid
+  png(filename = output_file, width = width, height = height, res = 150)
+  
+  # Define o título
+  grid.newpage()
+  title <- paste0("Categorias Enriquecidas e Genes Associados - ", geneset)
+  grid.text(title, y = unit(0.95, "npc"),
+            gp = gpar(fontsize = 14))
+  grid.text(plot_subtitle, y = unit(0.89, "npc"),
+            gp = gpar(fontsize = 12))
+  pushViewport(viewport(y = 0.99, height = 0.99, just = "top"))
+  grid.table(df_formatado, rows = NULL)
+  popViewport()
+  dev.off()
+}
+```
+
+```{r}
+add_to_table <- function(enrich_result, geneset, categorias_interesse, tabela_acumulada = NULL) {
+  df <- as.data.frame(enrich_result)
+
+  df_filtrado <- df %>%
+    filter(Description %in% categorias_interesse) %>%
+    select(Description, geneID) %>%
+    mutate(
+      geneID = str_replace_all(geneID, "/", ", "),
+      Categoria = Description,
+      Genes = geneID,
+      Base = geneset
+    ) %>%
+    select(Base, Categoria, Genes)
+
+  # Junta ao acumulado
+  df_final <- bind_rows(tabela_acumulada, df_filtrado)
+  return(df_final)
+}
+
+save_table <- function(tabela, output_path, plot_subtitle, filename = "combined_enriched_categories.png") {
+  library(gridExtra)
+  library(grid)
+  library(gtable)
+  library(stringr)
+
+  # Preprocess: Show Grupo only once per group
+  tabela_clean <- tabela
+  grupos <- tabela$Base
+  trocas <- c(TRUE, grupos[-1] != grupos[-length(grupos)])
+  inicios <- which(trocas)
+
+  for (i in seq_along(inicios)) {
+    start <- inicios[i]
+    end <- if (i < length(inicios)) inicios[i + 1] - 1 else nrow(tabela_clean)
+    for (j in start:end) {
+      tabela_clean$Base[j] <- ""  # hide group name from separator row
+    }
+  }
+
+  # Create the table grob
+  tg <- tableGrob(
+    tabela_clean,
+    rows = NULL,
+    theme = ttheme_default(
+      core = list(
+        fg_params = list(col = "black"),  # Define cor do texto
+        bg_params = list(fill = "white", col = NA)  # Fundo branco
+      ),
+      colhead = list(
+        fg_params = list(fontface = "bold", col = "black"),  # Cabeçalho em negrito e preto
+        bg_params = list(fill = "white", col = NA)  # Fundo branco e borda preta no cabeçalho
+      )
+    )
+  )
+  
+  # Linha no topo da tabela
+  tg <- gtable_add_grob(
+    tg,
+    grobs = linesGrob(y = unit(c(1, 1), "npc"), gp = gpar(col = "black", lwd = 1)),
+    t = 1, b = 1, l = 1, r = ncol(tg)
+  )
+  
+  tg <- gtable_add_grob(
+    tg,
+    grobs = linesGrob(y = unit(c(1, 1), "npc"), gp = gpar(col = "black", lwd = 1)),
+    t = 2, b = 2, l = 1, r = ncol(tg)
+  )
+
+  # Linha no final da tabela
+  tg <- gtable_add_grob(
+    tg,
+    grobs = linesGrob(y = unit(c(0, 0), "npc"), gp = gpar(col = "black", lwd = 1)),
+    t = nrow(tg), b = nrow(tg), l = 1, r = ncol(tg)
+  )
+
+  # Add centered labels for each group
+  # Add centered group labels
+  for (i in seq_along(inicios)) {
+    start <- inicios[i]
+    end <- if (i < length(inicios)) inicios[i + 1] - 1 else nrow(tabela)
+  
+    # Texto do grupo
+    tg <- gtable_add_grob(
+      tg,
+      grobs = textGrob(grupos[start], gp = gpar(fontface = "bold"), just = "center"),
+      t = start + 1, b = end + 1, l = 1, r = 1,
+      name = paste0("grupo-", i)
+    )
+  
+    # Linha separadora abaixo do grupo
+    if (i < length(inicios)) {
+      tg <- gtable_add_grob(
+        tg,
+        grobs = linesGrob(y = unit(c(0, 0), "npc"), gp = gpar(col = "black", lwd = 1)),
+        t = end + 1, b = end + 1, l = 1, r = ncol(tg)
+      )
+    }
+  }
+
+  # Dimension adjustments
+  n_linhas <- nrow(tabela)
+  max_genes <- max(str_count(tabela$Genes, ",") + 1, na.rm = TRUE)
+  max_categoria_len <- max(nchar(tabela$Categoria), na.rm = TRUE)
+  max_grupo_len <- max(nchar(tabela$Base), na.rm = TRUE)
+
+  largura_genes <- max_genes * 100
+  largura_categoria <- max_categoria_len * 10
+  largura_grupo <- max_grupo_len * 8
+
+  width <- largura_genes + largura_categoria + largura_grupo + 300
+  height <- 50 * n_linhas + 100
+
+  # Save as PNG
+  output_file <- paste0(output_path, filename)
+  png(filename = output_file, width = width, height = height, res = 150)
+  grid.newpage()
+  grid.text("Categorias Enriquecidas por Base de Dados", y = unit(0.95, "npc"), gp = gpar(fontsize = 14))
+  grid.text(plot_subtitle, y = unit(0.93, "npc"), gp = gpar(fontsize = 12))
+  pushViewport(viewport(y = 0.99, height = 0.99, just = "top"))
+  grid.draw(tg)
+  popViewport()
+  dev.off()
+}
+```
+```{r}
+# Separar genes por categoria
+library(dplyr)
+library(tidyr)
+library(stringr)
+
+# Separar e limpar os genes
+genes_por_base <- tabela_final %>%
+  separate_rows(Genes, sep = ",\\s*") %>%
+  distinct(Base, Genes) %>%
+  group_by(Base) %>%
+  summarise(genes = unique(Genes)) %>%
+  group_split(Base)
+
+# Criar listas nomeadas para MF, BP, DGN
+lista_genes <- setNames(
+  lapply(genes_por_base, function(x) x$genes),
+  sapply(genes_por_base, function(x) unique(x$Base))
+)
+
+# Interseções
+intersecao <- Reduce(intersect, lista_genes)
 ```
