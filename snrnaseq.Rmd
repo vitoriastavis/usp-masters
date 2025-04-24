@@ -1,4 +1,4 @@
----
+<!-- # --- -->
 title: "Untitled"
 author: "vitoria"
 date: "2025-04-16"
@@ -6,28 +6,42 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
 
-if (!require("GenomeInfoDb", quietly = TRUE))
-    BiocManager::install("GenomeInfoDb")
-if (!require("GenomicRanges", quietly = TRUE))
-    BiocManager::install("GenomicRanges")
-if (!require("Matrix", quietly = TRUE))
-    BiocManager::install("Matrix")
-if (!require("Rsamtools", quietly = TRUE))
-    BiocManager::install("Rsamtools")
-  BiocManager::install("Rsamtools")
+# Pacotes do CRAN necessários
+cran_pkgs <- c(
+  "data.table", "dplyr", "future", "future.apply", "ggplot2", "rlang", "irlba", 
+  "tidyr", "patchwork", "stringi", "fastmatch", "RcppRoll", "scales", "Rcpp", 
+  "tidyselect", "vctrs", "lifecycle", "dotCall64", "RcppEigen", "png", "reticulate"
+)
 
-if (!require("patchwork", quietly = TRUE))
-    install.packages("patchwork")
-if (!require("Seurat", quietly = TRUE))
-    install.packages("Seurat")
+# Pacotes do Bioconductor necessários
+bioc_pkgs <- c(
+  "GenomeInfoDb", "GenomicRanges", "IRanges", "Rsamtools", "S4Vectors", 
+  "SeuratObject", "Biostrings", "XVector", "Rhtslib", "BiocParallel", 
+  "UCSC.utils"
+)
+
+# Função pra instalar se faltar
+install_missing <- function(pkgs, installer) {
+  for (pkg in pkgs) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      message(paste("Instalando:", pkg))
+      installer(pkg)
+    } else {
+      message(paste("Já está instalado:", pkg))
+    }
+  }
+}
+
+# Instala os pacotes
+install_missing(cran_pkgs, install.packages)
+install_missing(bioc_pkgs, BiocManager::install)
 
 if (!requireNamespace("remotes", quietly = TRUE))
     install.packages("remotes")
 remotes::install_github("stuart-lab/signac", ref = "develop")
-
 ```
 
 
