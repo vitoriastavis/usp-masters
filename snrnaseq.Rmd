@@ -126,3 +126,97 @@ write.csv(de_results_filtered, "data/snrnaseq/GSE213982/results_filtered.csv", r
 
 ```
 
+```{r}
+# Define a função
+process_seurat_object <- function(matrix_file, genes_file, cells_file, group_file, project_name = "SeuratProject", min_cells = 3, min_features = 200, normalization_method = "LogNormalize", scale_factor = 10000, nfeatures = 2000) {
+  
+  # 1. Carregar matriz de expressão
+  expr_matrix <- readMM(matrix_file)
+  
+  # 2. Carregar nomes dos genes e células
+  genes <- read.csv(genes_file, header = TRUE)
+  cells <- read.csv(cells_file, header = TRUE)
+  
+  # 3. Definir nomes das linhas e colunas
+  rownames(expr_matrix) <- make.unique(genes$x)
+  colnames(expr_matrix) <- cells$x
+  
+  # 4. Criar objeto Seurat
+  seurat_obj <- CreateSeuratObject(counts = expr_matrix, 
+                                   project = project_name, 
+                                   min.cells = min_cells, 
+                                   min.features = min_features)
+  
+  # 5. Adicionar metadados a partir dos nomes das colunas
+  cell_info <- do.call(rbind, strsplit(colnames(seurat_obj), "\\."))
+  seurat_obj$sample_id <- cell_info[,1]
+  seurat_obj$barcode <- cell_info[,2]
+  seurat_obj$cell_type <- cell_info[,3]
+  seurat_obj$cell_subtype <- cell_info[,4]
+  
+  # 6. Adicionar informação de condição
+  condition_info <- read.csv(group_file)
+  seurat_obj$condition <- condition_info$Condition[match(seurat_obj$sample_id, condition_info$Sample)]
+  
+  # 7. Normalizar os dados
+  seurat_obj <- NormalizeData(seurat_obj, normalization.method = normalization_method, scale.factor = scale_factor)
+  
+  # 8. Encontrar features variáveis
+  seurat_obj <- FindVariableFeatures(seurat_obj, selection.method = "vst", nfeatures = nfeatures)
+  
+  # Retornar o objeto final
+  return(seurat_obj)
+}
+```
+```{r}
+gse144136 <- process_seurat_object(
+  matrix_file = "data/snrnaseq/GSE144136/GSE213982_combined_counts_matrix.mtx.gz",
+  genes_file = "data/snrnaseq/GSE144136/GSE213982_combined_counts_matrix_genes_rows.csv.gz",
+  cells_file = "data/snrnaseq/GSE144136/GSE213982_combined_counts_matrix_cells_columns.csv.gz",
+  group_file = "data/snrnaseq/GSE144136/groups.csv",
+  project_name = "GSE213982_snRNA"
+)
+```
+```{r}
+# Read in matrix
+expr_matrix <- readMM("data/snrnaseq/GSE144136/GSE144136_GeneBarcodeMatrix_Annotated.mtx.gz")
+
+
+# Read gene names and cell barcodes
+genes <- read.csv("data/snrnaseq/GSE144136/GSE144136_GeneNames.csv.gz",
+                  header = TRUE)
+#genes <- genes[-1, , drop=FALSE]
+cells <- read.csv("data/snrnaseq/GSE144136/GSE144136_CellNames.csv.gz",
+                  header = TRUE)
+
+# Assign row and column names
+rownames(expr_matrix) <- make.unique(genes$x)
+colnames(expr_matrix) <- cells$x
+
+seurat_obj <- CreateSeuratObject(counts = expr_matrix, 
+                                 project = "GSE144136", 
+                                 min.cells = 3, 
+                                 min.features = 200)
+
+seurat_obj@meta.data$condition <- ifelse(grepl("Control", rownames(seurat_obj@meta.data)), 
+                                    "Control", 
+                                    ifelse(grepl("Suicide", rownames(seurat_obj@meta.data)), 
+                                           "Suicide", 
+                                           NA))
+
+seurat_obj <- NormalizeData(seurat_obj, normalization.method = "LogNormalize",
+                            scale.factor = 10000)
+
+seurat_obj <- FindVariableFeatures(seurat_obj, selection.method = "vst",
+                                   nfeatures = 2000)
+
+de_results <- FindMarkers(seurat_obj, ident.1 = "Suicide", ident.2 = "Control",
+                          group.by = "condition", test.use = "wilcox")
+
+write.csv(de_results, "data/snrnaseq/GSE144136/results_adj.csv", row.names = TRUE)
+
+de_results_filtered <- de_results %>% 
+  filter(p_val_adj < 0.05, abs(avg_log2FC) > 1)
+
+write.csv(de_results_filtered, "data/snrnaseq/GSE144136/results_filtered.csv", row.names = TRUE)
+```
