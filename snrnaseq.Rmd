@@ -42,6 +42,8 @@ install_missing(bioc_pkgs, BiocManager::install)
 if (!requireNamespace("remotes", quietly = TRUE))
     install.packages("remotes")
 remotes::install_github("stuart-lab/signac", ref = "develop")
+
+devtools::install_github("immunogenomics/presto")
 ```
 
 
@@ -104,26 +106,23 @@ save(seurat_obj, file = "data/snrnaseq/GSE213982/seurat_variablefeatures.RData",
 load("data/snrnaseq/GSE213982/seurat_variablefeatures.RData")
 
 # Getting the 1800th most relevant features to reduce complexity
-top_genes <- head(VariableFeatures(seurat_obj), 1800)
-seurat_obj <- ScaleData(seurat_obj, features = top_genes)
+# top_genes <- head(VariableFeatures(seurat_obj), 1800)
+# seurat_obj <- ScaleData(seurat_obj, features = top_genes)
 
-# seurat_obj <- ScaleData(seurat_obj, features = VariableFeatures(object = seurat_obj))
-seurat_obj <- RunPCA(seurat_obj, features = VariableFeatures(object = seurat_obj))
-```
-
-
-```{r}
 de_results <- FindMarkers(seurat_obj, ident.1 = "Case", ident.2 = "Control", group.by = "condition", test.use = "wilcox")
 
 # Visualizar os resultados
 head(de_results)
 
 # Ajustar os p-values e filtrar os genes significativos
-de_results$padj <- p.adjust(de_results$p_val, method = "fdr")
-de_results_filtered <- de_results %>% 
-  filter(padj < 0.05, abs(log2FC) > 1)
+de_results$p_val_adj <- p.adjust(de_results$p_val_adj, method = "fdr")
 
-# Visualizar os resultados filtrados
-head(de_results_filtered)
+write.csv(de_results, "data/snrnaseq/GSE213982/results_adj.csv", row.names = TRUE)
+
+de_results_filtered <- de_results %>% 
+  filter(p_val_adj < 0.05, abs(avg_log2FC) > 1)
+
+write.csv(de_results_filtered, "data/snrnaseq/GSE213982/results_filtered.csv", row.names = TRUE)
+
 ```
 
