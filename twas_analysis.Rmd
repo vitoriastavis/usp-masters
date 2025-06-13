@@ -1,0 +1,85 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-05-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Comparing the predicted targets with significant genes in the TWAS paper
+
+```{r message=FALSE, warning=FALSE}
+sea_targets <- read.csv("data/sea/sea_targets.csv")$Targets
+stp_targets <- read.csv("data/stp/stp_targets.csv")$Targets
+load(file='data/targets_intersection.RData')
+
+# Bases para interseção
+target_sources <- list(
+  sea = sea_targets,
+  stp = stp_targets,
+  intersection = targets_intersection
+)
+
+# Zeng et al. (2024)
+zeng_twas <- read.csv("data/twas/zeng2024.csv",
+                  header = TRUE)
+zeng_lists <- list(
+  type = unique(zeng_twas$Gene_celltype),
+  subtype = unique(zeng_twas$Genes_cellsubtype),
+  type_smr = unique(zeng_twas$SMR_celltype),
+  subtype_smr = unique(zeng_twas$SMR_cellsubtype),
+  coloc = unique(zeng_twas$COLOC)
+)
+# Lista para armazenar os resultados
+zeng_intersections <- list()
+# Loop para gerar e armazenar interseções
+for (target_name in names(target_sources)) {
+  for (twas_name in names(zeng_lists)) {
+    key <- paste0(target_name, "_", twas_name)
+    zeng_intersections[[key]] <- intersect(target_sources[[target_name]], zeng_lists[[twas_name]])
+  }
+}
+
+# Li et al. (2025)
+li_twas <- read.csv("data/twas/li2025.csv",
+                  header = TRUE)
+li_lists <- list(
+  final_5 = unique(li_twas$Final_5plus),
+  coloc1 = unique(li_twas$COLOC),
+  colo2 = unique(li_twas$COLOC_2),
+  smr = unique(li_twas$PsychENCODE_SMR),
+  final = unique(li_twas$Final)
+)
+
+# Lista para armazenar os resultados
+li_intersections <- list()
+# Loop para gerar e armazenar interseções
+for (target_name in names(target_sources)) {
+  for (twas_name in names(li_lists)) {
+    key <- paste0(target_name, "_", twas_name)
+    li_intersections[[key]] <- intersect(target_sources[[target_name]], li_lists[[twas_name]])
+  }
+}
+```
+
+# Getting the predicted metabolites/ligands for the intersection genes
+
+```{r}
+sea_result <- read.csv("data/sea/sea-results.xls")
+
+# Rename columns to avoid special character issues
+colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
+                          "Max_Tc", "Cut_Sum", "Z_Score", "Name", "Description", "Query_Smiles")
+
+# Get only the human targets 
+sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target_ID), ]
+
+EPHB2 <- sea_result[sea_result$Name == "EPHB2", ]
+metabolites_EPHB2 <- EPHB2$Query_ID
+
+TNKS2 <- sea_result[sea_result$Name == "TNKS2", ]
+metabolites_TNKS2 <- TNKS2$Query_ID
+```
