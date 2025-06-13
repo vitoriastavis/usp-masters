@@ -262,10 +262,12 @@ process_seurat_object <- function(matrix_file, genes_file, cells_file, group_fil
 ## GSE213982
 
 ```{r}
+gse_path <- "data/snrnaseq/GSE213982/"
+
 GSE213982 <- process_seurat_object(
-  matrix_file = "data/snrnaseq/GSE213982/GSE213982_combined_counts_matrix.mtx.gz",
-  genes_file = "data/snrnaseq/GSE213982/GSE213982_combined_counts_matrix_genes_rows.csv.gz",
-  cells_file = "data/snrnaseq/GSE213982/GSE213982_combined_counts_matrix_cells_columns.csv.gz",
+  matrix_file = paste0(gse_path, "GSE213982_combined_counts_matrix.mtx.gz"),
+  genes_file = paste0(gse_path,  "GSE213982_combined_counts_matrix_genes_rows.csv.gz"),
+  cells_file = paste0(gse_path, "GSE213982_combined_counts_matrix_cells_columns.csv.gz"),
   project_name = "GSE213982_snRNA"
 )
 
@@ -275,11 +277,13 @@ GSE213982$barcode <- cell_info[,2]
 GSE213982$cell_type <- cell_info[,3]
 GSE213982$cell_subtype <- cell_info[,4]
 
-condition_info <- read.csv("data/snrnaseq/GSE213982/groups.csv")
+condition_info <- read.csv(paste0(gse_path, "/groups.csv"))
 GSE213982$condition <- condition_info$Condition[match(GSE213982$sample_id,
                                                        condition_info$Sample)]
 
 GSE213982$condition[GSE213982$condition == "Case"] <- "MDD"
+
+save(GSE213982, file=paste0(gse_path, "GSE213982_counts.RData"))
 ```
 
 ### Type by type
@@ -313,15 +317,50 @@ for (ct in cell_types) {
 
   GSE213982_markers_filtered[[ct]] <- markers_filtered
 }
+
+save(GSE213982_markers_filtered,
+     file=paste0(gse_path, "GSE213982_markers_type.RData"))
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+gene <- "NR4A1"
+nr4a1_expressions <- list()
+cell_types <- setdiff(unique(GSE213982@meta.data$cell_type), "Mix")
+for (ct in cell_types) {
+  
+  gene_data <- FetchData(GSE213982, vars = c("NR4A1", "condition", "cell_type"))
+  gene_data_filtered <- gene_data[gene_data$cell_type == ct, ]
+
+  # Create violin plot
+  nr4a1_condition_exp <- ggplot(gene_data_filtered, aes(x = condition,
+                                                     y = NR4A1)) +
+                          geom_boxplot(alpha = 0.7, outlier.alpha = 0.5) +
+                          geom_jitter(width = 0.2, alpha = 0.3, size = 0.5) +
+                          # geom_violin(alpha = 0.7, trim = FALSE) +
+                          # geom_boxplot(width = 0.1, fill = "white",
+                          #              alpha = 0.8) +
+                          theme_light() +
+                          labs(title = paste0(gene, " expression - ", ct),
+                               x = "Condition", 
+                               y = "NR4A1 Expression") +
+                          theme(legend.position = "none",
+                                plot.title = element_text(hjust = 0.5,
+                                                          size = 14,
+                                                          face = "bold"))
+
+  ggsave(paste0(gse_path, gene, "_", ct, ".png"), nr4a1_condition_exp)
+}
 ```
 
 ## GSE144136
 
 ```{r}
+gse_path <- "data/snrnaseq/GSE144136/"
+
 GSE144136 <- process_seurat_object(
-  matrix_file = "data/snrnaseq/GSE144136/GSE144136_GeneBarcodeMatrix_Annotated.mtx.gz",
-  genes_file = "data/snrnaseq/GSE144136/GSE144136_GeneNames.csv.gz",
-  cells_file = "data/snrnaseq/GSE144136/GSE144136_CellNames.csv.gz",
+  matrix_file = paste0(gse_path, "GSE144136_GeneBarcodeMatrix_Annotated.mtx.gz"),
+  genes_file = paste0(gse_path, "GSE144136_GeneNames.csv.gz"),
+  cells_file = paste0(gse_path, "GSE144136_CellNames.csv.gz"),
   project_name = "GSE144136_snRNA"
 )
 
@@ -377,6 +416,9 @@ for (ct in cell_types) {
 
   GSE144136_markers_filtered[[ct]] <- markers_filtered
 }
+
+save(GSE144136_markers_filtered,
+     file=paste0(gse_path, "GSE144136_markers_type.RData"))
 ```
 
 ```{r message=FALSE, warning=FALSE}
