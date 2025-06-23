@@ -12,8 +12,8 @@ knitr::opts_chunk$set(echo = TRUE)
 # Comparing the predicted targets with significant genes in the TWAS paper
 
 ```{r message=FALSE, warning=FALSE}
-sea_targets <- read.csv("data/sea/sea_targets.csv")$Targets
-stp_targets <- read.csv("data/stp/stp_targets.csv")$Targets
+sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$Targets
+stp_targets <- read.csv("data/target_prediction/stp/stp_targets.csv")$Targets
 load(file='data/targets_intersection.RData')
 
 # Bases para interseção
@@ -68,7 +68,7 @@ for (target_name in names(target_sources)) {
 # Getting the predicted metabolites/ligands for the intersection genes
 
 ```{r}
-sea_result <- read.csv("data/sea/sea-results.xls")
+sea_result <- read.csv("data/target_prediction/sea/sea_results.xls")
 
 # Rename columns to avoid special character issues
 colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
