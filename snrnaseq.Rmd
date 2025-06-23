@@ -5,7 +5,7 @@ date: "2025-04-16"
 output: html_document
 ---
 
-```{r message=FALSE,  include=FALSE}
+```{r message=FALSE, warning=FALSE, include=FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
 
@@ -20,7 +20,7 @@ cran_pkgs <- c(
 bioc_pkgs <- c(
   "GenomeInfoDb", "GenomicRanges", "IRanges", "Rsamtools", "S4Vectors", 
   "SeuratObject", "Biostrings", "XVector", "Rhtslib", "BiocParallel", 
-  "UCSC.utils"
+  "UCSC.utils", "WGCNA"
 )
 
 # Função pra instalar se faltar
@@ -46,7 +46,6 @@ remotes::install_github("stuart-lab/signac", ref = "develop")
 devtools::install_github("immunogenomics/presto")
 ```
 
-
 ```{r message=FALSE, warning=FALSE}
 # Load necessary libraries
 library(dplyr)
@@ -57,182 +56,10 @@ library(ggplot2)
 library(patchwork)
 library(Matrix)
 library(tidyr)
+library(WGCNA)
 ```
 
 # Reading files
-
-```{r}
-# Read in matrix
-expr_matrix <- readMM("data/snrnaseq/GSE213982/GSE213982_combined_counts_matrix.mtx.gz")
-
-
-# Read gene names and cell barcodes
-genes <- read.csv("data/snrnaseq/GSE213982/GSE213982_combined_counts_matrix_genes_rows.csv.gz", header = TRUE)
-#genes <- genes[-1, , drop=FALSE]
-cells <- read.csv("data/snrnaseq/GSE213982/GSE213982_combined_counts_matrix_cells_columns.csv.gz", header = TRUE)
-
-# Assign row and column names
-rownames(expr_matrix) <- make.unique(genes$x)
-colnames(expr_matrix) <- cells$x
-```
-
-```{r}
-# Create a Seurat object 
-seurat_obj <- CreateSeuratObject(counts = expr_matrix, project = "GSE213982_snRNA", min.cells = 3, min.features = 200)
-
-# Add metadata
-cell_info <- do.call(rbind, strsplit(colnames(seurat_obj), "\\."))
-seurat_obj$sample_id <- cell_info[,1]
-seurat_obj$barcode <- cell_info[,2]
-seurat_obj$cell_type <- cell_info[,3]
-seurat_obj$cell_subtype <- cell_info[,4]
-
-# Add groups
-condition_info <- read.csv("data/snrnaseq/GSE213982/groups.csv")
-seurat_obj$condition <- condition_info$Condition[match(seurat_obj$sample_id,
-                                                       condition_info$Sample)]
-
-```
-
-```{r}
-load("data/snrnaseq/GSE213982/seurat_variablenormalized.RData")
-
-seurat_obj <- NormalizeData(seurat_obj, normalization.method = "LogNormalize",
-                            scale.factor = 10000)
-
-seurat_obj <- FindVariableFeatures(seurat_obj, selection.method = "vst",
-                                   nfeatures = 2000)
-
-save(seurat_obj, file = "data/snrnaseq/GSE213982/seurat_variablefeatures.RData",
-     compress = TRUE)
-```
-```{r}
-load("data/snrnaseq/GSE213982/seurat_variablefeatures.RData")
-
-# Getting the 1800th most relevant features to reduce complexity
-# top_genes <- head(VariableFeatures(seurat_obj), 1800)
-# seurat_obj <- ScaleData(seurat_obj, features = top_genes)
-
-de_results <- FindMarkers(seurat_obj, ident.1 = "Case", ident.2 = "Control", group.by = "condition", test.use = "wilcox")
-
-# Visualizar os resultados
-head(de_results)
-
-# Ajustar os p-values e filtrar os genes significativos
-de_results$p_val_adj <- p.adjust(de_results$p_val_adj, method = "fdr")
-
-write.csv(de_results, "data/snrnaseq/GSE213982/results_adj.csv", row.names = TRUE)
-
-de_results_filtered <- de_results %>% 
-  filter(p_val_adj < 0.05, abs(avg_log2FC) > 1)
-
-write.csv(de_results_filtered, "data/snrnaseq/GSE213982/results_filtered.csv", row.names = TRUE)
-
-```
-
-```{r}
-# Read in matrix
-expr_matrix <- readMM("data/snrnaseq/GSE144136/GSE144136_GeneBarcodeMatrix_Annotated.mtx.gz")
-
-# Read gene names and cell barcodes
-genes <- read.csv("data/snrnaseq/GSE144136/GSE144136_GeneNames.csv.gz",
-                  header = TRUE)
-#genes <- genes[-1, , drop=FALSE]
-cells <- read.csv("data/snrnaseq/GSE144136/GSE144136_CellNames.csv.gz",
-                  header = TRUE)
-
-# Assign row and column names
-rownames(expr_matrix) <- make.unique(genes$x)
-colnames(expr_matrix) <- cells$x
-
-seurat_obj <- CreateSeuratObject(counts = expr_matrix, 
-                                 project = "GSE144136", 
-                                 min.cells = 3, 
-                                 min.features = 200)
-
-seurat_obj@meta.data$condition <- ifelse(grepl("Control", rownames(seurat_obj@meta.data)), 
-                                    "Control", 
-                                    ifelse(grepl("Suicide", rownames(seurat_obj@meta.data)), 
-                                           "Suicide", 
-                                           NA))
-
-seurat_obj <- NormalizeData(seurat_obj, normalization.method = "LogNormalize",
-                            scale.factor = 10000)
-
-seurat_obj <- FindVariableFeatures(seurat_obj, selection.method = "vst",
-                                   nfeatures = 2000)
-
-de_results <- FindMarkers(seurat_obj, ident.1 = "Suicide", ident.2 = "Control",
-                          group.by = "condition", test.use = "wilcox")
-
-write.csv(de_results, "data/snrnaseq/GSE144136/results_adj.csv", row.names = TRUE)
-
-de_results_filtered <- de_results %>% 
-  filter(p_val_adj < 0.05, abs(avg_log2FC) > 1)
-
-write.csv(de_results_filtered, "data/snrnaseq/GSE144136/results_filtered.csv", row.names = TRUE)
-```
-
-# Getting the intersection between snRNA-seq and target prediction
-
-```{r}
-# Load target_intersection (303 targets)
-load(file='data/targets_intersection.RData')
-
-# GSE213982
-results_gse213982 <- read.csv("data/snrnaseq/GSE213982/results_filtered.csv",
-                  header = TRUE)
-de_gse213982 <- results_gse213982$X
-intersect(de_gse213982, targets_intersection)
-
-# GSE144136
-results_gse144136 <- read.csv("data/snrnaseq/GSE144136/results_filtered.csv",
-                  header = TRUE)
-de_gse144136 <- results_gse144136$X
-intersect(de_gse144136, targets_intersection)
-
-# Intersection between all of them
-snrnaseq_intersection <- intersect(de_gse144136, de_gse213982)
-all_intersections <- intersect(snrnaseq_intersection, targets_intersection)
-```
-
-## Trying other values for FC
-
-```{r}
-GSE144136 <- read.csv("data/snrnaseq/GSE144136/results_adj.csv",
-                  header = TRUE)
-de_results_filtered_GSE144136 <- GSE144136 %>% 
-  filter(p_val_adj < 0.05, abs(avg_log2FC) >= 2)
-de_results_filtered_GSE144136 <- de_results_filtered_GSE144136$X
-intersect(de_results_filtered_GSE144136, targets_intersection)
-
-GSE213982 <- read.csv("data/snrnaseq/GSE213982/results_adj.csv",
-                  header = TRUE)
-de_results_filtered_GSE213982 <- GSE213982 %>% 
-  filter(p_val_adj < 0.05, abs(avg_log2FC) >= 2)
-de_results_filtered_GSE213982 <- de_results_filtered_GSE213982$X
-intersect(de_results_filtered_GSE213982, targets_intersection)
-```
-
-## Trying other values for p
-
-```{r}
-GSE144136 <- read.csv("data/snrnaseq/GSE144136/results_adj.csv",
-                  header = TRUE)
-de_results_filtered_GSE144136 <- GSE144136 %>% 
-  filter(p_val_adj < 0.001, abs(avg_log2FC) > 1)
-de_results_filtered_GSE144136 <- de_results_filtered_GSE144136$X
-intersect(de_results_filtered_GSE144136, targets_intersection)
-
-GSE213982 <- read.csv("data/snrnaseq/GSE213982/results_adj.csv",
-                  header = TRUE)
-de_results_filtered_GSE213982 <- GSE213982 %>% 
-  filter(p_val_adj < 0.001, abs(avg_log2FC) > 1)
-de_results_filtered_GSE213982 <- de_results_filtered_GSE213982$X
-intersect(de_results_filtered_GSE213982, targets_intersection)
-```
-
-# Comparing cell types
 
 ```{r}
 # Define a função
@@ -280,17 +107,173 @@ GSE213982$cell_subtype <- cell_info[,4]
 condition_info <- read.csv(paste0(gse_path, "/groups.csv"))
 GSE213982$condition <- condition_info$Condition[match(GSE213982$sample_id,
                                                        condition_info$Sample)]
-
 GSE213982$condition[GSE213982$condition == "Case"] <- "MDD"
+
+GSE213982 <- NormalizeData(GSE213982,
+                            normalization.method = "LogNormalize",
+                            scale.factor = 10000)
 
 save(GSE213982, file=paste0(gse_path, "GSE213982_counts.RData"))
 ```
+
+```{r}
+load(paste0(gse_path, "GSE213982_counts.RData"))
+
+GSE213982_features <- FindVariableFeatures(GSE213982_degs,
+                                       selection.method = "vst",
+                                       nfeatures = 2000)
+
+save(GSE213982_features,
+     file = "data/snrnaseq/GSE213982/GSE213982_variablefeatures.RData",
+     compress = TRUE)
+
+load("data/snrnaseq/GSE213982/seurat_variablefeatures.RData")
+
+de_results <- FindMarkers(GSE213982_features,
+                          ident.1 = "Case", ident.2 = "Control",
+                          group.by = "condition", test.use = "wilcox")
+
+# Visualizar os resultados
+head(de_results)
+
+# Ajustar os p-values e filtrar os genes significativos
+de_results$p_val_adj <- p.adjust(de_results$p_val_adj, method = "fdr")
+
+write.csv(de_results,
+          paste0(gse_path, "/not_divided/results_adj.csv"),
+          row.names = TRUE)
+
+de_results_filtered <- de_results %>% 
+  filter(p_val_adj < 0.05, abs(avg_log2FC) > 1)
+
+write.csv(de_results_filtered,
+          paste0(gse_path, "/not_divided/results_filtered.csv"),
+          row.names = TRUE)
+```
+
+```{r}
+gse_path <- "data/snrnaseq/GSE144136/"
+
+GSE144136 <- process_seurat_object(
+  matrix_file = paste0(gse_path, "GSE144136_GeneBarcodeMatrix_Annotated.mtx.gz"),
+  genes_file = paste0(gse_path, "GSE144136_GeneNames.csv.gz"),
+  cells_file = paste0(gse_path, "GSE144136_CellNames.csv.gz"),
+  project_name = "GSE144136_snRNA"
+)
+
+cell_info <- do.call(rbind, strsplit(colnames(GSE144136), "\\_"))
+GSE144136$cell_type <- cell_info[,1]
+
+GSE144136@meta.data$condition <- ifelse(grepl("Control", rownames(GSE144136@meta.data)), 
+                                    "Control", 
+                                    ifelse(grepl("Suicide", rownames(GSE144136@meta.data)), 
+                                           "Suicide", 
+                                           NA))
+
+GSE144136$condition[GSE144136$condition == "Suicide"] <- "MDD"
+
+GSE144136@meta.data$cell_type <- dplyr::case_when(
+  GSE144136@meta.data$cell_type == "Astros" ~ "Ast",
+  GSE144136@meta.data$cell_type == "Inhib" ~ "InN",
+  GSE144136@meta.data$cell_type == "Ex" ~ "ExN",
+  GSE144136@meta.data$cell_type == "Oligos" ~ "Oli",
+  GSE144136@meta.data$cell_type == "OPCs" ~ "OPC",
+  grepl("^Micro/Macro", GSE144136@meta.data$cell_type) ~ "Mic",
+  grepl("^Endo", GSE144136@meta.data$cell_type) ~ "End",
+
+  TRUE ~ GSE144136@meta.data$cell_type  
+)
+
+GSE144136 <- NormalizeData(GSE144136, normalization.method = "LogNormalize",
+                            scale.factor = 10000)
+
+save(GSE144136, file=paste0(gse_path, "GSE144136_counts.RData"))
+```
+
+```{r}
+load(paste0(gse_path, "/GSE144136_counts.RData"))
+
+GSE144136_features <- FindVariableFeatures(GSE144136, selection.method = "vst",
+                                   nfeatures = 2000)
+
+de_results <- FindMarkers(seurat_obj, ident.1 = "Suicide", ident.2 = "Control",
+                          group.by = "condition", test.use = "wilcox")
+
+write.csv(de_results, "data/snrnaseq/GSE144136/results_adj.csv", row.names = TRUE)
+
+de_results_filtered <- de_results %>% 
+  filter(p_val_adj < 0.05, abs(avg_log2FC) > 1)
+
+write.csv(de_results_filtered, "data/snrnaseq/GSE144136/results_filtered.csv", row.names = TRUE)
+```
+
+## Getting the intersection between snRNA-seq and target prediction
+
+```{r}
+# Load target_intersection (303 targets)
+load(file='data/targets_intersection.RData')
+
+# GSE213982
+results_gse213982 <- read.csv("data/snrnaseq/GSE213982/not_divided/results_filtered.csv",
+                      header = TRUE)
+de_gse213982 <- results_gse213982$X
+intersect(de_gse213982, targets_intersection)
+
+# GSE144136
+results_gse144136 <- read.csv("data/snrnaseq/GSE144136/not_divided/results_filtered.csv",
+                      header = TRUE)
+de_gse144136 <- results_gse144136$X
+intersect(de_gse144136, targets_intersection)
+
+# Intersection between all of them
+snrnaseq_intersection <- intersect(de_gse144136, de_gse213982)
+all_intersections <- intersect(snrnaseq_intersection, targets_intersection)
+```
+
+## Trying other values for FC
+
+```{r}
+GSE144136 <- read.csv("data/snrnaseq/GSE144136/not_divided/results_adj.csv",
+                      header = TRUE)
+de_results_filtered_GSE144136 <- GSE144136 %>% 
+  filter(p_val_adj < 0.05, abs(avg_log2FC) >= 2)
+de_results_filtered_GSE144136 <- de_results_filtered_GSE144136$X
+intersect(de_results_filtered_GSE144136, targets_intersection)
+
+GSE213982 <- read.csv("data/snrnaseq/GSE213982/not_divided/results_adj.csv",
+                      header = TRUE)
+de_results_filtered_GSE213982 <- GSE213982 %>% 
+  filter(p_val_adj < 0.05, abs(avg_log2FC) >= 2)
+de_results_filtered_GSE213982 <- de_results_filtered_GSE213982$X
+intersect(de_results_filtered_GSE213982, targets_intersection)
+```
+
+## Trying other values for p
+
+```{r}
+GSE144136 <- read.csv("data/snrnaseq/GSE144136/results_adj.csv",
+                  header = TRUE)
+de_results_filtered_GSE144136 <- GSE144136 %>% 
+  filter(p_val_adj < 0.001, abs(avg_log2FC) > 1)
+de_results_filtered_GSE144136 <- de_results_filtered_GSE144136$X
+intersect(de_results_filtered_GSE144136, targets_intersection)
+
+GSE213982 <- read.csv("data/snrnaseq/GSE213982/results_adj.csv",
+                  header = TRUE)
+de_results_filtered_GSE213982 <- GSE213982 %>% 
+  filter(p_val_adj < 0.001, abs(avg_log2FC) > 1)
+de_results_filtered_GSE213982 <- de_results_filtered_GSE213982$X
+intersect(de_results_filtered_GSE213982, targets_intersection)
+```
+
+# Comparing cell types
 
 ### Type by type
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 GSE213982_markers <- list()
 cell_types <- setdiff(unique(GSE213982@meta.data$cell_type), "Mix")
+
 for (ct in cell_types) {
   seurat_sub <- subset(GSE213982,
                        subset = cell_type == ct)
@@ -319,7 +302,7 @@ for (ct in cell_types) {
 }
 
 save(GSE213982_markers_filtered,
-     file=paste0(gse_path, "GSE213982_markers_type.RData"))
+     file=paste0(gse_path, "divided_by_type/GSE213982_markers_type.RData"))
 ```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
@@ -354,40 +337,6 @@ for (ct in cell_types) {
 
 ## GSE144136
 
-```{r}
-gse_path <- "data/snrnaseq/GSE144136/"
-
-GSE144136 <- process_seurat_object(
-  matrix_file = paste0(gse_path, "GSE144136_GeneBarcodeMatrix_Annotated.mtx.gz"),
-  genes_file = paste0(gse_path, "GSE144136_GeneNames.csv.gz"),
-  cells_file = paste0(gse_path, "GSE144136_CellNames.csv.gz"),
-  project_name = "GSE144136_snRNA"
-)
-
-cell_info <- do.call(rbind, strsplit(colnames(GSE144136), "\\_"))
-GSE144136$cell_type <- cell_info[,1]
-
-GSE144136@meta.data$condition <- ifelse(grepl("Control", rownames(GSE144136@meta.data)), 
-                                    "Control", 
-                                    ifelse(grepl("Suicide", rownames(GSE144136@meta.data)), 
-                                           "Suicide", 
-                                           NA))
-
-GSE144136$condition[GSE144136$condition == "Suicide"] <- "MDD"
-
-GSE144136@meta.data$cell_type <- dplyr::case_when(
-  GSE144136@meta.data$cell_type == "Astros" ~ "Ast",
-  GSE144136@meta.data$cell_type == "Inhib" ~ "InN",
-  GSE144136@meta.data$cell_type == "Ex" ~ "ExN",
-  GSE144136@meta.data$cell_type == "Oligos" ~ "Oli",
-  GSE144136@meta.data$cell_type == "OPCs" ~ "OPC",
-  grepl("^Micro/Macro", GSE144136@meta.data$cell_type) ~ "Mic",
-  grepl("^Endo", GSE144136@meta.data$cell_type) ~ "End",
-
-  TRUE ~ GSE144136@meta.data$cell_type  
-)
-```
-
 ```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 GSE144136_markers <- list()
 
@@ -418,12 +367,15 @@ for (ct in cell_types) {
 }
 
 save(GSE144136_markers_filtered,
-     file=paste0(gse_path, "GSE144136_markers_type.RData"))
+     file=paste0(gse_path, "divided_by_type/GSE144136_markers_type.RData"))
 ```
 
 ```{r message=FALSE, warning=FALSE}
 # Load target_intersection (303 targets)
-load(file='data/targets_intersection.RData')
+load(file='data/target_prediction/targets_intersection.RData')
+load(file='data/snrnaseq/GSE213982/divided_by_type/GSE213982_markers_type.RData')
+load(file='data/snrnaseq/GSE144136/divided_by_type/GSE144136_markers_type.RData')
+
 
 intersection_celltypes <- list()
 for (ct in cell_types) {
@@ -439,5 +391,65 @@ for (ct in cell_types) {
 
 save(intersection_celltypes, intersection_with_targets, file = "intersections.RData")
 ```
+
+# WGCNA coexpression
+
+```{r message=FALSE, warning=FALSE}
+gse_path <- "data/snrnaseq/GSE213982/"
+load(paste0(gse_path, "GSE213982_variablefeatures.RData"))
+
+variable_genes <- VariableFeatures(GSE213982_features)
+GSE213982_matrix <- GetAssayData(GSE213982_features, assay = "RNA", slot = "data")
+GSE213982_matrix <- GSE213982_matrix[variable_genes, ]
+GSE213982_matrix <- t(as.matrix(GSE213982_matrix))  
+
+GSE213982_features <- NULL
+
+GSE213982_gsg <- goodSamplesGenes(GSE213982_matrix, verbose = 3)
+if (!GSE213982_gsg$allOK) {
+  GSE213982_matrix <- GSE213982_matrix[GSE213982_gsg$goodSamples, GSE213982_gsg$goodGenes]
+}
+
+GSE213982_gsg <- NULL
+```
+
+```{r message=FALSE, warning=FALSE}
+powers <- c(1:20)
+tryCatch({
+  sft <- pickSoftThreshold(GSE213982_matrix, powerVector = powers, verbose = 5)
+}, error = function(e) {
+  print(e)
+})
+
+sft <- pickSoftThreshold(GSE213982_matrix, powerVector = powers, verbose = 5)
+
+# Plot to pick soft-thresholding power
+plot(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2],
+     xlab="Soft Threshold (power)", ylab="Scale Free Topology Model Fit, signed R^2",
+     type="n")
+text(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2],
+     labels=powers, cex=0.9, col="red")
+```
+
+```{r message=FALSE, warning=FALSE}
+softPower <- 6  # replace with chosen power
+adjacency <- adjacency(GSE213982_matrix, power = softPower)
+
+TOM <- TOMsimilarity(adjacency)
+dissTOM <- 1 - TOM
+
+geneTree <- hclust(as.dist(dissTOM), method = "average")
+dynamicMods <- cutreeDynamic(dendro = geneTree, distM = dissTOM,
+                             deepSplit = 2, pamRespectsDendro = FALSE,
+                             minClusterSize = 30)
+moduleColors <- labels2colors(dynamicMods)
+```
+
+```{r message=FALSE, warning=FALSE}
+traitData <- seurat_obj@meta.data[, c("seurat_clusters")]
+MEs <- moduleEigengenes(datExpr, colors = moduleColors)$eigengenes
+moduleTraitCor <- cor(MEs, traitData, use = "p")
+```
+
 
 
