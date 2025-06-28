@@ -50,7 +50,6 @@ devtools::install_github("immunogenomics/presto")
 # Load necessary libraries
 library(dplyr)
 library(Seurat)
-library(Signac)
 library(GenomeInfoDb)
 library(ggplot2)
 library(patchwork)
@@ -639,40 +638,40 @@ save(top_genes, file=paste0(gse_path, "GSE144136_variance.RData"))
 ```{r message=FALSE, warning=FALSE}
 library(GENIE3)
 
-# Expressão como matriz
-GSE144136_matrix <- GetAssayData(GSE144136, assay = "RNA", slot = "data")
-expr_matrix <- as.matrix(GSE144136_matrix)
-
-# Define parâmetros
-chunk_size <- 100  # ajuste conforme sua RAM
-gene_names <- rownames(expr_matrix)
+GSE144136_matrix <- as.matrix(GetAssayData(GSE144136, assay = "RNA", slot = "data"))
+chunk_size <- 10
+gene_names <- rownames(GSE144136_matrix)
 n_genes <- length(gene_names)
-regulators <- gene_names  
 
-# Lista para armazenar os resultados
 weight_list <- list()
 
-# Loop em chunks de targets
-for (i in seq(1, n_genes, by = chunk_size)) {
-  cat("Processing targets", i, "to", min(i + chunk_size - 1, n_genes), "\n")
+GSE144136 <- NULL
+gc()
+
+for (i_reg in seq(1, n_genes, by = chunk_size)) {
+  regulators_chunk <- gene_names[i_reg:min(i_reg + chunk_size - 1, n_genes)]
   
-  target_genes <- gene_names[i:min(i + chunk_size - 1, n_genes)]
-  
-  # Rodar GENIE3 só para os targets especificados
-  weights_chunk <- GENIE3(expr_matrix,
-                          regulators = regulators,
-                          targets = target_genes,
-                          nTrees = 500,
-                          nCores = 1))  
-  
-  weight_list[[length(weight_list) + 1]] <- weights_chunk
-  
-  rm(weights_chunk)
-  gc()
+  for (i_tgt in seq(1, n_genes, by = chunk_size)) {
+    cat("\tprocessing regulators", i_reg, "to", min(i_reg + chunk_size - 1, n_genes),
+        "and targets", i_tgt, "to", min(i_tgt + chunk_size - 1, n_genes), "\n")
+    
+    target_chunk <- gene_names[i_tgt:min(i_tgt + chunk_size - 1, n_genes)]
+    
+    weights_chunk <- GENIE3(GSE144136_matrix,
+                            regulators = regulators_chunk,
+                            targets = target_chunk,
+                            nTrees = 500,
+                            nCores = 1)
+    
+    weight_list[[paste(i_reg, i_tgt, sep = "_")]] <- weights_chunk
+    
+    rm(weights_chunk)
+    gc()
+  }
 }
 
-# Combinar matrizes
-weight_matrix_combined <- Reduce("+", weight_list) / length(weight_list)  
+# Combinar resultados (soma ponderada para evitar contagem duplicada)
+weight_matrix_combined <- Reduce("+", weight_list) / length(weight_list)
 
 ```
 # tf algo
