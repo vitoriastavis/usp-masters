@@ -54,9 +54,9 @@ library(GenomeInfoDb)
 library(ggplot2)
 library(patchwork)
 library(Matrix)
-library(GENIE3)
-# library(variancePartition)
-# library(BiocParallel)
+# library(GENIE3)
+library(variancePartition)
+library(BiocParallel)
 # library(WGCNA)
 ```
 
@@ -305,7 +305,7 @@ load(paste0(gse_path, "/GSE144136_counts.RData"))
 
 GSE144136 <- FindVariableFeatures(GSE144136,
                                      selection.method = "vst",
-                                     nfeatures = 1000)
+                                     nfeatures = 2000)
 
 GSE144136_markers <- list()
 cell_types <- setdiff(unique(GSE144136@meta.data$cell_type), "Mix")
@@ -575,9 +575,16 @@ moduleColors <- labels2colors(dynamicMods)
 library(BiocParallel)
 library(variancePartition)
 
-# Prepare your data
-# Assume `seurat_obj` is your Seurat object with normalized data and metadata
+gse_path <- "data/snrnaseq/GSE144136/"
+load(paste0(gse_path, "/GSE144136_counts.RData"))
+
+GSE144136 <- FindVariableFeatures(GSE144136,
+                                     selection.method = "vst",
+                                     nfeatures = 2000)
+variable_genes <- VariableFeatures(GSE144136)
+
 GSE144136_matrix <- GetAssayData(GSE144136, assay = "RNA", slot = "data")
+GSE144136_matrix <- GSE144136_matrix[variable_genes, ]
 
 meta_data <- GSE144136@meta.data
 
@@ -590,10 +597,10 @@ gc()
 # Create a formula describing the variables to partition
 form <- ~ (1|orig.ident) + condition + cell_type
 
-param <- SnowParam(workers = 4, type = "SOCK", progressbar = FALSE)
+param <- SnowParam(workers = 2, type = "SOCK", progressbar = FALSE)
 
 # Define chunk size
-chunk_size <- 1000
+chunk_size <- 100
 gene_names <- rownames(GSE144136_matrix)
 n_genes <- length(gene_names)
 

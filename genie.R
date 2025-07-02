@@ -17,10 +17,13 @@ cat("loaded data")
 GSE144136 <- FindVariableFeatures(GSE144136,
                                   selection.method = "vst",
                                   nfeatures = 2000)
+variable_genes <- VariableFeatures(GSE144136)
 cat("found variable features")
 
 GSE144136_matrix <- as.matrix(GetAssayData(GSE144136, assay = "RNA", slot = "data"))
-chunk_size <- 10
+GSE144136_matrix <- GSE144136_matrix[variable_genes, ]
+
+chunk_size <- 50
 gene_names <- rownames(GSE144136_matrix)
 n_genes <- length(gene_names)
 
