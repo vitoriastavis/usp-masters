@@ -3,21 +3,15 @@ library(dplyr)
 library(Seurat)
 library(Matrix)
 
-gse_path <- "data/snrnaseq/GSE144136/"
-genie_dir <- paste0(gse_path, "genie/")
+gse_path <- "../"
 
-if (!dir.exists(genie_dir)) {
-  dir.create(genie_dir)
-  message("directory created: ", genie_dir)
-}
-
-load(paste0(gse_path, "/GSE144136_counts.RData"))
-cat("loaded data")
+load(paste0(gse_path, "GSE144136_counts.RData"))
+cat("loaded data\n")
 
 GSE144136 <- FindVariableFeatures(GSE144136,
                                   selection.method = "vst",
                                   nfeatures = 2000)
-cat("found variable features")
+cat("found variable features\n")
 
 GSE144136_matrix <- as.matrix(GetAssayData(GSE144136, assay = "RNA", slot = "data"))
 chunk_size <- 10
@@ -26,7 +20,7 @@ n_genes <- length(gene_names)
 
 GSE144136 <- NULL
 gc()
-cat("GENIE3 analysis prepared, starting...")
+cat("GENIE3 analysis prepared, starting...\n")
 
 weight_list <- list()
 
@@ -54,9 +48,9 @@ for (i_reg in seq(1, n_genes, by = chunk_size)) {
 
 # Combinar resultados 
 weight_matrix_combined <- Reduce("+", weight_list) / length(weight_list)
-save(weight_matrix_combined, file=paste0(gse_path, "GSE144136_genie_matrix.RData"))
+save(weight_matrix_combined, file="GSE144136_genie_matrix.RData")
 
-cat("weight matrix built, filtering...")
+cat("weight matrix built, filtering...\n")
 
 # Convert to data frame/edge list
 edge_list <- as.data.frame(as.table(weight_matrix_combined))
@@ -74,7 +68,7 @@ edge_list_sorted <- edge_list %>%
 top_edges <- head(edge_list_sorted, 1000)
 
 # Save results
-write.csv(top_edges, paste0(gse_path, "top_genie3_interactions.csv"),
+write.csv(top_edges, "top_genie3_interactions.csv",
                             row.names = FALSE)
 
-cat("GENIE3 analysis finished")
+cat("GENIE3 analysis finished\n")
