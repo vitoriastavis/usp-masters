@@ -13,6 +13,7 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 cran_pkgs <- c(
   "data.table", "dplyr", "future", "future.apply", "ggplot2", "rlang", "irlba", 
   "tidyr", "patchwork", "stringi", "fastmatch", "RcppRoll", "scales", "Rcpp", 
+  "devtools",
   "tidyselect", "vctrs", "lifecycle", "dotCall64", "RcppEigen", "png", "reticulate"
 )
 
@@ -20,7 +21,7 @@ cran_pkgs <- c(
 bioc_pkgs <- c(
   "GenomeInfoDb", "GenomicRanges", "IRanges", "Rsamtools", "S4Vectors", 
   "SeuratObject", "Biostrings", "XVector", "Rhtslib", "BiocParallel", 
-  "UCSC.utils", "WGCNA"
+  "UCSC.utils", "GENIE3", "variancePartition"
 )
 
 # Função pra instalar se faltar
@@ -48,13 +49,14 @@ devtools::install_github("immunogenomics/presto")
 
 ```{r message=FALSE, warning=FALSE}
 # Load necessary libraries
+
+# library(GenomeInfoDb)
+# library(ggplot2)
+# library(patchwork)
 library(dplyr)
 library(Seurat)
-library(GenomeInfoDb)
-library(ggplot2)
-library(patchwork)
 library(Matrix)
-library(GENIE3)
+# library(GENIE3)
 # library(variancePartition)
 # library(BiocParallel)
 # library(WGCNA)
@@ -139,6 +141,8 @@ run_DE_analysis <- function(seurat_obj,
 
   # Save if requested
   if (save){
+    dir.create(file.path(gse_path, "/degs/"), showWarnings = FALSE, recursive = TRUE)
+
     write.csv(degs,
               file = file.path(output_path, paste0(prefix, "_results_adj.csv")),
               row.names = TRUE)
@@ -189,6 +193,8 @@ save(GSE213982, file=paste0(gse_path, "GSE213982_counts.RData"))
 ## Analysis without considering cell types
 
 ```{r}
+gse_path <- "data/snrnaseq/GSE213982/"
+
 load(paste0(gse_path, "GSE213982_counts.RData"))
 
 # Select Variable Features to reduce the dataset size
@@ -196,9 +202,32 @@ load(paste0(gse_path, "GSE213982_counts.RData"))
 #                                    selection.method = "vst",
 #                                    nfeatures = 15000)
 
-results_GSE213982 <- run_DE_analysis(GSE213982, save = FALSE)
+degs_GSE213982 <- run_DE_analysis(GSE213982, save = TRUE, output_path=gse_path, prefix="GSE213982")
 GSE213982 <- NULL
 gc()
+```
+```{r}
+gse_path <- "data/snrnaseq/GSE144136/"
+
+load(paste0(gse_path, "GSE144136_counts.RData"))
+
+# Select Variable Features to reduce the dataset size
+# GSE213982 <- FindVariableFeatures(seurat_obj,
+#                                    selection.method = "vst",
+#                                    nfeatures = 15000)
+
+degs_GSE144136 <- run_DE_analysis(GSE144136, save = TRUE, output_path=gse_path, prefix="/GSE144136")
+GSE144136 <- NULL
+gc()
+```
+```{r}
+sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$Targets
+stp_targets <- read.csv("data/target_prediction/stp/stp_targets.csv")$Targets
+
+all_targets <- unique(c(sea_targets, stp_targets))
+
+common_degs <- intersect(rownames(degs_GSE213982$degs_filtered), rownames(degs_GSE144136$degs_filtered))
+intersection <- intersect(common_degs, all_targets)
 ```
 
 ## Analysis considering cell types
@@ -570,14 +599,122 @@ moduleColors <- labels2colors(dynamicMods)
 ```
 
 # variance algo
+```{r message=FALSE, warning=FALSE}
+library(Seurat)
+library(variancePartition)
+library(BiocParallel)
+
+extract_top_variable_genes <- function(
+  gse_path,
+  use_variable_features = TRUE,
+  nfeatures = 15000,
+  chunk_size = 1000,
+  top_n = 400,
+  n_cores = 4
+) {
+  # Derivar nome base do diretório
+  base_name <- basename(normalizePath(gse_path))
+  counts_file <- file.path(gse_path, paste0(base_name, "_counts.RData"))
+  
+  # Criar ambiente temporário e carregar objeto
+  tmp_env <- new.env()
+  load(counts_file, envir = tmp_env)
+  
+  # Pega o primeiro objeto do .RData
+  seurat_object <- tmp_env[[ls(tmp_env)[1]]]
+  rm(tmp_env)
+  gc()
+  
+  seurat_matrix <- GetAssayData(seurat_object, assay = "RNA", slot = "data")
+
+  # Seleciona genes variáveis, se indicado
+  if (use_variable_features) {
+    seurat_object <- FindVariableFeatures(seurat_object,
+                                          selection.method = "vst",
+                                          nfeatures = nfeatures)
+    variable_genes <- VariableFeatures(seurat_object)
+
+    seurat_matrix <- seurat_matrix[variable_genes, ]
+  }
+
+  # Preparar metadados
+  meta_data <- seurat_object@meta.data
+  # Se orig.ident não tiver variação, usar sample_id (se disponível)
+  if (length(unique(meta_data$orig.ident)) <= 1 && "sample_id" %in% colnames(meta_data)) {
+    message("orig.ident has only one level — replacing with sample_id.")
+    meta_data$orig.ident <- meta_data$sample_id
+  }
+  meta_data$condition <- as.numeric(factor(meta_data$condition))
+  meta_data$cell_type <- as.numeric(factor(meta_data$cell_type))
+
+  seurat_object <- NULL
+  gc()
+
+  # Fórmula para particionar variância
+  form <- ~ (1 | orig.ident) + condition + cell_type
+
+  # Parâmetro de paralelismo
+  param <- SnowParam(workers = n_cores, type = "SOCK", progressbar = FALSE)
+
+  # Rodar por chunks
+  gene_names <- rownames(seurat_matrix)
+  n_genes <- length(gene_names)
+  # varPart_list <- list()
+  
+  dir.create(file.path(gse_path, "variance"), showWarnings = FALSE, recursive = TRUE)
+
+
+  for (i in seq(1, n_genes, by = chunk_size)) {
+    cat("Processing genes", i, "to", min(i + chunk_size - 1, n_genes), "\n")
+    gene_subset <- gene_names[i:min(i + chunk_size - 1, n_genes)]
+    matrix_chunk <- seurat_matrix[gene_subset, ]
+
+    varPart_chunk <- fitExtractVarPartModel(matrix_chunk, form, meta_data, BPPARAM = param)
+    # varPart_list[[length(varPart_list) + 1]] <- varPart_chunk
+    save(varPart_chunk, file=paste0(gse_path, "/variance/chunk_", i, "_", i+ chunk_size -1, ".RData"))
+
+    rm(matrix_chunk)
+    gc()
+  }
+  message("Todos os chunks salvos em: ", file.path(gse_path, "variance"))
+
+
+  # # Combinar resultados
+  # varPart_combined <- do.call(rbind, varPart_list)
+  # varPart_combined$gene <- rownames(varPart_combined)
+  # 
+  # top_genes <- head(varPart_combined[order(varPart_combined$condition, decreasing = TRUE),
+  #                                    c("condition", "gene")], top_n)
+  # 
+  # # Carregar lista de genes alvo
+  # load(file = 'data/target_prediction/targets_intersection.RD
+  ata')
+  # gene_intersection <- intersect(targets_intersection, top_genes$gene)
+  # 
+  # # Salvar resultados
+  # save(top_genes, gene_intersection,
+  #      file = file.path(gse_path, paste0("/variance/", base_name, "_variance.RData")))
+}
+```
 
 ```{r message=FALSE, warning=FALSE}
-library(BiocParallel)
-library(variancePartition)
+extract_top_variable_genes("data/snrnaseq/GSE213982",use_variable_features = F,
+                           chunk_size = 1000, top_n = 400, n_cores = 4)
 
-# Prepare your data
-# Assume `seurat_obj` is your Seurat object with normalized data and metadata
+
+```
+
+```{r message=FALSE, warning=FALSE}
+gse_path <- "data/snrnaseq/GSE213982/"
+load(paste0(gse_path, "GSE213982_counts.RData"))
+
+# GSE144136 <- FindVariableFeatures(GSE144136,
+#                                   selection.method = "vst",
+#                                   nfeatures = 15000)
+# variable_genes <- VariableFeatures(GSE144136)
+
 GSE144136_matrix <- GetAssayData(GSE144136, assay = "RNA", slot = "data")
+# GSE144136_matrix <- GSE144136_matrix[variable_genes, ]
 
 meta_data <- GSE144136@meta.data
 
@@ -615,7 +752,8 @@ for (i in seq(1, n_genes, by = chunk_size)) {
   
   # Store result
   varPart_list[[length(varPart_list) + 1]] <- varPart_chunk
-  
+    save(weights_chunk, file=paste0(gse_path, "genie/weights_reg_", reg_range, "_tgt_", tgt_range, ".RData"))
+
   # Clean up
   rm(matrix_chunk)
   gc()
@@ -625,54 +763,84 @@ for (i in seq(1, n_genes, by = chunk_size)) {
 varPart_combined <- do.call(rbind, varPart_list)
 varPart_combined$gene <- rownames(varPart_combined)
 
-top_genes <- head(varPart_combined[order(varPart_combined$condition, decreasing = TRUE), c("condition","gene")], 100)
+top_genes <- head(varPart_combined[order(varPart_combined$condition, decreasing = TRUE), c("condition","gene")], 400)
 
 load(file='data/target_prediction/targets_intersection.RData')
 intersect(targets_intersection, top_genes$gene)
 
 save(top_genes, file=paste0(gse_path, "GSE144136_variance.RData"))
 ```
+
 # network algo
 
-
 ```{r message=FALSE, warning=FALSE}
+# oi mozao
+library(dplyr)
+library(Seurat)
+library(Matrix)
 library(GENIE3)
 
-GSE144136_matrix <- as.matrix(GetAssayData(GSE144136, assay = "RNA", slot = "data"))
-chunk_size <- 10
-gene_names <- rownames(GSE144136_matrix)
-n_genes <- length(gene_names)
 
-weight_list <- list()
+gse_path <- "data/snrnaseq/GSE144136/"
+load(paste0(gse_path, "GSE144136_counts.RData"))
+cat("loaded data\n")
 
-GSE144136 <- NULL
+GSE144136 <- FindVariableFeatures(GSE144136,
+                                  selection.method = "vst",
+                                  nfeatures = 4000)
+
+variable_genes <- VariableFeatures(GSE144136)
+cat("found variable features\n")
 gc()
+data_sparse <- GetAssayData(GSE144136, assay = "RNA", slot = "data")
+data_sparse <- data_sparse[variable_genes, ]
+GSE144136_matrix <- as.matrix(data_sparse)
 
-for (i_reg in seq(1, n_genes, by = chunk_size)) {
-  regulators_chunk <- gene_names[i_reg:min(i_reg + chunk_size - 1, n_genes)]
+n_genes <- length(variable_genes)
+
+gc()
+cat("GENIE3 analysis prepared, starting...\n")
+
+chunk_size <- 100
+start_reg <- 1
+start_tgt <- 1
+
+# weight_list <- list()
+
+for (i_reg in seq(start_reg, n_genes, by = chunk_size)) {
+  regulators_chunk <- variable_genes[i_reg:min(i_reg + chunk_size - 1, n_genes)]
   
-  for (i_tgt in seq(1, n_genes, by = chunk_size)) {
+  for (i_tgt in seq(start_tgt, n_genes, by = chunk_size)) {
     cat("\tprocessing regulators", i_reg, "to", min(i_reg + chunk_size - 1, n_genes),
         "and targets", i_tgt, "to", min(i_tgt + chunk_size - 1, n_genes), "\n")
     
-    target_chunk <- gene_names[i_tgt:min(i_tgt + chunk_size - 1, n_genes)]
+    target_chunk <- variable_genes[i_tgt:min(i_tgt + chunk_size - 1, n_genes)]
     
     weights_chunk <- GENIE3(GSE144136_matrix,
                             regulators = regulators_chunk,
                             targets = target_chunk,
-                            nTrees = 500,
+                            nTrees = 800,
                             nCores = 1)
     
-    weight_list[[paste(i_reg, i_tgt, sep = "_")]] <- weights_chunk
+    # weight_list[[paste(i_reg, i_tgt, sep = "_")]] <- weights_chunk
     
+    reg_range <- paste(i_reg, min(i_reg + chunk_size - 1, n_genes), sep = "-")
+    tgt_range <- paste(i_tgt, min(i_tgt + chunk_size - 1, n_genes), sep = "-")
+    save(weights_chunk, file=paste0(gse_path, "genie/weights_reg_", reg_range, "_tgt_", tgt_range, ".RData"))
+
     rm(weights_chunk)
     gc()
+    cat("Finished all targets for regulators", i_reg, "to", min(i_reg + chunk_size - 1, n_genes), "\n")
+
   }
+  start_tgt <- 1  # reset for next reg chunk
+
 }
 
 # Combinar resultados (soma ponderada para evitar contagem duplicada)
-weight_matrix_combined <- Reduce("+", weight_list) / length(weight_list)
-
+# weight_matrix_combined <- Reduce("+", weight_list) / length(weight_list)
+# 
+# save(weight_matrix_combined, file=paste0(gse_path, "genie/weight_matrix_combined.RData"))
 ```
 # tf algo
 ```{r message=FALSE, warning=FALSE}
@@ -682,17 +850,29 @@ BiocManager::install("viper")
 library(dorothea)
 library(viper)
 
+gse_path <- "data/snrnaseq/GSE144136/"
+load(paste0(gse_path, "GSE144136_counts.RData"))
+cat("loaded data\n")
+
+GSE144136 <- FindVariableFeatures(GSE144136,
+                                  selection.method = "vst",
+                                  nfeatures = 10000)
+variable_genes <- VariableFeatures(GSE144136)
+cat("found variable features\n")
+
+GSE144136_matrix <- as.matrix(GetAssayData(GSE144136, assay = "RNA", slot = "data"))
+GSE144136 <- NULL
+gc()
+GSE144136_matrix <- GSE144136_matrix[variable_genes, ]
+
 # Load human TF-target interactions
 data(dorothea_hs, package = "dorothea")
 
 # Filter for high-confidence (A-C)
 regulons <- dorothea_hs %>% dplyr::filter(confidence %in% c("A", "B", "C"))
 
-# Extract normalized data from Seurat
-expr_matrix <- as.matrix(GetAssayData(seurat_obj, slot = "data"))
-
 # Run TF activity inference
-tf_activities <- viper(expr_matrix, regulons, verbose = FALSE)
+tf_activities <- viper(GSE144136_matrix, regulons, verbose = FALSE)
 
 # Filter regulons for entries where the target gene is in your DEG list
 deg_regulon_links <- regulons %>% dplyr::filter(target %in% deg_genes)
@@ -702,5 +882,4 @@ upstream_tfs <- unique(deg_regulon_links$tf)
 
 # View a few
 head(upstream_tfs)
-
 ```
