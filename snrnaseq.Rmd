@@ -141,7 +141,7 @@ run_DE_analysis <- function(seurat_obj,
 
   # Save if requested
   if (save){
-    dir.create(file.path(gse_path, "/degs/"), showWarnings = FALSE, recursive = TRUE)
+    dir.create(output_path, showWarnings = FALSE, recursive = TRUE)
 
     write.csv(degs,
               file = file.path(output_path, paste0(prefix, "_results_adj.csv")),
@@ -157,9 +157,7 @@ run_DE_analysis <- function(seurat_obj,
 
 ```
 
-# GSE213982
 
-## Load data
 
 ```{r}
 gse_path <- "data/snrnaseq/GSE213982/"
@@ -190,98 +188,24 @@ GSE213982 <- NormalizeData(GSE213982, normalization.method = "LogNormalize")
 
 save(GSE213982, file=paste0(gse_path, "GSE213982_counts.RData"))
 ```
-## Analysis without considering cell types
+# Analysis without considering cell types
 
 ```{r}
 gse_path <- "data/snrnaseq/GSE213982/"
 
 load(paste0(gse_path, "GSE213982_counts.RData"))
 
-# Select Variable Features to reduce the dataset size
-# GSE213982 <- FindVariableFeatures(seurat_obj,
-#                                    selection.method = "vst",
-#                                    nfeatures = 15000)
-
-degs_GSE213982 <- run_DE_analysis(GSE213982, save = TRUE, output_path=gse_path, prefix="GSE213982")
+degs_GSE213982 <- run_DE_analysis(paste0(GSE213982, "degs/"), save = TRUE,
+                                  output_path=gse_path, prefix="GSE213982")
 GSE213982 <- NULL
 gc()
 ```
-```{r}
-gse_path <- "data/snrnaseq/GSE144136/"
 
-load(paste0(gse_path, "GSE144136_counts.RData"))
-
-# Select Variable Features to reduce the dataset size
-# GSE213982 <- FindVariableFeatures(seurat_obj,
-#                                    selection.method = "vst",
-#                                    nfeatures = 15000)
-
-degs_GSE144136 <- run_DE_analysis(GSE144136, save = TRUE, output_path=gse_path, prefix="/GSE144136")
-GSE144136 <- NULL
-gc()
-```
-```{r}
-sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$Targets
-stp_targets <- read.csv("data/target_prediction/stp/stp_targets.csv")$Targets
-
-all_targets <- unique(c(sea_targets, stp_targets))
-
-common_degs <- intersect(rownames(degs_GSE213982$degs_filtered), rownames(degs_GSE144136$degs_filtered))
-intersection <- intersect(common_degs, all_targets)
-```
-
-## Analysis considering cell types
-
-```{r message=FALSE, warning=FALSE, include=FALSE}
-gse_path <- "data/snrnaseq/GSE213982/"
-load(paste0(gse_path, "GSE213982_counts.RData"))
-
-GSE213982 <- FindVariableFeatures(GSE213982,
-                                     selection.method = "vst",
-                                     nfeatures = 15000)
-
-GSE213982_markers <- list()
-cell_types <- setdiff(unique(GSE213982@meta.data$cell_type), "Mix")
-
-  
-for (ct in cell_types) {
-  seurat_sub <- subset(GSE213982,
-                       subset = cell_type == ct)
-  # Select Variable Features to reduce the dataset size
-
-  seurat_sub <- NormalizeData(seurat_sub,
-                              normalization.method = "LogNormalize")
-  Idents(seurat_sub) <- "condition"
-
-  markers <- FindMarkers(seurat_sub, ident.1 = "MDD",
-                         ident.2 = "Control",
-                         test.use = "wilcox")
-  
-  GSE213982_markers[[ct]] <- markers
-  gc()
-}
-
-# filter by p and FC
-GSE213982_markers_filtered <- list()
-for (ct in cell_types) {
-  markers <- GSE213982_markers[[ct]]
-  
-  markers_filtered <- markers %>%
-    filter(p_val_adj < 0.05, abs(avg_log2FC) >= 1)
-
-  GSE213982_markers_filtered[[ct]] <- markers_filtered
-}
-
-# save(GSE213982_markers_filtered,
-#      file=paste0(gse_path, "divided_by_type/GSE213982_markers_type.RData"))
-```
 
 
 ## GSE144136
 
 ```{r}
-gse_path <- "data/snrnaseq/GSE144136/"
-
 GSE144136 <- process_seurat_object(
   matrix_file = paste0(gse_path, "GSE144136_GeneBarcodeMatrix_Annotated.mtx.gz"),
   genes_file = paste0(gse_path, "GSE144136_GeneNames.csv.gz"),
@@ -317,24 +241,88 @@ GSE144136 <- NormalizeData(GSE144136, normalization.method = "LogNormalize")
 save(GSE144136, file=paste0(gse_path, "GSE144136_counts.RData"))
 ```
 
-```{r message=FALSE, warning=FALSE}
-load(paste0(gse_path, "/GSE144136_counts.RData"))
 
-results_GSE144136 <- run_DE_analysis(GSE144136, save = FALSE)
+```{r}
+gse_path <- "data/snrnaseq/GSE144136/"
+
+load(paste0(gse_path, "GSE144136_counts.RData"))
+
+degs_GSE144136 <- run_DE_analysis(paste0(GSE144136, "degs/"), save = TRUE,
+                                  output_path=gse_path, prefix="/GSE144136")
 GSE144136 <- NULL
 gc()
 ```
 
-## Analysis considering cell types
+## Getting the intersection between snRNA-seq and target prediction
 
+
+```{r}
+gse_path <- "data/snrnaseq/GSE144136/"
+
+# Load target_intersection 
+load(file='data/target_prediction/targets_intersection.RData')
+
+degs_GSE213982 <- rownames(degs_GSE213982$degs_filtered)
+degs_GSE144136 <- rownames(degs_GSE144136$degs_filtered)
+snrnaseq_intersection <- intersect(degs_GSE213982, degs_GSE144136)
+notype_intersection  <- intersect(snrnaseq_intersection, targets_intersection)
+
+sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
+stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
+all_targets <- c(sea_targets, stp_targets)
+notype_intersection_alltargets <- intersect(snrnaseq_intersection, all_targets)
+
+save(notype_intersection, notype_intersection_alltargets, file = "data/snrnaseq/degs_intersections_notype.RData")
+```
+
+
+# Analysis considering cell types
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+gse_path <- "data/snrnaseq/GSE213982/"
+load(paste0(gse_path, "GSE213982_counts.RData"))
+
+GSE213982_markers <- list()
+cell_types <- setdiff(unique(GSE213982@meta.data$cell_type), "Mix")
+
+for (ct in cell_types) {
+  seurat_sub <- subset(GSE213982,
+                       subset = cell_type == ct)
+  
+  seurat_sub <- NormalizeData(seurat_sub,
+                              normalization.method = "LogNormalize")
+  Idents(seurat_sub) <- "condition"
+
+  markers <- FindMarkers(seurat_sub, ident.1 = "MDD",
+                         ident.2 = "Control",
+                         test.use = "wilcox")
+  
+  GSE213982_markers[[ct]] <- markers
+  gc()
+}
+
+# filter by p and FC
+GSE213982_markers_filtered <- list()
+for (ct in cell_types) {
+  markers <- GSE213982_markers[[ct]]
+  
+  markers_filtered <- markers %>%
+    filter(p_val_adj < 0.05, abs(avg_log2FC) >= 1)
+
+  GSE213982_markers_filtered[[ct]] <- markers_filtered
+}
+
+save(GSE213982_markers_filtered,
+     file=paste0(gse_path, "type_degs/GSE213982_degs_type.RData"))
+```
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 gse_path <- "data/snrnaseq/GSE144136/"
 load(paste0(gse_path, "/GSE144136_counts.RData"))
-
-GSE144136 <- FindVariableFeatures(GSE144136,
-                                     selection.method = "vst",
-                                     nfeatures = 1000)
+# 
+# GSE144136 <- FindVariableFeatures(GSE144136,
+#                                      selection.method = "vst",
+#                                      nfeatures = 1000)
 
 GSE144136_markers <- list()
 cell_types <- setdiff(unique(GSE144136@meta.data$cell_type), "Mix")
@@ -362,24 +350,43 @@ for (ct in cell_types) {
   GSE144136_markers_filtered[[ct]] <- markers_filtered
 }
 
-# save(GSE144136_markers_filtered,
-#      file=paste0(gse_path, "divided_by_type/GSE144136_markers_type.RData"))
+save(GSE144136_markers_filtered,
+     file=paste0(gse_path, "type_degs/GSE144136_markers_type.RData"))
 ```
 
 ## Getting the intersection between snRNA-seq and target prediction
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 # Load target_intersection (303 targets)
 load(file='data/target_prediction/targets_intersection.RData')
 
-# GSE213982
-degs_GSE213982 <- rownames(results_GSE213982$degs_filtered)
-degs_GSE144136 <- rownames(results_GSE144136$degs_filtered)
+cell_types <- names(GSE144136_markers_filtered)
 
-# Intersection between all of them
-snrnaseq_intersection <- intersect(degs_GSE213982, degs_GSE144136)
-all_intersections <- intersect(snrnaseq_intersection, targets_intersection)
+intersection_celltypes <- list()
+for (ct in cell_types) {
+  intersection_celltypes[[ct]] <- intersect(rownames(GSE144136_markers_filtered[[ct]]),
+                                            rownames(GSE213982_markers_filtered[[ct]]))
+}
+
+type_intersection <- list()
+for (ct in cell_types) {
+  type_intersection[[ct]] <- intersect(targets_intersection,
+                                               intersection_celltypes[[ct]])
+}
+
+sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
+stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
+all_targets <- c(sea_targets, stp_targets)
+
+type_intersection_alltargets <- list()
+for (ct in cell_types) {
+  type_intersection_alltargets[[ct]] <- intersect(all_targets,
+                                               intersection_celltypes[[ct]])
+}
+
+save(type_intersection, type_intersection_alltargets, file = "data/snrnaseq/degs_intersections_type.RData")
 ```
+
 
 # Comparing cell types
 
@@ -417,24 +424,7 @@ for (ct in cell_types) {
 
 ## Cell type
 
-```{r message=FALSE, warning=FALSE}
-# Load target_intersection (303 targets)
-load(file='data/target_prediction/targets_intersection.RData')
 
-intersection_celltypes <- list()
-for (ct in cell_types) {
-  intersection_celltypes[[ct]] <- intersect(rownames(GSE144136_markers_filtered[[ct]]),
-                                            rownames(GSE213982_markers_filtered[[ct]]))
-}
-
-intersection_with_targets <- list()
-for (ct in cell_types) {
-  intersection_with_targets[[ct]] <- intersect(targets_intersection,
-                                               intersection_celltypes[[ct]])
-}
-
-save(intersection_celltypes, intersection_with_targets, file = "intersections.RData")
-```
 
 # WGCNA coexpression
 
@@ -609,7 +599,6 @@ extract_top_variable_genes <- function(
   use_variable_features = TRUE,
   nfeatures = 15000,
   chunk_size = 1000,
-  top_n = 400,
   n_cores = 4
 ) {
   # Derivar nome base do diretório
@@ -678,171 +667,62 @@ extract_top_variable_genes <- function(
   }
   message("Todos os chunks salvos em: ", file.path(gse_path, "variance"))
 
-
-  # # Combinar resultados
-  # varPart_combined <- do.call(rbind, varPart_list)
-  # varPart_combined$gene <- rownames(varPart_combined)
-  # 
-  # top_genes <- head(varPart_combined[order(varPart_combined$condition, decreasing = TRUE),
-  #                                    c("condition", "gene")], top_n)
-  # 
-  # # Carregar lista de genes alvo
-  # load(file = 'data/target_prediction/targets_intersection.RD
-  ata')
-  # gene_intersection <- intersect(targets_intersection, top_genes$gene)
-  # 
-  # # Salvar resultados
-  # save(top_genes, gene_intersection,
-  #      file = file.path(gse_path, paste0("/variance/", base_name, "_variance.RData")))
 }
-```
 
-```{r message=FALSE, warning=FALSE}
-extract_top_variable_genes("data/snrnaseq/GSE213982",use_variable_features = F,
-                           chunk_size = 1000, top_n = 400, n_cores = 4)
+combine_varPart_results <- function(gse_path, top_percentage) {
+  variance_dir <- file.path(gse_path, "variance")
+  files <- list.files(variance_dir, pattern = "\\.RData$", full.names = TRUE)
 
+  varPart_list <- lapply(files, function(f) {
+    load(f)
+    return(varPart_chunk)
+  })
 
+  varPart_combined <- do.call(rbind, varPart_list)
+  varPart_combined$gene <- rownames(varPart_combined)
+
+  threshold <- quantile(varPart_combined$condition, top_percentage)
+  top_genes <- subset(varPart_combined, condition >= threshold)
+
+  return(top_genes)
+}
 ```
 
 ```{r message=FALSE, warning=FALSE}
 gse_path <- "data/snrnaseq/GSE213982/"
-load(paste0(gse_path, "GSE213982_counts.RData"))
 
-# GSE144136 <- FindVariableFeatures(GSE144136,
-#                                   selection.method = "vst",
-#                                   nfeatures = 15000)
-# variable_genes <- VariableFeatures(GSE144136)
+extract_top_variable_genes(gse_path,use_variable_features = F,
+                           chunk_size = 1000, n_cores = 4)
+top_genes_GSE213982 <- combine_varPart_results(gse_path, top_percentage = 0.95)
 
-GSE144136_matrix <- GetAssayData(GSE144136, assay = "RNA", slot = "data")
-# GSE144136_matrix <- GSE144136_matrix[variable_genes, ]
-
-meta_data <- GSE144136@meta.data
-
-meta_data$condition <- as.numeric(factor(meta_data$condition))
-meta_data$cell_type <- as.numeric(factor(meta_data$cell_type))
-
-GSE144136 <- NULL
-gc()
-
-# Create a formula describing the variables to partition
-form <- ~ (1|orig.ident) + condition + cell_type
-
-param <- SnowParam(workers = 4, type = "SOCK", progressbar = FALSE)
-
-# Define chunk size
-chunk_size <- 1000
-gene_names <- rownames(GSE144136_matrix)
-n_genes <- length(gene_names)
-
-# Create empty list to store results
-varPart_list <- list()
-gc()
-
-# Loop over chunks
-for (i in seq(1, n_genes, by = chunk_size)) {
-  cat("Processing genes", i, "to", min(i + chunk_size - 1, n_genes), "\n")
-  
-  # Subset matrix
-  gene_subset <- gene_names[i:min(i + chunk_size - 1, n_genes)]
-  matrix_chunk <- GSE144136_matrix[gene_subset, ]
-
-  # Run model
-  varPart_chunk <- fitExtractVarPartModel(matrix_chunk, form, meta_data, 
-                                          BPPARAM = SnowParam(4))  # Adjust cores if needed
-  
-  # Store result
-  varPart_list[[length(varPart_list) + 1]] <- varPart_chunk
-    save(weights_chunk, file=paste0(gse_path, "genie/weights_reg_", reg_range, "_tgt_", tgt_range, ".RData"))
-
-  # Clean up
-  rm(matrix_chunk)
-  gc()
-}
-
-# Combine results
-varPart_combined <- do.call(rbind, varPart_list)
-varPart_combined$gene <- rownames(varPart_combined)
-
-top_genes <- head(varPart_combined[order(varPart_combined$condition, decreasing = TRUE), c("condition","gene")], 400)
-
-load(file='data/target_prediction/targets_intersection.RData')
-intersect(targets_intersection, top_genes$gene)
-
-save(top_genes, file=paste0(gse_path, "GSE144136_variance.RData"))
-```
-
-# network algo
-
-```{r message=FALSE, warning=FALSE}
-# oi mozao
-library(dplyr)
-library(Seurat)
-library(Matrix)
-library(GENIE3)
+save(top_genes_GSE213982, file = paste0(gse_path, "variance/top_variance_GSE213982.RData"))
 
 
 gse_path <- "data/snrnaseq/GSE144136/"
-load(paste0(gse_path, "GSE144136_counts.RData"))
-cat("loaded data\n")
 
-GSE144136 <- FindVariableFeatures(GSE144136,
-                                  selection.method = "vst",
-                                  nfeatures = 4000)
+extract_top_variable_genes(gse_path, use_variable_features = F,
+                           chunk_size = 1000, n_cores = 4)
 
-variable_genes <- VariableFeatures(GSE144136)
-cat("found variable features\n")
-gc()
-data_sparse <- GetAssayData(GSE144136, assay = "RNA", slot = "data")
-data_sparse <- data_sparse[variable_genes, ]
-GSE144136_matrix <- as.matrix(data_sparse)
+top_genes_GSE144136 <- combine_varPart_results("data/snrnaseq/GSE144136/", top_percentage = 0.95)
 
-n_genes <- length(variable_genes)
+save(top_genes_GSE144136, file = paste0(gse_path, "variance/top_variance_GSE144136.RData"))
 
-gc()
-cat("GENIE3 analysis prepared, starting...\n")
 
-chunk_size <- 100
-start_reg <- 1
-start_tgt <- 1
+sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$Targets
+stp_targets <- read.csv("data/target_prediction/stp/stp_targets.csv")$Targets
+targets_intersection <- intersect(stp_targets, sea_targets)
 
-# weight_list <- list()
+all_targets <- unique(c(sea_targets, stp_targets))
 
-for (i_reg in seq(start_reg, n_genes, by = chunk_size)) {
-  regulators_chunk <- variable_genes[i_reg:min(i_reg + chunk_size - 1, n_genes)]
-  
-  for (i_tgt in seq(start_tgt, n_genes, by = chunk_size)) {
-    cat("\tprocessing regulators", i_reg, "to", min(i_reg + chunk_size - 1, n_genes),
-        "and targets", i_tgt, "to", min(i_tgt + chunk_size - 1, n_genes), "\n")
-    
-    target_chunk <- variable_genes[i_tgt:min(i_tgt + chunk_size - 1, n_genes)]
-    
-    weights_chunk <- GENIE3(GSE144136_matrix,
-                            regulators = regulators_chunk,
-                            targets = target_chunk,
-                            nTrees = 800,
-                            nCores = 1)
-    
-    # weight_list[[paste(i_reg, i_tgt, sep = "_")]] <- weights_chunk
-    
-    reg_range <- paste(i_reg, min(i_reg + chunk_size - 1, n_genes), sep = "-")
-    tgt_range <- paste(i_tgt, min(i_tgt + chunk_size - 1, n_genes), sep = "-")
-    save(weights_chunk, file=paste0(gse_path, "genie/weights_reg_", reg_range, "_tgt_", tgt_range, ".RData"))
+common_degs <- intersect(top_genes_GSE213982$gene, top_genes_GSE144136$gene)
+intersection <- intersect(common_degs, targets_intersection)
 
-    rm(weights_chunk)
-    gc()
-    cat("Finished all targets for regulators", i_reg, "to", min(i_reg + chunk_size - 1, n_genes), "\n")
+save(top_genes_GSE144136, file = paste0(gse_path, "variance/top_variance_GSE144136.RData"))
 
-  }
-  start_tgt <- 1  # reset for next reg chunk
-
-}
-
-# Combinar resultados (soma ponderada para evitar contagem duplicada)
-# weight_matrix_combined <- Reduce("+", weight_list) / length(weight_list)
-# 
-# save(weight_matrix_combined, file=paste0(gse_path, "genie/weight_matrix_combined.RData"))
 ```
+
 # tf algo
+
 ```{r message=FALSE, warning=FALSE}
 # Install if needed
 BiocManager::install("dorothea")
