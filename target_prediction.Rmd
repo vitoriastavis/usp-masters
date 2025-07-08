@@ -34,15 +34,17 @@ library(dplyr)
 library(httr2)
 library(jsonlite)
 library(ggplot2)
-# library(readxl)
+library(readxl)
 # library(rvest)
-# library(readr)
+library(readr)
 library(stringr)
 library(tidyr)
 library(scales)
 library(httr)
 library(xml2)
 library(biomaRt)
+library(xlsx)
+library(openxlsx)
 ```
 
 # Target prediction
@@ -120,38 +122,86 @@ get_cid <- function(name) {
 # Get SMILES from Compound ID
 # Param - compound_id: CID (integer) 
 # Return (character): SMILES for the compound
-get_smiles_from_cid <- function(compound_id) {
+library(httr2)
+library(jsonlite)
 
-  url <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/", compound_id, "/property/CanonicalSMILES/JSON")
-  
-  response <- request(url) |> req_perform()
-  
-  # If there was a response, get the data
-  if (resp_status(response) == 200) {
-    data <- resp_body_json(response)
-    if (!is.null(data$PropertyTable$Properties[[1]]$CanonicalSMILES)) {
-      compound_smiles <- data$PropertyTable$Properties[[1]]$CanonicalSMILES
-      return(compound_smiles)
+library(httr2)
+library(xml2)
+
+get_smiles_from_cid <- function(compound_id) {
+  tryCatch({
+    if (is.na(compound_id) || compound_id == "") return(NA)
+
+    # URL com /property
+    url_property <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/", compound_id, "/property/CanonicalSMILES/JSON")
+    req_prop <- request(url_property)
+
+    # Verifica se a URL responde 200 OK
+    status_check <- tryCatch({
+      req_prop_head <- req_prop |> req_method("HEAD")
+      resp_head <- req_perform(req_prop_head)
+      resp_status(resp_head)
+    }, error = function(e) return(NA))
+
+    if (!is.na(status_check) && status_check == 200) {
+      # Faz a requisição completa
+      resp <- req_perform(req_prop)
+      json <- resp_body_json(resp)
+      smiles <- json$PropertyTable$Properties[[1]]$CanonicalSMILES
+      if (!is.null(smiles)) return(smiles)
     }
-  }
-  
-  return(NA)
+    
+    print("nao achei no property, vou no XML")
+
+    # Se a URL não existir ou não retornar smiles → busca no XML
+    url_xml <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/", compound_id, "/record/XML")
+    req_xml <- request(url_xml)
+    resp_xml <- req_perform(req_xml)
+    xml <- read_xml(resp_body_string(resp_xml))
+
+    node <- xml_find_first(
+      xml,
+      "//PC-InfoData[
+         PC-InfoData_urn/PC-Urn/PC-Urn_label='SMILES' and
+         PC-InfoData_urn/PC-Urn/PC-Urn_name='Absolute'
+       ]/PC-InfoData_value/PC-InfoData_value_sval"
+    )
+    
+    print(xml_text(node))
+
+    if (!is.na(node)) return(xml_text(node))
+
+    return(NA)
+  }, error = function(e) {
+    message("Erro com CID: ", compound_id)
+    return(NA)
+  })
 }
+
+
 ```
 
 ## Read and preprocess the data from gutMGene
 
 ```{r}
 # Read the CSV file from gutMGene
-gutmgene <- read.csv("data/gutmgene/gutmgene.csv", stringsAsFactors = FALSE)
+gutmgene1 <- read.csv("data/gutmgene/gutmgene.csv", stringsAsFactors = FALSE)
+gutmgene2 <- read.csv("data/gutmgene/gutmgene2.csv", stringsAsFactors = FALSE)
+
+# gutmgene_mouse <- read.csv("data/gutmgene/gutmgene_mouse.csv", stringsAsFactors = FALSE)
+# gutmgene_mouse2 <- read.csv("data/gutmgene/gutmgene_mouse.csv", stringsAsFactors = FALSE)
+# gutmgene_microbe <- read.csv("data/gutmgene/gutmgene_gutmicrobe.csv", stringsAsFactors = FALSE)
+
 
 # Rename columns to avoid special character issues
-colnames(gutmgene) <- c("Host_Species", "Gut_Microbe_ID", "Rank",
+colnames(gutmgene1) <- c("Host_Species", "Gut_Microbe_ID", "Rank",
                         "Metabolite_ID", "Evidence_Type", "Evidence_Amount")
+colnames(gutmgene2) <- c("Host_Species", "Metabolite_ID", "Gene_ID",
+                        "Alteration", "Evidence_Type", "Evidence_Amount")
 
 # Extract the metabolite name from the "Metabolite_ID" column
 # and microbe name from "Gut_Microbe_ID"
-gutmgene <- gutmgene %>%
+gutmgene1 <- gutmgene1 %>%
   mutate(
     Metabolite_Name = str_remove(Metabolite_ID, "\\([^()]*\\)$"), # Removes last set of parentheses and content
     Metabolite_Name = str_trim(Metabolite_Name), # Trims whitespace
@@ -159,10 +209,20 @@ gutmgene <- gutmgene %>%
     Gut_Microbe_ID = as.integer(str_extract(Gut_Microbe_ID, "(?<=\\().*(?=\\))")), # Extracts numbers inside '()'
   )
 
+gutmgene2 <- gutmgene2 %>% 
+  mutate(
+    Metabolite_Name = str_remove(Metabolite_ID, "\\([^()]*\\)$"), # Removes last set of parentheses and content
+    Metabolite_Name = str_trim(Metabolite_Name) # Trims whitespace
+  )
+
+
 # Remove a possibly incorrect microorganism (it's actually an insect)
-gutmgene <- gutmgene[!grepl("Bacteria Latreille et al. 1825", gutmgene$Gut_Microbe_Name), ]
+gutmgene1 <- gutmgene1[!grepl("Bacteria Latreille et al. 1825", gutmgene1$Gut_Microbe_Name), ]
 # Remove not identified species?
-gutmgene <- gutmgene[!grepl("CEBAS", gutmgene$Gut_Microbe_Name), ]
+gutmgene1 <- gutmgene1[!grepl("CEBAS", gutmgene1$Gut_Microbe_Name), ]
+
+only_gutmgene2 <- setdiff(gutmgene2$Metabolite_Name, gutmgene1$Metabolite_Name)
+diff_cid <- unname(sapply(only_gutmgene2, get_cid_vec))
 
 # How many metabolites
 cat("N metabolites (repeated):",
@@ -237,6 +297,17 @@ dev.off()
 ## Clean the data
 
 ```{r}
+
+# Concatenate dataframes
+common_cols <- intersect(names(gutmgene1), names(gutmgene2))
+gutmgene <- bind_rows(
+  select(gutmgene1, all_of(common_cols)),
+  select(gutmgene2, all_of(common_cols))
+)
+
+cat("N metabolites (unique):",
+    length(unique(gutmgene$Metabolite_ID)), "\n")
+
 # Parse Compound ID (CID)
 # with vectorized function
 get_cid_vec <- Vectorize(get_cid)
@@ -245,10 +316,10 @@ gutmgene <- gutmgene %>%
     Metabolite_CID = get_cid_vec(Metabolite_Name) # Obtains CID for the metabolite name
   )
 
+
 # Remove NAs
 if (nrow(gutmgene %>% filter(is.na(Metabolite_CID))) != 0) {
   gutmgene_na <- gutmgene %>% filter(is.na(Metabolite_CID))
-  gutmgene_clean <- gutmgene %>% filter(!is.na(Metabolite_CID))
   cat("Removed", nrow(gutmgene_na), "Metabolite_CID NAs\n")
 } else {
   gutmgene_clean <- gutmgene
@@ -268,6 +339,57 @@ save(gutmgene_na, file = "data/gutmgene_na.RData")        # Only the NAs
 ```
 
 ## Get SMILES
+
+```{r}
+library(httr)
+library(jsonlite)
+
+get_smiles_from_pubchem <- function(compound_id) {
+  library(httr)
+  library(jsonlite)
+
+  url <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/", compound_id, "/JSON")
+  res <- try(GET(url), silent = TRUE)
+
+  if (inherits(res, "try-error") || status_code(res) != 200) {
+    return(NA)
+  }
+
+  parsed <- try(fromJSON(content(res, as = "text", encoding = "UTF-8"), simplifyVector = FALSE), silent = TRUE)
+  if (inherits(parsed, "try-error") || is.null(parsed$Record$Section)) {
+    return(NA)
+  }
+
+  find_smiles <- function(sections) {
+    for (sec in sections) {
+      if (is.list(sec) && !is.null(sec$TOCHeading) && sec$TOCHeading == "SMILES") {
+        for (info in sec$Information) {
+          val <- info$Value$StringWithMarkup[[1]]$String
+          if (!is.null(val)) return(val)
+        }
+      }
+      if (is.list(sec) && !is.null(sec$Section)) {
+        found <- find_smiles(sec$Section)
+        if (!is.null(found)) return(found)
+      }
+    }
+    return(NULL)
+  }
+
+  smiles <- find_smiles(parsed$Record$Section)
+  return(ifelse(is.null(smiles), NA, smiles))
+}
+
+smiles <- sapply(diff_cid, get_smiles_from_pubchem)
+# Create dataframe to store SMILES and CIDs for target prediction
+df_smiles_ids <- data.frame(SMILES=smiles,
+                         pubchem_ids=paste0("cid", diff_cid),
+                         stringsAsFactors=FALSE)
+# Save the dataframe as text file
+write.table(df_smiles_ids, file="smiles_others.txt",
+            row.names=FALSE, col.names=FALSE,
+            quote=FALSE, sep=" ")
+```
 
 ```{r}
 # Run the get_smiles_from_cid() for each metabolite CID
@@ -300,9 +422,13 @@ After running SEA with smiles_ids.txt, read the results.
 
 ```{r}
 # Read SEA dataframe
-sea_result <- read.csv("data/target_prediction/sea/sea_results.xls")
+original <- read.csv("data/target_prediction/sea/original.xls")
+extra <- read.csv("data/target_prediction/sea/extra.xls")
+combined <- rbind(original, extra)
+write.xlsx(combined, "data/target_prediction/sea/sea-combined.xlsx")
 
 # Rename columns to avoid special character issues
+sea_result <- combined
 colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
                           "Max_Tc", "Cut_Sum", "Z_Score", "Name", "Description", "Query_Smiles")
 
@@ -326,7 +452,7 @@ write.csv(targets, "data/target_prediction/sea/sea_targets.csv", row.names = FAL
 
 ```{r}
 # Directory with STP .csv files
-directory <- "data/target_prediction/stp"
+directory <- "data/target_prediction/stpnovo"
 
 # Get the files
 files <- list.files(path = directory, pattern = "\\.csv$", full.names = TRUE)
@@ -346,12 +472,12 @@ for (file_path in files) {
 stp_result <- bind_rows(dataframes)
 
 # Write final dataframe
-write_csv(stp_result, file.path(directory, "stp_results.csv"))
+write_csv(stp_result_extra, file.path(directory, "stp_results.csv"))
 ```
 
 ```{r}
 # Read STP dataframe
-stp_result <- read.csv("data/target_prediction/stp/stp_results.csv")
+stp_result <- read.csv("data/target_prediction/stpnovo/stp_results.csv")
 
 # Rename columns to avoid special character issues
 colnames(stp_result) <- c("Name", "Common_name", "Uniprot_ID",
@@ -361,34 +487,32 @@ colnames(stp_result) <- c("Name", "Common_name", "Uniprot_ID",
 # Remove targets with probability = 0
 stp_result <- stp_result[stp_result$Probability != 0, ]
 
-# Filter the rows with higher probability
-stp_result <- stp_result[order(stp_result$Uniprot_ID, stp_result$Probability), ]
+# # Filter the rows with higher probability
+stp_result <- stp_result[order(stp_result$Common_name, stp_result$Probability), ]
 
 # Get unique targets
-stp_result <- stp_result %>% distinct(Uniprot_ID, .keep_all=TRUE)
-stp_targets <- stp_result$Uniprot_ID
+stp_result <- stp_result %>% distinct(Common_name, .keep_all=TRUE)
+stp_targets <- stp_result$Common_name  
 
-cat(length(stp_result$Uniprot_ID), "targets were predicted with STP\n")
+cat(length(stp_targets), "targets were predicted with STP\n")
 ```
 
 ```{r}
-# Connect to Ensembl
-mart <- useMart("ensembl", dataset="hsapiens_gene_ensembl")
+map_to_hgnc <- function(targets) {
+  res <- queryMany(targets, scopes = "symbol,alias,name", fields = "symbol", species = "human")
+  unique(res$symbol[!is.na(res$symbol)])
+}
 
-# Convert UniProt ID to HGNC symbol (gene name)
-uniprot_to_symbol <- getBM(
-  attributes=c("hgnc_symbol"),
-  filters="uniprotswissprot",
-  values=stp_targets,
-  mart=mart
-)
+sea_mapped <- map_to_hgnc(sea_targets)
+stp_mapped <- map_to_hgnc(stp_targets)
 
-stp_targets_hgnc <- uniprot_to_symbol$hgnc_symbol
+write.csv(stp_mapped, "data/target_prediction/stpnovo/stp_targets.csv", row.names = FALSE)
+write.csv(sea_mapped, "data/target_prediction/sea/sea_targets.csv", row.names = FALSE)
 
-targets <- data.frame(Targets = stp_targets_hgnc)
-write.csv(targets, "data/stp/stp_targets.csv", row.names = FALSE)
+# Nova interseção
+targets_intersection <- intersect(sea_mapped, stp_mapped)
+length(targets_intersection)
 
-targets_intersection <- intersect(sea_targets, stp_targets_hgnc)
 save(targets_intersection, file='data/target_prediction/targets_intersection.RData')
 ```
 
@@ -407,3 +531,26 @@ sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target_ID), ]
 NR4A1 <- sea_result[sea_result$Name == "NR4A1", ]
 metabolites_NR4A1 <- NR4A1$Query_ID
 ```
+
+```{r}
+library(readxl)
+sea_teng <- read_excel("data/teng1.xlsx", col_names = TRUE)
+teng_sea <- unique(sea_teng$Name)
+cat(length(unique(sea_teng$Metabolite)), length(unique(sea_teng$`Target ID`)))
+
+stp_teng <- read_excel("data/teng2.xlsx", col_names = TRUE)
+teng_stp <- unique(stp_teng$`Common name`)
+
+length(unique(stp_teng$`pubchem ID`))
+
+cat(length(unique(stp_teng$Metabolite)), length(unique(stp_teng$`Common name`)))
+
+length(unique(c(stp_teng$Metabolite, sea_teng$Metabolite)))
+
+teng_i <- read_excel("data/teng3.xlsx", col_names = TRUE)
+
+
+sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
+stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
+```
+
