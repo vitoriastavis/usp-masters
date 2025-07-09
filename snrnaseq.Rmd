@@ -671,7 +671,9 @@ extract_top_variable_genes <- function(
 
 combine_varPart_results <- function(gse_path, top_percentage) {
   variance_dir <- file.path(gse_path, "variance")
-  files <- list.files(variance_dir, pattern = "\\.RData$", full.names = TRUE)
+  files <- list.files(variance_dir, pattern = "^chunk.*\\.RData$", full.names = TRUE)
+  
+  # print(files)
 
   varPart_list <- lapply(files, function(f) {
     load(f)
@@ -693,7 +695,7 @@ gse_path <- "data/snrnaseq/GSE213982/"
 
 extract_top_variable_genes(gse_path,use_variable_features = F,
                            chunk_size = 1000, n_cores = 4)
-top_genes_GSE213982 <- combine_varPart_results(gse_path, top_percentage = 0.95)
+top_genes_GSE213982 <- combine_varPart_results(gse_path, top_percentage = 0.98)
 
 save(top_genes_GSE213982, file = paste0(gse_path, "variance/top_variance_GSE213982.RData"))
 
@@ -703,21 +705,22 @@ gse_path <- "data/snrnaseq/GSE144136/"
 extract_top_variable_genes(gse_path, use_variable_features = F,
                            chunk_size = 1000, n_cores = 4)
 
-top_genes_GSE144136 <- combine_varPart_results("data/snrnaseq/GSE144136/", top_percentage = 0.95)
+top_genes_GSE144136 <- combine_varPart_results("data/snrnaseq/GSE144136/",
+                                               top_percentage = 0.98)
 
 save(top_genes_GSE144136, file = paste0(gse_path, "variance/top_variance_GSE144136.RData"))
 
 
-sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$Targets
-stp_targets <- read.csv("data/target_prediction/stp/stp_targets.csv")$Targets
+sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
+stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
 targets_intersection <- intersect(stp_targets, sea_targets)
 
 all_targets <- unique(c(sea_targets, stp_targets))
 
 common_degs <- intersect(top_genes_GSE213982$gene, top_genes_GSE144136$gene)
-intersection <- intersect(common_degs, targets_intersection)
+variance_intersection <- intersect(common_degs, targets_intersection)
+save(variance_intersection, file = "data/snrnaseq/variance_intersection.RData")
 
-save(top_genes_GSE144136, file = paste0(gse_path, "variance/top_variance_GSE144136.RData"))
 
 ```
 
