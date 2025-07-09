@@ -12,57 +12,81 @@ knitr::opts_chunk$set(echo = TRUE)
 # Comparing the predicted targets with significant genes in the TWAS paper
 
 ```{r message=FALSE, warning=FALSE}
-sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$Targets
-stp_targets <- read.csv("data/target_prediction/stp/stp_targets.csv")$Targets
-load(file='data/targets_intersection.RData')
+twas_path <- "data/twas/"
 
-# Bases para interseção
-target_sources <- list(
-  sea = sea_targets,
-  stp = stp_targets,
-  intersection = targets_intersection
-)
+all_unique_genes  <- list()
+all_analyses <- list()
 
-# Zeng et al. (2024)
-zeng_twas <- read.csv("data/twas/zeng2024.csv",
-                  header = TRUE)
-zeng_lists <- list(
-  type = unique(zeng_twas$Gene_celltype),
-  subtype = unique(zeng_twas$Genes_cellsubtype),
-  type_smr = unique(zeng_twas$SMR_celltype),
-  subtype_smr = unique(zeng_twas$SMR_cellsubtype),
-  coloc = unique(zeng_twas$COLOC)
-)
-# Lista para armazenar os resultados
-zeng_intersections <- list()
-# Loop para gerar e armazenar interseções
-for (target_name in names(target_sources)) {
-  for (twas_name in names(zeng_lists)) {
-    key <- paste0(target_name, "_", twas_name)
-    zeng_intersections[[key]] <- intersect(target_sources[[target_name]], zeng_lists[[twas_name]])
+# List all subdirectories inside the main directory
+subdirs <- list.dirs(twas_path, recursive = FALSE)
+
+# Loop through each subdirectory
+for (subdir in subdirs) {
+
+  analyses_genes <- list()
+  unique_genes <- c()
+  
+  # Find the CSV file in the subdirectory
+  csv_files <- list.files(subdir, pattern = "\\.csv$", full.names = TRUE)
+  
+  # If there's at least one CSV file, read it
+  if (length(csv_files) > 0) {
+    csv_path <- csv_files[1]  # Assuming there's only one CSV per folder
+    
+    # Extract the file name without extension
+    file_name <- tools::file_path_sans_ext(basename(csv_path))
+    
+    data <- read.csv(csv_path, header = TRUE)
+    
+    for (col in colnames(data)){
+      genes <- unique(data[[col]])
+      analyses_genes[[col]] <- genes
+      unique_genes <- unique(c(unique_genes, genes))
+    }
+    
+    all_analyses[[file_name]] <- analyses_genes
+    all_unique_genes[[file_name]] <- unique_genes
+    
+  } else {
+    warning(paste("No CSV file found in", subdir))
   }
 }
+```
 
-# Li et al. (2025)
-li_twas <- read.csv("data/twas/li2025.csv",
-                  header = TRUE)
-li_lists <- list(
-  final_5 = unique(li_twas$Final_5plus),
-  coloc1 = unique(li_twas$COLOC),
-  colo2 = unique(li_twas$COLOC_2),
-  smr = unique(li_twas$PsychENCODE_SMR),
-  final = unique(li_twas$Final)
-)
+```{r message=FALSE, warning=FALSE}
 
-# Lista para armazenar os resultados
-li_intersections <- list()
-# Loop para gerar e armazenar interseções
-for (target_name in names(target_sources)) {
-  for (twas_name in names(li_lists)) {
-    key <- paste0(target_name, "_", twas_name)
-    li_intersections[[key]] <- intersect(target_sources[[target_name]], li_lists[[twas_name]])
+sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
+stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
+all_targets <- unique(c(sea_targets, stp_targets))
+
+all_analyses_intersect <- list()
+all_unique_genes_intersect <- list()
+
+for (file_name in names(all_analyses)){
+  print(file_name)
+  analyses_intersect <- list()
+  unique_intersect <- list()
+  
+  analyses_genes <- all_analyses[[file_name]]
+  
+  for (analysis in names(analyses_genes)){
+    analysis_genes <- unname(unlist(analyses_genes[[analysis]]))
+    analyses_intersect[[paste0(file_name, '_', analysis)]] <- intersect(analysis_genes, targets_intersection)
   }
+  all_analyses_intersect[[file_name]] <- analyses_intersect
+  
+  
+  unique_genes <- unname(unlist(all_unique_genes[[file_name]]))
+  all_unique_genes_intersect[[file_name]] <- intersect(unique_genes, all_targets)
 }
+
+pairwise_intersections <- combn(all_unique_genes_intersect, 2, function(x) intersect(x[[1]], x[[2]]), simplify = FALSE)
+pairwise_genes <- unique(unlist(pairwise_intersections, use.names = FALSE))
+
+threewise_intersections <- combn(all_unique_genes_intersect, 3, function(x) Reduce(intersect, x), simplify = FALSE)
+threewise_genes <- unique(unlist(threewise_intersections, use.names = FALSE))
+
+save(all_analyses_intersect, all_unique_genes_intersect, file = "data/twas/intersections.RData")
 ```
 
 # Getting the predicted metabolites/ligands for the intersection genes
