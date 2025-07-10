@@ -10,12 +10,17 @@ output: html_document
 ```{r message=FALSE, warning=FALSE}
 # List of libraries to install
 libraries <- c("dplyr", "httr2", "jsonlite", "ggplot2", "readxl", "rvest", 
-               "readr", "stringr", "tidyr", "scales", "httr", "xml2")
+               "readr", "stringr", "tidyr", "scales", "httr", "xml2", "data.table")
+
+
+
 
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
-if (!require("biomaRt", quietly = TRUE))
-  BiocManager::install("biomaRt")
+if (!require("biomaRt", quietly = TRUE)){
+  BiocManager::install(c('mygene', 'biomaRt'))
+}
+
 
 # Function to install missing libraries
 install_if_missing <- function(lib) {
@@ -43,8 +48,10 @@ library(scales)
 library(httr)
 library(xml2)
 library(biomaRt)
-library(xlsx)
 library(openxlsx)
+library(mygene)
+library(data.table)
+
 ```
 
 # Target prediction
@@ -425,7 +432,7 @@ After running SEA with smiles_ids.txt, read the results.
 original <- read.csv("data/target_prediction/sea/original.xls")
 extra <- read.csv("data/target_prediction/sea/extra.xls")
 combined <- rbind(original, extra)
-write.xlsx(combined, "data/target_prediction/sea/sea-combined.xlsx")
+# write.xlsx(combined, "data/target_prediction/sea/sea-combined.xlsx")
 
 # Rename columns to avoid special character issues
 sea_result <- combined
@@ -439,13 +446,11 @@ sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target_ID), ]
 sea_result <- sea_result[order(sea_result$Target_ID, sea_result$P_Value), ]
 # Keep only the first occurrence of each Target_ID (which now has the lowest P_Value)
 sea_result <- sea_result[!duplicated(sea_result$Target_ID), ]
-cat(length(sea_result$Target_ID), "targets were predicted with SEA\n")
 
 sea_targets <- sea_result$Target_ID
 sea_targets <- gsub("_HUMAN", "", sea_targets)
+cat(length(sea_targets), "targets were predicted with SEA\n")
 
-targets <- data.frame(Targets = sea_targets)
-write.csv(targets, "data/target_prediction/sea/sea_targets.csv", row.names = FALSE)
 ```
 
 ## Parsing STP results
@@ -498,22 +503,148 @@ cat(length(stp_targets), "targets were predicted with STP\n")
 ```
 
 ```{r}
+mart <- useMart("ensembl", dataset="hsapiens_gene_ensembl")
+# Vetor de filtros que você quer testar
+filtros <- c("hgnc_symbol", "chembl", "embl", "entrezgene_id", 
+             "ensembl_gene_id", "external_gene_name", 
+             "hgnc_id", "hpa_id", "hpa_accession")
+
+# Lista para guardar os resultados
+resultado_lista <- list()
+
+# Loop por cada filtro
+for (filtro in filtros) {
+  resultado <- tryCatch({
+    getBM(
+      attributes = c("hgnc_symbol"),
+      filters = filtro,
+      values = sea_targets,
+      mart = mart
+    )
+  }, error = function(e) {
+    message(paste("Erro com filtro:", filtro))
+    return(NULL)
+  })
+  
+  # Guardar o resultado na lista
+  resultado_lista[[filtro]] <- resultado$hgnc_symbol
+}
+ensembl_sea <- unique(na.omit(unlist(resultado_lista)))
+#######################################################################
+# Lista para guardar os resultados
+resultado_lista <- list()
+
+# Loop por cada filtro
+for (filtro in filtros) {
+  resultado <- tryCatch({
+    getBM(
+      attributes = c("hgnc_symbol"),
+      filters = filtro,
+      values = stp_targets,
+      mart = mart
+    )
+  }, error = function(e) {
+    message(paste("Erro com filtro:", filtro))
+    return(NULL)
+  })
+  
+  # Guardar o resultado na lista
+  resultado_lista[[filtro]] <- resultado$hgnc_symbol
+}
+ensembl_stp <- unique(na.omit(unlist(resultado_lista)))
+#######################################################################
+
+map_to_hgnc_flexible <- function(targets) {
+  # Baixar o dataset da HGNC (salvo localmente para evitar sobrecarga)
+  hgnc_url <- "https://storage.googleapis.com/public-download-files/hgnc/tsv/tsv/hgnc_complete_set.txt"
+  hgnc_file <- tempfile(fileext = ".tsv")
+  download.file(hgnc_url, hgnc_file, quiet = TRUE)
+  hgnc <- fread(hgnc_file, sep = "\t", quote = "")
+
+  # Expandir aliases e nomes anteriores
+  expand_aliases <- function(x) unique(unlist(strsplit(x, "\\|")))
+
+  # Construir data.table com todas as formas de nomes
+  expanded <- rbindlist(list(
+    data.table(input = expand_aliases(hgnc$symbol), hgnc_symbol = hgnc$symbol),
+    data.table(input = unlist(sapply(hgnc$alias_symbol, expand_aliases)), hgnc_symbol = hgnc$symbol),
+    data.table(input = unlist(sapply(hgnc$prev_symbol, expand_aliases)), hgnc_symbol = hgnc$symbol),
+    data.table(input = hgnc$name, hgnc_symbol = hgnc$symbol)
+  ), use.names = TRUE, fill = TRUE)
+
+  expanded <- unique(expanded[!is.na(input)])
+
+  # Normalizar input
+  targets_clean <- toupper(trimws(targets))
+
+  # Mapear
+  mapped <- expanded[input %in% targets_clean]
+  unique(mapped$hgnc_symbol)
+}
+
+hgncdataset_sea <- map_to_hgnc_flexible(sea_targets)
+hgncdataset_stp <- map_to_hgnc_flexible(stp_targets)
+
+  
+#######################################################################
+  
+library(hgnc)
+library(lubridate)
+library(hgnc)
+
+# Baixa a base HGNC
+hgnc_tbl <- import_hgnc_dataset()
+safe_crosswalk <- function(value, from, to = "symbol", hgnc_dataset) {
+  tryCatch({
+    crosswalk(value = value, from = from, to = to, hgnc_dataset = hgnc_dataset)
+  }, error = function(e) {
+    NULL
+  })
+}
+
+# Loop em todas as colunas
+results <- list()
+for (col in colnames(hgnc_tbl)) {
+  cat("Tentando coluna:", col, "\n")
+  res <- safe_crosswalk(value = sea_targets, from = col, to = "symbol", hgnc_dataset = hgnc_tbl)
+  if (!is.null(res) && length(res) > 0) {
+    results[[col]] <- res
+  }
+}
+hgnc_sea <- unique(na.omit(unlist(results)))
+
+
+# Loop em todas as colunas
+results <- list()
+for (col in colnames(hgnc_tbl)) {
+  # cat("Tentando coluna:", col, "\n")
+  res <- safe_crosswalk(value = stp_targets, from = col, to = "symbol", hgnc_dataset = hgnc_tbl)
+  if (!is.null(res) && length(res) > 0) {
+    results[[col]] <- res
+  }
+}
+hgnc_stp <- unique(na.omit(unlist(results)))
+
+#######################################################################
 map_to_hgnc <- function(targets) {
   res <- queryMany(targets, scopes = "symbol,alias,name", fields = "symbol", species = "human")
   unique(res$symbol[!is.na(res$symbol)])
 }
 
-sea_mapped <- map_to_hgnc(sea_targets)
-stp_mapped <- map_to_hgnc(stp_targets)
+mygene_sea <- map_to_hgnc(sea_targets)  
+mygene_stp <- map_to_hgnc(stp_targets)   
 
-write.csv(stp_mapped, "data/target_prediction/stpnovo/stp_targets.csv", row.names = FALSE)
-write.csv(sea_mapped, "data/target_prediction/sea/sea_targets.csv", row.names = FALSE)
+#######################################################################
 
-# Nova interseção
-targets_intersection <- intersect(sea_mapped, stp_mapped)
-length(targets_intersection)
+all_sea <- Reduce(union, list(ensembl_sea, hgncdataset_sea, hgnc_sea, mygene_sea))
+write.csv(all_sea, "data/target_prediction/sea/sea_targets.csv", row.names = FALSE)
 
+all_stp <- Reduce(union, list(ensembl_stp, hgncdataset_stp, hgnc_stp, mygene_stp))
+write.csv(all_stp, "data/target_prediction/stpnovo/stp_targets.csv", row.names = FALSE)
+
+targets_intersection <- intersect(all_sea, all_stp)
 save(targets_intersection, file='data/target_prediction/targets_intersection.RData')
+
 ```
 
 # Getting the predicted metabolites/ligands for the intersection genes
@@ -547,10 +678,9 @@ cat(length(unique(stp_teng$Metabolite)), length(unique(stp_teng$`Common name`)))
 
 length(unique(c(stp_teng$Metabolite, sea_teng$Metabolite)))
 
-teng_i <- read_excel("data/teng3.xlsx", col_names = TRUE)
+teng_i <- read_excel("data/teng3.xlsx", col_names = TRUE)$Common
 
 
 sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
 stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
 ```
-

@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r message=FALSE, warning=FALSE}
 twas_path <- "data/twas/"
 
-all_unique_genes  <- list()
+all_unique  <- list()
 all_analyses <- list()
 
 # List all subdirectories inside the main directory
@@ -45,7 +45,7 @@ for (subdir in subdirs) {
     }
     
     all_analyses[[file_name]] <- analyses_genes
-    all_unique_genes[[file_name]] <- unique_genes
+    all_unique[[file_name]] <- unique_genes
     
   } else {
     warning(paste("No CSV file found in", subdir))
@@ -57,28 +57,35 @@ for (subdir in subdirs) {
 
 sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
 stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
-all_targets <- unique(c(sea_targets, stp_targets))
+all_targets <- union(sea_targets, stp_targets)
 
 all_analyses_intersect <- list()
+all_analyses_intersect_alltargets <- list()
+
 all_unique_genes_intersect <- list()
+all_unique_genes_intersect_alltargets <- list()
 
 for (file_name in names(all_analyses)){
-  print(file_name)
   analyses_intersect <- list()
-  unique_intersect <- list()
-  
+  analyses_intersect_alltargets <- list()
+
   analyses_genes <- all_analyses[[file_name]]
   
   for (analysis in names(analyses_genes)){
     analysis_genes <- unname(unlist(analyses_genes[[analysis]]))
     analyses_intersect[[paste0(file_name, '_', analysis)]] <- intersect(analysis_genes, targets_intersection)
+    analyses_intersect_alltargets[[paste0(file_name, '_', analysis)]] <- intersect(analysis_genes, all_targets)
   }
   all_analyses_intersect[[file_name]] <- analyses_intersect
-  
-  
-  unique_genes <- unname(unlist(all_unique_genes[[file_name]]))
-  all_unique_genes_intersect[[file_name]] <- intersect(unique_genes, all_targets)
+  all_analyses_intersect_alltargets[[file_name]] <- analyses_intersect_alltargets
+
+  unique_genes <- unname(unlist(all_unique[[file_name]]))
+  all_unique_genes_intersect[[file_name]] <- intersect(unique_genes, targets_intersection)
+  all_unique_genes_intersect_alltargets[[file_name]] <- intersect(unique_genes, all_targets)
 }
+
+twas_targets <- unique(unname(unlist(unlist(all_analyses_intersect))))
+twas_targets_alltargets <- unique(unname(unlist(unlist(all_analyses_intersect_alltargets))))
 
 pairwise_intersections <- combn(all_unique_genes_intersect, 2, function(x) intersect(x[[1]], x[[2]]), simplify = FALSE)
 pairwise_genes <- unique(unlist(pairwise_intersections, use.names = FALSE))
@@ -89,21 +96,67 @@ threewise_genes <- unique(unlist(threewise_intersections, use.names = FALSE))
 save(all_analyses_intersect, all_unique_genes_intersect, file = "data/twas/intersections.RData")
 ```
 
-# Getting the predicted metabolites/ligands for the intersection genes
+
+# Comparing with previous analyses
 
 ```{r}
-sea_result <- read.csv("data/target_prediction/sea/sea_results.xls")
+type_intersection <- unique(unlist(unname(type_intersection)))
+type_intersection_alltargets <- unique(unlist(unname(type_intersection_alltargets)))
 
-# Rename columns to avoid special character issues
-colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
-                          "Max_Tc", "Cut_Sum", "Z_Score", "Name", "Description", "Query_Smiles")
+all_results <- list(notype_intersection, type_intersection, variance_intersection, twas_targets)
+all_results_alltargets <- list(notype_intersection_alltargets, type_intersection_alltargets, variance_intersection_alltargets, twas_targets_alltargets)
 
-# Get only the human targets 
-sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target_ID), ]
+# Define names for the analyses
+analysis_names <- c("no_type", "type", "variance", "twas")
+names(all_results) <- analysis_names
 
-EPHB2 <- sea_result[sea_result$Name == "EPHB2", ]
-metabolites_EPHB2 <- EPHB2$Query_ID
+# Create a named list of all genes with their corresponding analysis
+gene_to_analyses <- list()
 
-TNKS2 <- sea_result[sea_result$Name == "TNKS2", ]
-metabolites_TNKS2 <- TNKS2$Query_ID
+for (i in seq_along(all_results)) {
+  genes <- all_results[[i]]
+  analysis <- analysis_names[i]
+  
+  for (gene in genes) {
+    gene_to_analyses[[gene]] <- unique(c(gene_to_analyses[[gene]], analysis))
+  }
+}
+
+gene_analyses_df <- tibble::tibble(
+  gene = names(gene_to_analyses),
+  analyses = sapply(gene_to_analyses, function(x) paste(sort(x), collapse = ","))
+)
+
+multi_analysis_genes <- gene_analyses_df %>% 
+  filter(lengths(gene_to_analyses) > 1)
+```
+
+```{r}
+analysis_names_alltargets <- c("no_type", "type", "variance", "twas")
+names(all_results_alltargets) <- analysis_names_alltargets
+
+# Criar mapeamento gene → análises (para _alltargets)
+gene_to_analyses_alltargets <- list()
+
+for (i in seq_along(all_results_alltargets)) {
+  genes <- all_results_alltargets[[i]]
+  analysis <- analysis_names_alltargets[i]
+  
+  for (gene in genes) {
+    gene_to_analyses_alltargets[[gene]] <- unique(c(gene_to_analyses_alltargets[[gene]], analysis))
+  }
+}
+
+# Converter para data frame
+library(dplyr)
+
+gene_analyses_df_alltargets <- tibble::tibble(
+  gene = names(gene_to_analyses_alltargets),
+  analyses = sapply(gene_to_analyses_alltargets, function(x) paste(sort(x), collapse = ","))
+)
+
+multi_analysis_genes_alltargets <- gene_analyses_df_alltargets %>% 
+  filter(lengths(gene_to_analyses_alltargets) > 1)
+
+save(gene_analyses_df, gene_analyses_df_alltargets, file = "data/all_analyses_comparison.RData")
 ```
