@@ -258,18 +258,20 @@ gc()
 
 ```{r}
 gse_path <- "data/snrnaseq/GSE144136/"
+degs_GSE144136 <- read.csv(paste0(gse_path, "degs/GSE144136_results_filtered.csv"))$X
+
+gse_path <- "data/snrnaseq/GSE213982/"
+degs_GSE213982 <- read.csv(paste0(gse_path, "degs/GSE213982_results_filtered.csv"))$X
 
 # Load target_intersection 
 load(file='data/target_prediction/targets_intersection.RData')
 
-degs_GSE213982 <- rownames(degs_GSE213982$degs_filtered)
-degs_GSE144136 <- rownames(degs_GSE144136$degs_filtered)
 snrnaseq_intersection <- intersect(degs_GSE213982, degs_GSE144136)
 notype_intersection  <- intersect(snrnaseq_intersection, targets_intersection)
 
 sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
 stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
-all_targets <- c(sea_targets, stp_targets)
+all_targets <- union(sea_targets, stp_targets)
 notype_intersection_alltargets <- intersect(snrnaseq_intersection, all_targets)
 
 save(notype_intersection, notype_intersection_alltargets, file = "data/snrnaseq/degs_intersections_notype.RData")
@@ -351,7 +353,7 @@ for (ct in cell_types) {
 }
 
 save(GSE144136_markers_filtered,
-     file=paste0(gse_path, "type_degs/GSE144136_markers_type.RData"))
+     file=paste0(gse_path, "type_degs/GSE144136_degs_type.RData"))
 ```
 
 ## Getting the intersection between snRNA-seq and target prediction
@@ -376,7 +378,7 @@ for (ct in cell_types) {
 
 sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
 stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
-all_targets <- c(sea_targets, stp_targets)
+all_targets <- union(sea_targets, stp_targets)
 
 type_intersection_alltargets <- list()
 for (ct in cell_types) {
@@ -422,24 +424,19 @@ for (ct in cell_types) {
 }
 ```
 
-## Cell type
-
-
-
 # WGCNA coexpression
 
 ```{r message=FALSE, warning=FALSE}
 gse_path <- "data/snrnaseq/GSE213982/"
-load(paste0(gse_path, "GSE213982_variablefeatures.RData"))
+load(paste0(gse_path, "GSE213982_counts.RData"))
 
-traitData <- GSE213982_features@meta.data[, c("condition", "cell_type")]
+traitData <- GSE213982@meta.data[, c("condition", "cell_type")]
 
-GSE213982_matrix <- GetAssayData(GSE213982_features, assay = "RNA", slot = "data")
-variable_genes <- VariableFeatures(GSE213982_features)
-GSE213982_matrix <- GSE213982_matrix[variable_genes, ]
+GSE213982_matrix <- GetAssayData(GSE213982, assay = "RNA", slot = "data")
+
 GSE213982_matrix <- t(as.matrix(GSE213982_matrix))  
 
-GSE213982_features <- NULL
+GSE213982 <- NULL
 gc()
 
 GSE213982_gsg <- goodSamplesGenes(GSE213982_matrix, verbose = 3)
@@ -719,9 +716,10 @@ all_targets <- unique(c(sea_targets, stp_targets))
 
 common_degs <- intersect(top_genes_GSE213982$gene, top_genes_GSE144136$gene)
 variance_intersection <- intersect(common_degs, targets_intersection)
-save(variance_intersection, file = "data/snrnaseq/variance_intersection.RData")
+variance_intersection_alltargets <- intersect(common_degs, all_targets)
 
 
+save(variance_intersection, variance_intersection_alltargets, file = "data/snrnaseq/variance_intersection.RData")
 ```
 
 # tf algo
