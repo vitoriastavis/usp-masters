@@ -274,6 +274,12 @@ stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
 all_targets <- union(sea_targets, stp_targets)
 notype_intersection_alltargets <- intersect(snrnaseq_intersection, all_targets)
 
+N = 22500 # Human genes
+K = length(targets_intersection) # Intersection of SEA and STP predicted targets
+n = length(snrnaseq_intersection) # DEGs found in the snRNAseq studies
+k = length(notype_intersection_alltargets) # Intersection of TWAS and predicted targets
+overlap_hypergeometric <- phyper(k-1, K, N - K, n, lower.tail = FALSE)
+
 save(notype_intersection, notype_intersection_alltargets, file = "data/snrnaseq/degs_intersections_notype.RData")
 ```
 
@@ -376,17 +382,17 @@ for (ct in cell_types) {
                                                intersection_celltypes[[ct]])
 }
 
-sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
-stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
-all_targets <- union(sea_targets, stp_targets)
+# sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
+# stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
+# all_targets <- union(sea_targets, stp_targets)
 
-type_intersection_alltargets <- list()
-for (ct in cell_types) {
-  type_intersection_alltargets[[ct]] <- intersect(all_targets,
-                                               intersection_celltypes[[ct]])
-}
+# type_intersection_alltargets <- list()
+# for (ct in cell_types) {
+#   type_intersection_alltargets[[ct]] <- intersect(all_targets,
+#                                                intersection_celltypes[[ct]])
+# }
 
-save(type_intersection, type_intersection_alltargets, file = "data/snrnaseq/degs_intersections_type.RData")
+# save(type_intersection, type_intersection_alltargets, file = "data/snrnaseq/degs_intersections_type.RData")
 ```
 
 
@@ -722,45 +728,42 @@ variance_intersection_alltargets <- intersect(common_degs, all_targets)
 save(variance_intersection, variance_intersection_alltargets, file = "data/snrnaseq/variance_intersection.RData")
 ```
 
-# tf algo
 
-```{r message=FALSE, warning=FALSE}
-# Install if needed
-BiocManager::install("dorothea")
-BiocManager::install("viper")
-library(dorothea)
-library(viper)
+# Getting the predicted metabolites/ligands for the intersection genes
 
-gse_path <- "data/snrnaseq/GSE144136/"
-load(paste0(gse_path, "GSE144136_counts.RData"))
-cat("loaded data\n")
+```{r}
+sea_result <- read_xlsx("data/target_prediction/sea/sea-combined.xlsx")
+sea_mappings <- read.csv("data/target_prediction/sea/sea_mappings.csv")
+# Rename columns to avoid special character issues
+colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
+                          "Max_Tc", "Cut_Sum", "Z_Score", "Name", "Description", "Query_Smiles")
 
-GSE144136 <- FindVariableFeatures(GSE144136,
-                                  selection.method = "vst",
-                                  nfeatures = 10000)
-variable_genes <- VariableFeatures(GSE144136)
-cat("found variable features\n")
+# Get only the human targets 
+sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target_ID), ]
 
-GSE144136_matrix <- as.matrix(GetAssayData(GSE144136, assay = "RNA", slot = "data"))
-GSE144136 <- NULL
-gc()
-GSE144136_matrix <- GSE144136_matrix[variable_genes, ]
+# Lista onde cada elemento é um vetor de alvos por metabólito
+targets_metabolites <- list()
+twas_targets <- notype_intersection
+for (target in twas_targets) {
+  all_metabolites <- c()
+  metabolites_rows <- sea_result[sea_result$Name == target, ]
+  metabolites <- unique(metabolites_rows$Query_ID)
+  metabolites <- gsub("cid", "", metabolites)
+  all_metabolites <- c(all_metabolites, metabolites)
+  
+  original_queries <- sea_mappings[!is.na(sea_mappings$HGNC_ID) & sea_mappings$HGNC_ID == target, ]
+  for (query in original_queries$Query){
+    metabolites_rows <- sea_result[sea_result$Name == query, ]
+    metabolites <- unique(metabolites_rows$Query_ID)
+    metabolites <- gsub("^cid", "", metabolites)
+    
+    all_metabolites <- c(all_metabolites, metabolites)
+  }
 
-# Load human TF-target interactions
-data(dorothea_hs, package = "dorothea")
+  
+  # Armazena no resultado
+  targets_metabolites[[target]] <- unique(all_metabolites)
+}
 
-# Filter for high-confidence (A-C)
-regulons <- dorothea_hs %>% dplyr::filter(confidence %in% c("A", "B", "C"))
-
-# Run TF activity inference
-tf_activities <- viper(GSE144136_matrix, regulons, verbose = FALSE)
-
-# Filter regulons for entries where the target gene is in your DEG list
-deg_regulon_links <- regulons %>% dplyr::filter(target %in% deg_genes)
-
-# Now extract the list of unique TFs that regulate at least one DEG
-upstream_tfs <- unique(deg_regulon_links$tf)
-
-# View a few
-head(upstream_tfs)
+all_twas_metabolites <- unique(unlist(targets_metabolites))
 ```
