@@ -51,9 +51,12 @@ for (subdir in subdirs) {
     warning(paste("No CSV file found in", subdir))
   }
 }
+
+all_genes <- unname(unlist(all_unique))
 ```
 
 ```{r message=FALSE, warning=FALSE}
+load(file='data/target_prediction/targets_intersection.RData')
 
 sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
 stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
@@ -84,8 +87,14 @@ for (file_name in names(all_analyses)){
   all_unique_genes_intersect_alltargets[[file_name]] <- intersect(unique_genes, all_targets)
 }
 
-twas_targets <- unique(unname(unlist(unlist(all_analyses_intersect))))
-twas_targets_alltargets <- unique(unname(unlist(unlist(all_analyses_intersect_alltargets))))
+twas_targets <-  unique(unlist(all_analyses_intersect, use.names = FALSE))
+twas_targets_alltargets <-  unique(unlist(all_analyses_intersect_alltargets, use.names = FALSE))
+
+N = 22500 # Human genes
+K = length(targets_intersection) # Intersection of SEA and STP predicted targets
+n = length(all_genes) # All genes found in TWAS
+k = length(twas_targets) # Intersection of TWAS and predicted targets
+overlap_hypergeometric <- phyper(k-1, K, N - K, n, lower.tail = FALSE)
 
 pairwise_intersections <- combn(all_unique_genes_intersect, 2, function(x) intersect(x[[1]], x[[2]]), simplify = FALSE)
 pairwise_genes <- unique(unlist(pairwise_intersections, use.names = FALSE))
@@ -159,4 +168,43 @@ multi_analysis_genes_alltargets <- gene_analyses_df_alltargets %>%
   filter(lengths(gene_to_analyses_alltargets) > 1)
 
 save(gene_analyses_df, gene_analyses_df_alltargets, file = "data/all_analyses_comparison.RData")
+```
+
+# Getting the predicted metabolites/ligands for the intersection genes
+
+```{r}
+sea_result <- read_xlsx("data/target_prediction/sea/sea-combined.xlsx")
+sea_mappings <- read.csv("data/target_prediction/sea/sea_mappings.csv")
+# Rename columns to avoid special character issues
+colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
+                          "Max_Tc", "Cut_Sum", "Z_Score", "Name", "Description", "Query_Smiles")
+
+# Get only the human targets 
+sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target_ID), ]
+
+# Lista onde cada elemento é um vetor de alvos por metabólito
+targets_metabolites <- list()
+
+for (target in twas_targets) {
+  all_metabolites <- c()
+  metabolites_rows <- sea_result[sea_result$Name == target, ]
+  metabolites <- unique(metabolites_rows$Query_ID)
+  metabolites <- gsub("cid", "", metabolites)
+  all_metabolites <- c(all_metabolites, metabolites)
+  
+  original_queries <- sea_mappings[!is.na(sea_mappings$HGNC_ID) & sea_mappings$HGNC_ID == target, ]
+  for (query in original_queries$Query){
+    metabolites_rows <- sea_result[sea_result$Name == query, ]
+    metabolites <- unique(metabolites_rows$Query_ID)
+    metabolites <- gsub("^cid", "", metabolites)
+    
+    all_metabolites <- c(all_metabolites, metabolites)
+  }
+
+  
+  # Armazena no resultado
+  targets_metabolites[[target]] <- unique(all_metabolites)
+}
+
+all_twas_metabolites <- unique(unlist(targets_metabolites))
 ```
