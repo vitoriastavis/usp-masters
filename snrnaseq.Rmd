@@ -258,10 +258,10 @@ gc()
 
 ```{r}
 gse_path <- "data/snrnaseq/GSE144136/"
-degs_GSE144136 <- read.csv(paste0(gse_path, "degs/GSE144136_results_filtered.csv"))$X
+degs_GSE144136 <- read.csv(paste0(gse_path, "degs/GSE144136_results_filtered.csv"))
 
 gse_path <- "data/snrnaseq/GSE213982/"
-degs_GSE213982 <- read.csv(paste0(gse_path, "degs/GSE213982_results_filtered.csv"))$X
+degs_GSE213982 <- read.csv(paste0(gse_path, "degs/GSE213982_results_filtered.csv"))
 
 # Load target_intersection 
 load(file='data/target_prediction/targets_intersection.RData')
@@ -382,19 +382,18 @@ for (ct in cell_types) {
                                                intersection_celltypes[[ct]])
 }
 
-# sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
-# stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
-# all_targets <- union(sea_targets, stp_targets)
+sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
+stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
+all_targets <- union(sea_targets, stp_targets)
 
-# type_intersection_alltargets <- list()
-# for (ct in cell_types) {
-#   type_intersection_alltargets[[ct]] <- intersect(all_targets,
-#                                                intersection_celltypes[[ct]])
-# }
+type_intersection_alltargets <- list()
+for (ct in cell_types) {
+  type_intersection_alltargets[[ct]] <- intersect(all_targets,
+                                               intersection_celltypes[[ct]])
+}
 
-# save(type_intersection, type_intersection_alltargets, file = "data/snrnaseq/degs_intersections_type.RData")
+save(type_intersection, type_intersection_alltargets, file = "data/snrnaseq/degs_intersections_type.RData")
 ```
-
 
 # Comparing cell types
 
@@ -430,168 +429,8 @@ for (ct in cell_types) {
 }
 ```
 
-# WGCNA coexpression
+# Variance partitioning
 
-```{r message=FALSE, warning=FALSE}
-gse_path <- "data/snrnaseq/GSE213982/"
-load(paste0(gse_path, "GSE213982_counts.RData"))
-
-traitData <- GSE213982@meta.data[, c("condition", "cell_type")]
-
-GSE213982_matrix <- GetAssayData(GSE213982, assay = "RNA", slot = "data")
-
-GSE213982_matrix <- t(as.matrix(GSE213982_matrix))  
-
-GSE213982 <- NULL
-gc()
-
-GSE213982_gsg <- goodSamplesGenes(GSE213982_matrix, verbose = 3)
-if (!GSE213982_gsg$allOK) {
-  GSE213982_matrix <- GSE213982_matrix[GSE213982_gsg$goodSamples, GSE213982_gsg$goodGenes]
-}
-
-GSE213982_gsg <- NULL
-```
-
-```{r message=FALSE, warning=FALSE}
-softPower <- 5  # replace with chosen power
-adjacency <- adjacency(GSE213982_matrix, power = softPower)
-
-TOM <- TOMsimilarity(adjacency)
-dissTOM <- 1 - TOM
-
-geneTree <- hclust(as.dist(dissTOM), method = "average")
-dynamicMods <- cutreeDynamic(dendro = geneTree, distM = dissTOM,
-                             deepSplit = 3, pamRespectsDendro = FALSE,
-                             minClusterSize = 20)
-moduleColors <- labels2colors(dynamicMods)
-```
-
-```{r message=FALSE, warning=FALSE}
-MEs <- moduleEigengenes(GSE213982_matrix, colors = moduleColors)$eigengenes
-dissimilarity <- 1 - cor(MEs)
-merge <- mergeCloseModules(GSE213982_matrix, moduleColors, cutHeight = 0.25, verbose = 3)
-moduleColors <- merge$colors
-MEs <- merge$newMEs
-
-traitData$condition <- as.numeric(factor(traitData$condition))
-traitData$cell_type <- as.numeric(factor(traitData$cell_type))
-
-moduleTraitCor <- cor(MEs, traitData, use = "p")
-moduleTraitPvalue <- corPvalueStudent(moduleTraitCor, nrow(GSE213982_matrix))
-
-textMatrix <- paste(signif(moduleTraitCor, 2), "\n(",
-                    signif(moduleTraitPvalue, 1), ")", sep = "")
-dim(textMatrix) <- dim(moduleTraitCor)
-
-labeledHeatmap(Matrix = moduleTraitCor,
-               xLabels = colnames(traitData),
-               yLabels = names(MEs),
-               ySymbols = names(MEs),
-               colorLabels = FALSE,
-               colors = blueWhiteRed(50),
-               textMatrix = textMatrix,
-               setStdMargins = FALSE,
-               cex.text = 0.5,
-               zlim = c(-1,1),
-               main = "Module-trait relationships (merged)")
-
-```
-```{r message=FALSE, warning=FALSE}
-# Get genes in the modules
-names(moduleColors) <- colnames(GSE213982_matrix)
-module_genes <- list()
-for (color in unique(moduleColors)){
-  module_genes[[color]] <- names(moduleColors[moduleColors == color])
-}
-
-all_intersections <- list()
-for (color in names(module_genes)){
-  all_intersections[[color]] <- intersect(targets_intersection, module_genes$color)
-}
-
-load(file='data/target_prediction/targets_intersection.RData')
-
-```
-```{r message=FALSE, warning=FALSE}
-
-top10_genes <- list()
-for (color in names(MEs)) {
-  kME <- cor(GSE213982_matrix, MEs[, color])  
-  kME_vector <- as.vector(kME)
-  names(kME_vector) <- rownames(kME)  
-  kME_sorted <- sort(abs(kME_vector), decreasing = TRUE)
-  top_genes <- names(kME_sorted)[1:10] # gene names
-
-  top10_genes[[color]] <- data.frame(
-    gene = top_genes,
-    kME = kME_vector[top_genes]  # signed correlations
-  )
-}
-
-```
-```{r message=FALSE, warning=FALSE}
-
-# moduleTraitCor is a matrix: rows = modules, cols = traits
-# moduleTraitPvalue is the corresponding p-value matrix
-
-# Thresholds
-cor_threshold <- 0.4
-pval_threshold <- 0.05
-
-# Find modules with |correlation| > 0.4 and p-value < 0.05 for each trait
-significant_modules <- list()
-
-for(trait in colnames(moduleTraitCor)) {
-  sig_mods <- rownames(moduleTraitCor)[
-    abs(moduleTraitCor[, trait]) > cor_threshold &
-    moduleTraitPvalue[, trait] < pval_threshold
-  ]
-  significant_modules[[trait]] <- sig_mods
-}
-
-significant_modules
-```
-
-## 14
-
-```{r message=FALSE, warning=FALSE}
-# gse_path <- "data/snrnaseq/GSE213982/"
-# load(paste0(gse_path, "GSE213982_variablefeatures.RData"))
-
-traitData <- GSE144136@meta.data[, c("condition", "cell_type")]
-
-GSE144136_matrix <- GetAssayData(GSE144136, assay = "RNA", slot = "data")
-variable_genes <- VariableFeatures(GSE144136)
-GSE144136_matrix <- GSE144136_matrix[variable_genes, ]
-GSE144136_matrix <- t(as.matrix(GSE144136_matrix))  
-
-GSE213982_features <- NULL
-gc()
-
-GSE144136_gsg <- goodSamplesGenes(GSE144136_matrix, verbose = 3)
-if (!GSE144136_gsg$allOK) {
-  GSE144136_matrix <- GSE144136_matrix[GSE144136_gsg$goodSamples, GSE144136_gsg$goodGenes]
-}
-
-GSE144136_gsg <- NULL
-```
-
-```{r message=FALSE, warning=FALSE}
-softPower <- 5  # replace with chosen power
-adjacency <- adjacency(GSE144136_matrix, power = softPower)
-
-TOM <- TOMsimilarity(adjacency)
-dissTOM <- 1 - TOM
-
-geneTree <- hclust(as.dist(dissTOM), method = "average")
-dynamicMods <- cutreeDynamic(dendro = geneTree, distM = dissTOM,
-                             deepSplit = 3, pamRespectsDendro = FALSE,
-                             minClusterSize = 20)
-moduleColors <- labels2colors(dynamicMods)
-```
-
-# variance algo
 ```{r message=FALSE, warning=FALSE}
 library(Seurat)
 library(variancePartition)
@@ -732,38 +571,33 @@ save(variance_intersection, variance_intersection_alltargets, file = "data/snrna
 # Getting the predicted metabolites/ligands for the intersection genes
 
 ```{r}
-sea_result <- read_xlsx("data/target_prediction/sea/sea-combined.xlsx")
-sea_mappings <- read.csv("data/target_prediction/sea/sea_mappings.csv")
-# Rename columns to avoid special character issues
-colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
-                          "Max_Tc", "Cut_Sum", "Z_Score", "Name", "Description", "Query_Smiles")
+source("get_metabolites.R")  
 
-# Get only the human targets 
-sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target_ID), ]
+load("data/all_analyses_comparison.RData")
+rnaseq_genes <- gene_analyses_df[!gene_analyses_df$analyses %in% c("twas", "variance"), ]$gene
 
-# Lista onde cada elemento é um vetor de alvos por metabólito
-targets_metabolites <- list()
-twas_targets <- notype_intersection
-for (target in twas_targets) {
-  all_metabolites <- c()
-  metabolites_rows <- sea_result[sea_result$Name == target, ]
-  metabolites <- unique(metabolites_rows$Query_ID)
-  metabolites <- gsub("cid", "", metabolites)
-  all_metabolites <- c(all_metabolites, metabolites)
-  
-  original_queries <- sea_mappings[!is.na(sea_mappings$HGNC_ID) & sea_mappings$HGNC_ID == target, ]
-  for (query in original_queries$Query){
-    metabolites_rows <- sea_result[sea_result$Name == query, ]
-    metabolites <- unique(metabolites_rows$Query_ID)
-    metabolites <- gsub("^cid", "", metabolites)
-    
-    all_metabolites <- c(all_metabolites, metabolites)
+targets_to_metabolites <- get_metabolites(rnaseq_genes)
+
+for (target in names(targets_to_metabolites)){
+  mets <- targets_to_metabolites[[target]]
+  new_mets <- c()
+  for (met in mets){
+    name <- df3[df3$CID == met,]$name
+    new_mets <- c(new_mets, name)
   }
-
-  
-  # Armazena no resultado
-  targets_metabolites[[target]] <- unique(all_metabolites)
+  targets_to_metabolites[[target]] <- new_mets
 }
 
-all_twas_metabolites <- unique(unlist(targets_metabolites))
+metabolites_to_targets <- list()
+
+for (gene in names(targets_to_metabolites)) {
+  print(gene)
+  for (metabolite in targets_to_metabolites[[gene]]) {
+    print(metabolite)
+    metabolites_to_targets[[metabolite]] <- c(metabolites_to_targets[[metabolite]], gene)
+  }
+}
+metabolites_to_targets <- lapply(metabolites_to_targets, unique)
+
+save(targets_to_metabolites, metabolites_to_targets, file="targets_metabolites.RData")
 ```
