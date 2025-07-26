@@ -76,7 +76,7 @@ get_cid <- function(name) {
       data <- resp_body_json(req)
       if (!is.null(data$IdentifierList$CID)) {
         compound_id <- data$IdentifierList$CID[[1]]
-        returncompound_id  # Return first CID
+        return(compound_id)  # Return first CID
       }
     }
     return(NA)
@@ -84,6 +84,7 @@ get_cid <- function(name) {
   
   # If a CID was found, return it immediately
   if (!is.na(response_cid)) {
+    print(paste0("found CID for ", name))
     return(response_cid)
   }
   
@@ -119,16 +120,15 @@ get_cid <- function(name) {
       if (!is.null(data$PC_Substances[[1]]$compound[[2]]$id$id$cid) && length(data$PC_Substances[[1]]$compound[[2]]$id$id$cid) > 0) {
         # print("Found CID using SID") 
         compound_id <- data$PC_Substances[[1]]$compound[[2]]$id$id$cid[[1]]
+        print(paste0("found CID for ", name))
         return(compound_id)  # Return CID
       } 
     }
+    print(paste0("couldn't find CID for ", name))
     return(NA)
   }, error = function(e) return(NA))
 }
 
-# Get SMILES from Compound ID
-# Param - compound_id: CID (integer) 
-# Return (character): SMILES for the compound
 library(httr2)
 library(jsonlite)
 
@@ -195,11 +195,6 @@ get_smiles_from_cid <- function(compound_id) {
 gutmgene1 <- read.csv("data/gutmgene/gutmgene.csv", stringsAsFactors = FALSE)
 gutmgene2 <- read.csv("data/gutmgene/gutmgene2.csv", stringsAsFactors = FALSE)
 
-# gutmgene_mouse <- read.csv("data/gutmgene/gutmgene_mouse.csv", stringsAsFactors = FALSE)
-# gutmgene_mouse2 <- read.csv("data/gutmgene/gutmgene_mouse.csv", stringsAsFactors = FALSE)
-# gutmgene_microbe <- read.csv("data/gutmgene/gutmgene_gutmicrobe.csv", stringsAsFactors = FALSE)
-
-
 # Rename columns to avoid special character issues
 colnames(gutmgene1) <- c("Host_Species", "Gut_Microbe_ID", "Rank",
                         "Metabolite_ID", "Evidence_Type", "Evidence_Amount")
@@ -225,27 +220,8 @@ gutmgene2 <- gutmgene2 %>%
 
 # Remove a possibly incorrect microorganism (it's actually an insect)
 gutmgene1 <- gutmgene1[!grepl("Bacteria Latreille et al. 1825", gutmgene1$Gut_Microbe_Name), ]
-# Remove not identified species?
+# Remove not identified species
 gutmgene1 <- gutmgene1[!grepl("CEBAS", gutmgene1$Gut_Microbe_Name), ]
-
-only_gutmgene2 <- setdiff(gutmgene2$Metabolite_Name, gutmgene1$Metabolite_Name)
-diff_cid <- unname(sapply(only_gutmgene2, get_cid_vec))
-
-# How many metabolites
-cat("N metabolites (repeated):",
-    length(gutmgene$Metabolite_ID), "\n")
-cat("N metabolites (unique):",
-    length(unique(gutmgene$Metabolite_ID)), "\n")
-
-# Number of unique species
-unique_species_count <- gutmgene %>% filter(Rank == 'species') %>%
-  summarise(count = n_distinct(Gut_Microbe_ID)) %>% pull(count)
-cat("N unique microbe IDs for species:", unique_species_count, "\n")
-
-# Number of unique genera
-gutmgene$Microbe_Genus <- sub(" .*", "", gutmgene$Gut_Microbe_Name)
-gutmgene$Microbe_Genus <- gsub("\\[|\\]", "", gutmgene$Microbe_Genus)
-cat("N unique genera:", length(unique(gutmgene$Microbe_Genus)), "\n")
 ```
 
 ## Build plots of raw data
@@ -304,29 +280,27 @@ dev.off()
 ## Clean the data
 
 ```{r}
-
 # Concatenate dataframes
 common_cols <- intersect(names(gutmgene1), names(gutmgene2))
-gutmgene <- bind_rows(
-  select(gutmgene1, all_of(common_cols)),
-  select(gutmgene2, all_of(common_cols))
+gutmgene <- dplyr::bind_rows(
+  dplyr::select(gutmgene1, all_of(common_cols)),
+  dplyr::select(gutmgene2, all_of(common_cols))
 )
 
 cat("N metabolites (unique):",
     length(unique(gutmgene$Metabolite_ID)), "\n")
 
-# Parse Compound ID (CID)
-# with vectorized function
+# Parse Compound ID (CID) with vectorized function
 get_cid_vec <- Vectorize(get_cid)
 gutmgene <- gutmgene %>%
   mutate(
     Metabolite_CID = get_cid_vec(Metabolite_Name) # Obtains CID for the metabolite name
   )
 
-
 # Remove NAs
 if (nrow(gutmgene %>% filter(is.na(Metabolite_CID))) != 0) {
   gutmgene_na <- gutmgene %>% filter(is.na(Metabolite_CID))
+  gutmgene_clean <- gutmgene %>% filter(!is.na(Metabolite_CID))
   cat("Removed", nrow(gutmgene_na), "Metabolite_CID NAs\n")
 } else {
   gutmgene_clean <- gutmgene
@@ -341,8 +315,30 @@ gutmgene_nodup <- gutmgene_clean %>%
 cat("N metabolites without duplicates:", length(gutmgene_nodup$Metabolite_CID), "\n")
 
 # Save processed dataframe
-save(gutmgene_nodup, file = "data/gutmgene_nodup.RData")  # No duplicated metabolites
-save(gutmgene_na, file = "data/gutmgene_na.RData")        # Only the NAs
+save(gutmgene_nodup, file = "data/gutmgene/gutmgene_nodup.RData")  # No duplicated metabolites
+save(gutmgene_na, file = "data/gutmgene/gutmgene_na.RData")        # Only the NAs
+
+
+df <- data.frame(name=gutmgene_nodup$Metabolite_Name,
+                         CID=gutmgene_nodup$Metabolite_CID,
+                         stringsAsFactors=FALSE)
+
+lines <- readLines("data/gutmgene/names_ids.txt")
+
+# Process each line to extract Name and CID
+data <- lapply(lines, function(line) {
+  parts <- strsplit(line, " ")[[1]]
+  cid <- tail(parts, 1)
+  name <- paste(head(parts, -1), collapse = " ")
+  return(c(name = name, CID = cid))
+})
+
+# Convert the result into a data frame
+df2 <- as.data.frame(do.call(rbind, data), stringsAsFactors = FALSE)
+
+df3 <- rbind(df, df2)
+write.csv(df3, "data/gutmgene/name_cid.csv", row.names = FALSE)
+
 ```
 
 ## Get SMILES
