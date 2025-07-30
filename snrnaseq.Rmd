@@ -56,10 +56,8 @@ devtools::install_github("immunogenomics/presto")
 library(dplyr)
 library(Seurat)
 library(Matrix)
-# library(GENIE3)
 # library(variancePartition)
 # library(BiocParallel)
-# library(WGCNA)
 ```
 
 # Functions
@@ -158,7 +156,6 @@ run_DE_analysis <- function(seurat_obj,
 ```
 
 
-
 ```{r}
 gse_path <- "data/snrnaseq/GSE213982/"
 
@@ -175,7 +172,9 @@ cell_info <- do.call(rbind, strsplit(colnames(GSE213982), "\\."))
 GSE213982$sample_id <- cell_info[,1]
 GSE213982$barcode <- cell_info[,2]
 GSE213982$cell_type <- cell_info[,3]
+
 GSE213982$cell_subtype <- cell_info[,4]
+GSE213982$cell_subtype <- sub("^([A-Za-z]+)([0-9]+).*", "\\1\\2", GSE213982$cell_subtype)
 
 # Gather groups information
 condition_info <- read.csv(paste0(gse_path, "/groups.csv"))
@@ -188,6 +187,7 @@ GSE213982 <- NormalizeData(GSE213982, normalization.method = "LogNormalize")
 
 save(GSE213982, file=paste0(gse_path, "GSE213982_counts.RData"))
 ```
+
 # Analysis without considering cell types
 
 ```{r}
@@ -206,6 +206,7 @@ gc()
 ## GSE144136
 
 ```{r}
+gse_path <- "data/snrnaseq/GSE144136/"
 GSE144136 <- process_seurat_object(
   matrix_file = paste0(gse_path, "GSE144136_GeneBarcodeMatrix_Annotated.mtx.gz"),
   genes_file = paste0(gse_path, "GSE144136_GeneNames.csv.gz"),
@@ -214,16 +215,18 @@ GSE144136 <- process_seurat_object(
 )
 
 cell_info <- do.call(rbind, strsplit(colnames(GSE144136), "\\_"))
-GSE144136$cell_type <- cell_info[,1]
+GSE144136@meta.data$cell_type <- cell_info[,1]
+GSE144136@meta.data$cell_subtype <- sub("^([A-Za-z/]+)[_\\./]([0-9]+).*", "\\1\\2",
+                                        rownames(GSE144136@meta.data))
 
 GSE144136@meta.data$condition <- ifelse(grepl("Control", rownames(GSE144136@meta.data)), 
                                     "Control", 
                                     ifelse(grepl("Suicide", rownames(GSE144136@meta.data)), 
-                                           "Suicide", 
+                                           "MDD", 
                                            NA))
 
-GSE144136$condition[GSE144136$condition == "Suicide"] <- "MDD"
-
+# Make it the same patter as the other dataset
+## Cell type
 GSE144136@meta.data$cell_type <- dplyr::case_when(
   GSE144136@meta.data$cell_type == "Astros" ~ "Ast",
   GSE144136@meta.data$cell_type == "Inhib" ~ "InN",
@@ -235,6 +238,21 @@ GSE144136@meta.data$cell_type <- dplyr::case_when(
 
   TRUE ~ GSE144136@meta.data$cell_type  
 )
+## Cell subtype
+cell_subtype_info <- stringr::str_match(rownames(GSE144136@meta.data), "^([A-Za-z/]+)[_\\./]([0-9]+)")
+cell_type <- cell_subtype_info[, 2]
+subtype_num <- cell_subtype_info[, 3]
+standardized_type <- dplyr::case_when(
+  cell_type == "Astros" ~ "Ast",
+  cell_type == "Inhib" ~ "InN",
+  cell_type == "Ex" ~ "ExN",
+  cell_type == "Oligos" ~ "Oli",
+  cell_type == "OPCs" ~ "OPC",
+  cell_type == "Endo" ~ "End",
+  cell_type == "Micro/Macro" ~ "Mic",
+  TRUE ~ cell_type
+)
+GSE144136@meta.data$cell_subtype <- paste0(standardized_type, subtype_num)
 
 GSE144136 <- NormalizeData(GSE144136, normalization.method = "LogNormalize")
 
@@ -244,7 +262,6 @@ save(GSE144136, file=paste0(gse_path, "GSE144136_counts.RData"))
 
 ```{r}
 gse_path <- "data/snrnaseq/GSE144136/"
-
 load(paste0(gse_path, "GSE144136_counts.RData"))
 
 degs_GSE144136 <- run_DE_analysis(paste0(GSE144136, "degs/"), save = TRUE,
@@ -290,7 +307,7 @@ save(notype_intersection, notype_intersection_alltargets, file = "data/snrnaseq/
 gse_path <- "data/snrnaseq/GSE213982/"
 load(paste0(gse_path, "GSE213982_counts.RData"))
 
-GSE213982_markers <- list()
+GSE213982_celltype <- list()
 cell_types <- setdiff(unique(GSE213982@meta.data$cell_type), "Mix")
 
 for (ct in cell_types) {
@@ -305,34 +322,30 @@ for (ct in cell_types) {
                          ident.2 = "Control",
                          test.use = "wilcox")
   
-  GSE213982_markers[[ct]] <- markers
+  GSE213982_celltype[[ct]] <- markers
   gc()
 }
 
 # filter by p and FC
-GSE213982_markers_filtered <- list()
+GSE213982_celltype_filtered <- list()
 for (ct in cell_types) {
-  markers <- GSE213982_markers[[ct]]
+  markers <- GSE213982_celltype[[ct]]
   
   markers_filtered <- markers %>%
     filter(p_val_adj < 0.05, abs(avg_log2FC) >= 1)
 
-  GSE213982_markers_filtered[[ct]] <- markers_filtered
+  GSE213982_celltype_filtered[[ct]] <- markers_filtered
 }
 
-save(GSE213982_markers_filtered,
-     file=paste0(gse_path, "type_degs/GSE213982_degs_type.RData"))
+save(GSE213982_celltype_filtered,
+     file=paste0(gse_path, "type_degs/GSE213982_celltype.RData"))
 ```
 
 ```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 gse_path <- "data/snrnaseq/GSE144136/"
 load(paste0(gse_path, "/GSE144136_counts.RData"))
-# 
-# GSE144136 <- FindVariableFeatures(GSE144136,
-#                                      selection.method = "vst",
-#                                      nfeatures = 1000)
 
-GSE144136_markers <- list()
+GSE144136_celltype <- list()
 cell_types <- setdiff(unique(GSE144136@meta.data$cell_type), "Mix")
 
 for (ct in cell_types) {
@@ -344,22 +357,22 @@ for (ct in cell_types) {
   markers <- FindMarkers(seurat_sub, ident.1 = "MDD", ident.2 = "Control",
                          test.use = "wilcox")
 
-  GSE144136_markers[[ct]] <- markers
+  GSE144136_celltype[[ct]] <- markers
 }
 
 # filter by p and FC
-GSE144136_markers_filtered <- list()
+GSE144136_celltype_filtered <- list()
 for (ct in cell_types) {
-  markers <- GSE144136_markers[[ct]]
+  markers <- GSE144136_celltype[[ct]]
   
   markers_filtered <- markers %>%
     filter(p_val_adj < 0.05, abs(avg_log2FC) >= 1)
 
-  GSE144136_markers_filtered[[ct]] <- markers_filtered
+  GSE144136_celltype_filtered[[ct]] <- markers_filtered
 }
 
-save(GSE144136_markers_filtered,
-     file=paste0(gse_path, "type_degs/GSE144136_degs_type.RData"))
+save(GSE144136_celltype_filtered,
+     file=paste0(gse_path, "type_degs/GSE144136_celltype.RData"))
 ```
 
 ## Getting the intersection between snRNA-seq and target prediction
@@ -395,47 +408,122 @@ for (ct in cell_types) {
 save(type_intersection, type_intersection_alltargets, file = "data/snrnaseq/degs_intersections_type.RData")
 ```
 
-# Comparing cell types
 
-### Type by type
+
+# Analysis considering cell subtypes
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-gene <- "NR4A1"
-nr4a1_expressions <- list()
-cell_types <- setdiff(unique(GSE213982@meta.data$cell_type), "Mix")
-for (ct in cell_types) {
+gse_path <- "data/snrnaseq/GSE213982/"
+load(paste0(gse_path, "GSE213982_counts.RData"))
+
+GSE213982_markers_subcelltype <- list()
+cell_subtypes <- setdiff(unique(GSE213982@meta.data$cell_subtype), "Mix")
+
+for (cst in cell_subtypes) {
+  seurat_sub <- subset(GSE213982,
+                       subset = cell_subtype == cst)
   
-  gene_data <- FetchData(GSE213982, vars = c("NR4A1", "condition", "cell_type"))
-  gene_data_filtered <- gene_data[gene_data$cell_type == ct, ]
+  seurat_sub <- NormalizeData(seurat_sub,
+                              normalization.method = "LogNormalize")
+  Idents(seurat_sub) <- "condition"
 
-  # Create violin plot
-  nr4a1_condition_exp <- ggplot(gene_data_filtered, aes(x = condition,
-                                                     y = NR4A1)) +
-                          geom_boxplot(alpha = 0.7, outlier.alpha = 0.5) +
-                          geom_jitter(width = 0.2, alpha = 0.3, size = 0.5) +
-                          # geom_violin(alpha = 0.7, trim = FALSE) +
-                          # geom_boxplot(width = 0.1, fill = "white",
-                          #              alpha = 0.8) +
-                          theme_light() +
-                          labs(title = paste0(gene, " expression - ", ct),
-                               x = "Condition", 
-                               y = "NR4A1 Expression") +
-                          theme(legend.position = "none",
-                                plot.title = element_text(hjust = 0.5,
-                                                          size = 14,
-                                                          face = "bold"))
-
-  ggsave(paste0(gse_path, gene, "_", ct, ".png"), nr4a1_condition_exp)
+  markers <- FindMarkers(seurat_sub, ident.1 = "MDD",
+                         ident.2 = "Control",
+                         test.use = "wilcox")
+  
+  GSE213982_markers_subcelltype[[cst]] <- markers
+  gc()
 }
+
+# filter by p and FC
+GSE213982_cellsubtype_filt <- list()
+for (cst in names(GSE213982_markers_subcelltype)) {
+  markers <- GSE213982_markers_subcelltype[[cst]]
+  
+  markers_filtered <- markers %>%
+    filter(p_val_adj < 0.05, abs(avg_log2FC) >= 1)
+
+  GSE213982_cellsubtype_filt[[cst]] <- markers_filtered
+}
+
+save(GSE213982_cellsubtype_filt,
+     file=paste0(gse_path, "subtype_degs/GSE213982_subtype.RData"))
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+gse_path <- "data/snrnaseq/GSE144136/"
+load(paste0(gse_path, "GSE144136_counts.RData"))
+
+GSE144136_markers_subcelltype <- list()
+cell_subtypes <- setdiff(unique(GSE144136@meta.data$cell_subtype), "Mix")
+
+for (cst in cell_subtypes) {
+  seurat_sub <- subset(GSE144136,
+                       subset = cell_subtype == cst)
+  
+  if (!all(c("MDD", "Control") %in% unique(seurat_sub$condition))) {
+    message("Skipping ", cst, " due to missing $condition(s)")
+    next
+  }
+  
+  seurat_sub <- NormalizeData(seurat_sub,
+                              normalization.method = "LogNormalize")
+  seurat_sub <- SetIdent(seurat_sub, value = "condition")
+
+  markers <- FindMarkers(seurat_sub, ident.1 = "MDD",
+                         ident.2 = "Control",
+                         test.use = "wilcox")
+  
+  GSE144136_markers_subcelltype[[cst]] <- markers
+  gc()
+}
+
+# filter by p and FC
+GSE144136_cellsubtype_filt <- list()
+for (cst in names(GSE144136_markers_subcelltype)) {
+  markers <- GSE144136_markers_subcelltype[[cst]]
+  
+  markers_filtered <- markers %>%
+    filter(p_val_adj < 0.05, abs(avg_log2FC) >= 1)
+
+  GSE144136_cellsubtype_filt[[cst]] <- markers_filtered
+}
+
+save(GSE144136_cellsubtype_filt,
+     file=paste0(gse_path, "subtype_degs/GSE144136_subtype.RData"))
+```
+
+## Getting the intersection between snRNA-seq and target prediction
+
+```{r message=FALSE, warning=FALSE}
+# Load target_intersection 
+load(file='data/target_prediction/targets_intersection.RData')
+
+cell_subtypes <- union(names(GSE144136_cellsubtype_filt), names(GSE213982_cellsubtype_filt))
+
+intersection_cellsubtypes <- list()
+for (cst in cell_subtypes) {
+  if (cst %in% names(GSE213982_cellsubtype_filt) &
+      cst %in% names(GSE144136_cellsubtype_filt)) {
+    intersection_cellsubtypes[[cst]] <- intersect(
+      rownames(GSE144136_cellsubtype_filt[[cst]]),
+      rownames(GSE213982_cellsubtype_filt[[cst]])
+    )
+  }
+}
+
+subtype_intersection <- list()
+for (cst in cell_subtypes) {
+  subtype_intersection[[cst]] <- intersect(targets_intersection,
+                                               intersection_cellsubtypes[[cst]])
+}
+
+save(subtype_intersection, file = "data/snrnaseq/degs_intersections_subtype.RData")
 ```
 
 # Variance partitioning
 
 ```{r message=FALSE, warning=FALSE}
-library(Seurat)
-library(variancePartition)
-library(BiocParallel)
-
 extract_top_variable_genes <- function(
   gse_path,
   use_variable_features = TRUE,
@@ -511,7 +599,7 @@ extract_top_variable_genes <- function(
 
 }
 
-combine_varPart_results <- function(gse_path, top_percentage) {
+combine_varPart_results <- function(gse_path) {
   variance_dir <- file.path(gse_path, "variance")
   files <- list.files(variance_dir, pattern = "^chunk.*\\.RData$", full.names = TRUE)
   
@@ -525,46 +613,33 @@ combine_varPart_results <- function(gse_path, top_percentage) {
   varPart_combined <- do.call(rbind, varPart_list)
   varPart_combined$gene <- rownames(varPart_combined)
 
-  threshold <- quantile(varPart_combined$condition, top_percentage)
-  top_genes <- subset(varPart_combined, condition >= threshold)
-
-  return(top_genes)
+  return(varPart_combined)
 }
 ```
 
 ```{r message=FALSE, warning=FALSE}
 gse_path <- "data/snrnaseq/GSE213982/"
-
 extract_top_variable_genes(gse_path,use_variable_features = F,
                            chunk_size = 1000, n_cores = 4)
-top_genes_GSE213982 <- combine_varPart_results(gse_path, top_percentage = 0.98)
-
-save(top_genes_GSE213982, file = paste0(gse_path, "variance/top_variance_GSE213982.RData"))
-
+combined_GSE213982 <- combine_varPart_results(gse_path)
+threshold <- quantile(combined_GSE213982$condition, 0.85)
+top_genes_GSE213982 <- subset(combined_GSE213982, condition >= threshold)
+save(combined_GSE213982, top_genes_GSE213982, file = paste0(gse_path, "variance/variance_GSE213982.RData"))
 
 gse_path <- "data/snrnaseq/GSE144136/"
-
 extract_top_variable_genes(gse_path, use_variable_features = F,
                            chunk_size = 1000, n_cores = 4)
+combined_GSE144136 <- combine_varPart_results(gse_path)
+threshold <- quantile(combined_GSE144136$condition, 0.85)
+top_genes_GSE144136 <- subset(combined_GSE144136, condition >= threshold)
+save(combined_GSE144136, top_genes_GSE144136, file = paste0(gse_path, "variance/variance_GSE144136.RData"))
 
-top_genes_GSE144136 <- combine_varPart_results("data/snrnaseq/GSE144136/",
-                                               top_percentage = 0.98)
-
-save(top_genes_GSE144136, file = paste0(gse_path, "variance/top_variance_GSE144136.RData"))
-
-
-sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
-stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
-targets_intersection <- intersect(stp_targets, sea_targets)
-
-all_targets <- unique(c(sea_targets, stp_targets))
+load("data/target_prediction/targets_intersection.RData")
 
 common_degs <- intersect(top_genes_GSE213982$gene, top_genes_GSE144136$gene)
 variance_intersection <- intersect(common_degs, targets_intersection)
-variance_intersection_alltargets <- intersect(common_degs, all_targets)
 
-
-save(variance_intersection, variance_intersection_alltargets, file = "data/snrnaseq/variance_intersection.RData")
+save(variance_intersection, file = "data/snrnaseq/variance_intersection.RData")
 ```
 
 
@@ -601,3 +676,37 @@ metabolites_to_targets <- lapply(metabolites_to_targets, unique)
 
 save(targets_to_metabolites, metabolites_to_targets, file="targets_metabolites.RData")
 ```
+
+<!-- # Comparing cell types -->
+
+<!-- ### Type by type -->
+
+<!-- ```{r message=FALSE, warning=FALSE, include=FALSE} -->
+<!-- gene <- "NR4A1" -->
+<!-- nr4a1_expressions <- list() -->
+<!-- cell_types <- setdiff(unique(GSE213982@meta.data$cell_type), "Mix") -->
+<!-- for (ct in cell_types) { -->
+
+<!--   gene_data <- FetchData(GSE213982, vars = c("NR4A1", "condition", "cell_type")) -->
+<!--   gene_data_filtered <- gene_data[gene_data$cell_type == ct, ] -->
+
+<!--   # Create violin plot -->
+<!--   nr4a1_condition_exp <- ggplot(gene_data_filtered, aes(x = condition, -->
+<!--                                                      y = NR4A1)) + -->
+<!--                           geom_boxplot(alpha = 0.7, outlier.alpha = 0.5) + -->
+<!--                           geom_jitter(width = 0.2, alpha = 0.3, size = 0.5) + -->
+<!--                           # geom_violin(alpha = 0.7, trim = FALSE) + -->
+<!--                           # geom_boxplot(width = 0.1, fill = "white", -->
+<!--                           #              alpha = 0.8) + -->
+<!--                           theme_light() + -->
+<!--                           labs(title = paste0(gene, " expression - ", ct), -->
+<!--                                x = "Condition",  -->
+<!--                                y = "NR4A1 Expression") + -->
+<!--                           theme(legend.position = "none", -->
+<!--                                 plot.title = element_text(hjust = 0.5, -->
+<!--                                                           size = 14, -->
+<!--                                                           face = "bold")) -->
+
+<!--   ggsave(paste0(gse_path, gene, "_", ct, ".png"), nr4a1_condition_exp) -->
+<!-- } -->
+<!-- ``` -->
