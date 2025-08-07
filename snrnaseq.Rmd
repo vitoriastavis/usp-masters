@@ -100,7 +100,6 @@ process_seurat_object <- function(matrix_file, genes_file, cells_file, group_fil
 #' Builds a Seurat object from snRNA-seq data
 #'
 #' @param seurat_obj SeuratObject
-#' @param nfeatures Integer - Number of features to filter if your dataset is large (e.g. top 10000 genes)
 #' @param group_by String - Name of the variable you want to group your data by (condition, treatment, etc)
 #' @param ident_1 String - Name of the first group considering the condition above
 #' @param ident_2 String - Name of the second group considering the condition above
@@ -112,7 +111,6 @@ process_seurat_object <- function(matrix_file, genes_file, cells_file, group_fil
 #' @param prefix String - Prefix for the CSV filenames
 #' @return list with p-adjusted DEGs and filtered DEGs
 run_DE_analysis <- function(seurat_obj,
-                            nfeatures = 20000,
                             group_by = "condition",
                             ident_1 = "MDD",
                             ident_2 = "Control",
@@ -192,11 +190,11 @@ save(GSE213982, file=paste0(gse_path, "GSE213982_counts.RData"))
 
 ```{r}
 gse_path <- "data/snrnaseq/GSE213982/"
-
 load(paste0(gse_path, "GSE213982_counts.RData"))
 
-degs_GSE213982 <- run_DE_analysis(paste0(GSE213982, "degs/"), save = TRUE,
-                                  output_path=gse_path, prefix="GSE213982")
+degs_GSE213982 <- run_DE_analysis(GSE213982, save = TRUE,
+                                  output_path = paste0(gse_path, "degs/"),
+                                  prefix = "GSE213982")
 GSE213982 <- NULL
 gc()
 ```
@@ -264,8 +262,9 @@ save(GSE144136, file=paste0(gse_path, "GSE144136_counts.RData"))
 gse_path <- "data/snrnaseq/GSE144136/"
 load(paste0(gse_path, "GSE144136_counts.RData"))
 
-degs_GSE144136 <- run_DE_analysis(paste0(GSE144136, "degs/"), save = TRUE,
-                                  output_path=gse_path, prefix="/GSE144136")
+degs_GSE144136 <- run_DE_analysis(GSE144136, save = TRUE,
+                                  output_path = paste0(gse_path, "degs/"),
+                                  prefix = "/GSE144136")
 GSE144136 <- NULL
 gc()
 ```
@@ -275,10 +274,12 @@ gc()
 
 ```{r}
 gse_path <- "data/snrnaseq/GSE144136/"
-degs_GSE144136 <- read.csv(paste0(gse_path, "degs/GSE144136_results_filtered.csv"))
+degs_GSE144136_expr <- read.csv(paste0(gse_path, "degs/GSE144136_results_filtered.csv"))
+degs_GSE144136 <- degs_GSE144136_expr$X
 
 gse_path <- "data/snrnaseq/GSE213982/"
-degs_GSE213982 <- read.csv(paste0(gse_path, "degs/GSE213982_results_filtered.csv"))
+degs_GSE213982_expr <- read.csv(paste0(gse_path, "degs/GSE213982_results_filtered.csv"))
+degs_GSE213982 <- degs_GSE213982_expr$X
 
 # Load target_intersection 
 load(file='data/target_prediction/targets_intersection.RData')
@@ -286,18 +287,7 @@ load(file='data/target_prediction/targets_intersection.RData')
 snrnaseq_intersection <- intersect(degs_GSE213982, degs_GSE144136)
 notype_intersection  <- intersect(snrnaseq_intersection, targets_intersection)
 
-sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
-stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
-all_targets <- union(sea_targets, stp_targets)
-notype_intersection_alltargets <- intersect(snrnaseq_intersection, all_targets)
-
-N = 22500 # Human genes
-K = length(targets_intersection) # Intersection of SEA and STP predicted targets
-n = length(snrnaseq_intersection) # DEGs found in the snRNAseq studies
-k = length(notype_intersection_alltargets) # Intersection of TWAS and predicted targets
-overlap_hypergeometric <- phyper(k-1, K, N - K, n, lower.tail = FALSE)
-
-save(notype_intersection, notype_intersection_alltargets, file = "data/snrnaseq/degs_intersections_notype.RData")
+save(notype_intersection, file = "data/snrnaseq/degs_intersections_notype.RData")
 ```
 
 
@@ -381,12 +371,12 @@ save(GSE144136_celltype_filtered,
 # Load target_intersection (303 targets)
 load(file='data/target_prediction/targets_intersection.RData')
 
-cell_types <- names(GSE144136_markers_filtered)
+cell_types <- names(GSE144136_celltype_filtered)
 
 intersection_celltypes <- list()
 for (ct in cell_types) {
-  intersection_celltypes[[ct]] <- intersect(rownames(GSE144136_markers_filtered[[ct]]),
-                                            rownames(GSE213982_markers_filtered[[ct]]))
+  intersection_celltypes[[ct]] <- intersect(rownames(GSE144136_celltype_filtered[[ct]]),
+                                            rownames(GSE213982_celltype_filtered[[ct]]))
 }
 
 type_intersection <- list()
@@ -395,19 +385,8 @@ for (ct in cell_types) {
                                                intersection_celltypes[[ct]])
 }
 
-sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
-stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
-all_targets <- union(sea_targets, stp_targets)
-
-type_intersection_alltargets <- list()
-for (ct in cell_types) {
-  type_intersection_alltargets[[ct]] <- intersect(all_targets,
-                                               intersection_celltypes[[ct]])
-}
-
 save(type_intersection, type_intersection_alltargets, file = "data/snrnaseq/degs_intersections_type.RData")
 ```
-
 
 
 # Analysis considering cell subtypes
@@ -677,36 +656,219 @@ metabolites_to_targets <- lapply(metabolites_to_targets, unique)
 save(targets_to_metabolites, metabolites_to_targets, file="targets_metabolites.RData")
 ```
 
-<!-- # Comparing cell types -->
+# Regulatory network analysis
 
-<!-- ### Type by type -->
+```{R}
+get_expr_matrix <- function(seurat_obj, genes) {
+  # Subset dos genes
+  mat_sub <- subset(seurat_obj, features = genes)
+  
+  seurat_obj <- NULL
+  gc()
+  
+  # Obter matriz de expressão (data slot)
+  expr_matrix <- GetAssayData(mat_sub, assay = "RNA", layer = "data")
+  
+  # Transpor e converter para matriz
+  expr_matrix <- t(as.matrix(expr_matrix))
+  
+  return(expr_matrix)
+}
+```
 
-<!-- ```{r message=FALSE, warning=FALSE, include=FALSE} -->
-<!-- gene <- "NR4A1" -->
-<!-- nr4a1_expressions <- list() -->
-<!-- cell_types <- setdiff(unique(GSE213982@meta.data$cell_type), "Mix") -->
-<!-- for (ct in cell_types) { -->
+```{R}
+library(ppcor)
+library(igraph)
+library(ggraph)
+library(ggplot2)
+library(patchwork)  
 
-<!--   gene_data <- FetchData(GSE213982, vars = c("NR4A1", "condition", "cell_type")) -->
-<!--   gene_data_filtered <- gene_data[gene_data$cell_type == ct, ] -->
+ppcor_network_analysis <- function(expr_matrix, query_genes){
+  resultados <- data.frame(
+    Gene1 = character(),
+    Gene2 = character(),
+    Estimate = numeric(),
+    P.value = numeric(),
+    stringsAsFactors = FALSE
+  )
+  
+  for (gene in query_genes) {
+    other_genes <- setdiff(query_genes, gene)
+    for (target_gene in other_genes) {
+      control_genes <- setdiff(other_genes, query_genes)
+      
+      pcor_result <- pcor.test(
+        expr_matrix[, gene],
+        expr_matrix[, target_gene],
+        expr_matrix[, control_genes]
+      )
+      
+      resultados <- rbind(resultados, data.frame(
+        Gene1 = gene,
+        Gene2 = target_gene,
+        Estimate = pcor_result$estimate,
+        P.value = pcor_result$p.value
+      ))
+    }
+  }
+  
+  # Filtrar por p-valor significativo
+  sig_results <- subset(resultados, abs(Estimate) > 0.05 & P.value < 0.001)
+  
+  # Criar grafo
+  g <- graph_from_data_frame(sig_results[, c("Gene1", "Gene2")], directed = FALSE)
+  E(g)$weight <- sig_results$Estimate
+  
+  # Calcular métricas
+  Degree <- degree(g)
+  bet <- betweenness(g)
+  close <- closeness(g)
+  eigen <- eigen_centrality(g)$vector
+  
+  # Criar data.frame dos nós com métricas e cores normalizadas
+  norm <- function(x) (x - min(x)) / (max(x) - min(x))
+  
+  nodes <- data.frame(
+    name = V(g)$name,
+    degree = Degree,
+    bet = bet,
+    close = close,
+    eigen = eigen
+  )
+  
+  # Normalizar métricas para escala de cor
+  nodes$cor_degree <- norm(nodes$degree)
+  nodes$cor_bet <- norm(nodes$bet)
+  nodes$cor_close <- norm(nodes$close)
+  nodes$cor_eigen <- norm(nodes$eigen)
+  
+  # Layout fixo para todos os plots
+  layout <- create_layout(g, layout = "fr")
+  
+  # Função para gerar plots
+  plot_grafo <- function(metric_col, title) {
+    ggraph(layout) +
+        geom_edge_link(aes(width = log1p(abs(E(g)$weight))),
+                       alpha = 0.3) +
+      geom_node_point(aes(fill = metric_col),
+                      size = 6, shape = 21, color = "gray", stroke = 1) +
+      geom_text_repel(data = layout,
+                      aes(x = x, y = y, label = name),
+                      size = 4,
+                      force = 2,              
+                      max.overlaps = Inf,
+                      box.padding = 0.5,
+                      point.padding = 0.3,
+                      segment.color = "grey50") +
+      scale_fill_gradient(low = "white", high = "darkred") +
+      labs(title = title, color = "") +
+      theme_void() +
+      theme(
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom",
+        plot.margin = margin(5, 5, 5, 5)
+      )
+  }
+  
+  # Gerar os quatro plots
+  p1 <- plot_grafo(nodes$cor_degree, "Degree")
+  p2 <- plot_grafo(nodes$cor_bet, "Betweenness")
+  p3 <- plot_grafo(nodes$cor_close, "Closeness")
+  p4 <- plot_grafo(nodes$cor_eigen, "Eigenvector")
+  
+  p_final <- (p1 | p2) / (p3 | p4) + plot_layout(guides = "collect") & theme(legend.position = "bottom")
+  
+  return(p_final)
 
-<!--   # Create violin plot -->
-<!--   nr4a1_condition_exp <- ggplot(gene_data_filtered, aes(x = condition, -->
-<!--                                                      y = NR4A1)) + -->
-<!--                           geom_boxplot(alpha = 0.7, outlier.alpha = 0.5) + -->
-<!--                           geom_jitter(width = 0.2, alpha = 0.3, size = 0.5) + -->
-<!--                           # geom_violin(alpha = 0.7, trim = FALSE) + -->
-<!--                           # geom_boxplot(width = 0.1, fill = "white", -->
-<!--                           #              alpha = 0.8) + -->
-<!--                           theme_light() + -->
-<!--                           labs(title = paste0(gene, " expression - ", ct), -->
-<!--                                x = "Condition",  -->
-<!--                                y = "NR4A1 Expression") + -->
-<!--                           theme(legend.position = "none", -->
-<!--                                 plot.title = element_text(hjust = 0.5, -->
-<!--                                                           size = 14, -->
-<!--                                                           face = "bold")) -->
+}
+```
 
-<!--   ggsave(paste0(gse_path, gene, "_", ct, ".png"), nr4a1_condition_exp) -->
-<!-- } -->
-<!-- ``` -->
+```{R}
+final_genes <- c("F3", "S1PR1", "EDNRB", "TRIL", "NR4A1", "FOS")
+
+gse_path <- "data/snrnaseq/GSE213982/"
+load(paste0(gse_path, "GSE213982_counts.RData"))
+expr_matrix_GSE213982 <- get_expr_matrix(GSE213982, final_genes)
+
+p_final_GSE213982 <- ppcor_network_analysis(expr_matrix_GSE213982, final_genes)
+
+gse_path <- "data/snrnaseq/GSE144136/"
+load(paste0(gse_path, "GSE144136_counts.RData"))
+expr_matrix_GSE144136 <- get_expr_matrix(GSE144136, final_genes)
+
+p_final_GSE144136 <- ppcor_network_analysis(expr_matrix_GSE213982, final_genes)
+```
+
+```{r}
+bhe_genes <- c("F3", "CLDN10", "GJA1", "APOE", "S1PR1", "EDNRB", 
+               "GLUL", "ATP1B2", "FGFR3", "AGT", "DDIT4")
+
+expr_matrix_GSE213982 <- get_expr_matrix(GSE213982, bhe_genes)
+GSE213982 <- NULL
+gc()
+p_bhe_GSE213982 <- ppcor_network_analysis(expr_matrix_GSE213982, bhe_genes)
+
+expr_matrix_GSE144136 <- get_expr_matrix(GSE144136, bhe_genes)
+GSE144136 <- NULL
+gc()
+p_bhe_GSE144136 <- ppcor_network_analysis(expr_matrix_GSE144136, bhe_genes)
+```
+
+# Prepare FC data for GSEA
+
+```{r}
+gse_path <- "data/snrnaseq/GSE213982/"
+load(paste0(gse_path, "GSE213982_counts.RData"))
+
+gse_path <- "data/snrnaseq/GSE144136/"
+load(paste0(gse_path, "GSE144136_counts.RData"))
+
+obj_list <- list(GSE213982 = GSE213982, GSE144136 = GSE144136)
+# n variables = 2000
+features <- SelectIntegrationFeatures(object.list = obj_list)
+# Integrate datasets
+anchors <- FindIntegrationAnchors(object.list = obj_list, 
+                                 anchor.features = features)
+merged <- IntegrateData(anchorset = anchors)
+
+GSE144136 <- NULL
+GSE213982 <- NULL
+gc()
+
+gse_path <- "data/snrnaseq/merged/"
+save(merged, file=paste0(gse_path, "merged_counts.RData"))
+```
+```{r}
+gse_path <- "data/snrnaseq/merged/"
+load(paste0(gse_path, "merged_counts.RData"))
+
+degs_merged <- run_DE_analysis(merged, save = TRUE,
+                                output_path=paste0(gse_path, "degs/"),
+                                prefix="/merged")
+
+degs_merged <- degs_merged@degs_filtered
+# Load target_intersection 
+load(file='data/target_prediction/targets_intersection.RData')
+
+merged_notype_intersection  <- intersect(degs_merged, targets_intersection)
+
+save(notype_intersection, file = "data/snrnaseq/degs_intersections_merged_notype.RData")
+```
+
+```{r}
+degs_merged_expr <- read.csv(paste0(gse_path, "degs/merged_results_filtered.csv"))
+degs_merged <- degs_merged_expr$X
+## GSEA
+
+merged_gene_fc <- degs_merged_expr$avg_log2FC
+names(merged_gene_fc) = degs_merged_expr$X
+merged_gene_fc = sort(merged_gene_fc, decreasing = TRUE)
+
+merged_gsea <- gseGO(geneList      = merged_gene_fc,
+                      OrgDb        = org.Hs.eg.db,
+                      ont          = "CC",
+                      minGSSize    = 100,
+                      maxGSSize    = 500,
+                      pvalueCutoff = 0.05,
+                      verbose      = FALSE)
+```

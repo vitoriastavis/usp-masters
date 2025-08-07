@@ -33,16 +33,17 @@ top_metabolites <- ligand_counts %>%
   pull(Ligand)
 top_metabolites_targets <- metabolites_to_targets[top_metabolites]
 
-### 
-
-targets_to_metabolites$S1PR1 <- NULL
-targets_to_metabolites$NR4A1 <- NULL
-targets_to_metabolites$EDNRB<- NULL
+###
+targets_to_metabolites_filtered <- targets_to_metabolites
+targets_to_metabolites_filtered$S1PR1 <- NULL
+targets_to_metabolites_filtered$NR4A1 <- NULL
+targets_to_metabolites_filtered$EDNRB<- NULL
 
 # Number of targets per metabolite
 ligand_table <- tibble(
-  Target = rep(names(targets_to_metabolites), lengths(targets_to_metabolites)),
-  Ligand = unlist(targets_to_metabolites)
+  Target = rep(names(targets_to_metabolites_filtered),
+               lengths(targets_to_metabolites_filtered)),
+  Ligand = unlist(targets_to_metabolites_filtered)
 )
 ligand_counts <- ligand_table %>%
   distinct(Target, Ligand) %>%

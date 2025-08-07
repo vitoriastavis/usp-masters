@@ -88,13 +88,6 @@ for (file_name in names(all_analyses)){
 }
 
 twas_targets <-  unique(unlist(all_analyses_intersect, use.names = FALSE))
-twas_targets_alltargets <-  unique(unlist(all_analyses_intersect_alltargets, use.names = FALSE))
-
-# N = 22500 # Human genes
-# K = length(targets_intersection) # Intersection of SEA and STP predicted targets
-# n = length(all_genes) # All genes found in TWAS
-# k = length(twas_targets) # Intersection of TWAS and predicted targets
-# overlap_hypergeometric <- phyper(k-1, K, N - K, n, lower.tail = FALSE)
 
 pairwise_intersections <- combn(all_unique_genes_intersect, 2, function(x) intersect(x[[1]], x[[2]]), simplify = FALSE)
 pairwise_genes <- unique(unlist(pairwise_intersections, use.names = FALSE))
