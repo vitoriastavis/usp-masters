@@ -864,11 +864,25 @@ merged_gene_fc <- degs_merged_expr$avg_log2FC
 names(merged_gene_fc) = degs_merged_expr$X
 merged_gene_fc = sort(merged_gene_fc, decreasing = TRUE)
 
-merged_gsea <- gseGO(geneList      = merged_gene_fc,
+merged_gsea_mf <- gseGO(geneList   = merged_gene_fc,
                       OrgDb        = org.Hs.eg.db,
-                      ont          = "CC",
+                      ont          = "MF",
                       minGSSize    = 100,
                       maxGSSize    = 500,
                       pvalueCutoff = 0.05,
                       verbose      = FALSE)
+
+edox <- setReadable(merged_gsea_mf, 'org.Hs.eg.db', 'ENTREZID')
+p_merged_gsea_mf <- cnetplot(edox, categorySize="geneNum", foldChange=merged_gene_fc)
+
+merged_gsea_bp <- gseGO(geneList      = merged_gene_fc,
+                      OrgDb        = org.Hs.eg.db,
+                      ont          = "BP",
+                      minGSSize    = 100,
+                      maxGSSize    = 500,
+                      pvalueCutoff = 0.05,
+                      verbose      = FALSE)
+
+edox <- setReadable(merged_gene_fc, 'org.Hs.eg.db', 'ENTREZID')
+p_merged_gsea_mf <- cnetplot(edox, categorySize="geneNum", foldChange=merged_gene_fc)
 ```
