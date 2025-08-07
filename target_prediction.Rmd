@@ -214,14 +214,20 @@ gutmgene1 <- gutmgene1 %>%
 gutmgene2 <- gutmgene2 %>% 
   mutate(
     Metabolite_Name = str_remove(Metabolite_ID, "\\([^()]*\\)$"), # Removes last set of parentheses and content
-    Metabolite_Name = str_trim(Metabolite_Name) # Trims whitespace
+    Metabolite_Name = str_trim(Metabolite_Name), # Trims whitespace
+    Target_Name = str_remove(Gene_ID, "\\([^()]*\\)$")
   )
 
+gutmgene2 <- gutmgene2 %>%
+    mutate(Target_Name = str_trim(Target_Name)) # Trims whitespace
 
 # Remove a possibly incorrect microorganism (it's actually an insect)
 gutmgene1 <- gutmgene1[!grepl("Bacteria Latreille et al. 1825", gutmgene1$Gut_Microbe_Name), ]
 # Remove not identified species
 gutmgene1 <- gutmgene1[!grepl("CEBAS", gutmgene1$Gut_Microbe_Name), ]
+
+gutmgene_targets <- unique(gutmgene2$Target_Name)
+all_targets <- union(targets_intersection, gutmgene_targets)
 ```
 
 ## Build plots of raw data
@@ -497,7 +503,7 @@ stp_targets <- stp_result$Common_name
 cat(length(stp_targets), "targets were predicted with STP\n")
 ```
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(biomaRt)
 
 biomart_mapping <- function(values, 
@@ -734,17 +740,17 @@ map_hgnc_all_methods <- function(genes, verbose = TRUE) {
 
 ```{r}
 sea_mappings <- map_hgnc_all_methods(sea_targets)
-all_sea <- unique(mappings_sea$HGNC_ID)
+all_sea <- unique(sea_mappings$HGNC_ID)
 write.csv(sea_mappings, "data/target_prediction/sea/sea_mappings.csv", row.names = FALSE)
 write.csv(all_sea, "data/target_prediction/sea/sea_targets.csv", row.names = FALSE)
 
 stp_mappings <- map_hgnc_all_methods(stp_targets)
-all_stp <- unique(mappings_stp$HGNC_ID)
+all_stp <- unique(stp_mappings$HGNC_ID)
 write.csv(stp_mappings, "data/target_prediction/stpnovo/stp_mappings.csv", row.names = FALSE)
 write.csv(all_stp, "data/target_prediction/stpnovo/stp_targets.csv", row.names = FALSE)
 
 targets_intersection <- intersect(all_sea, all_stp)
-save(targets_intersection, file='data/target_prediction/targets_intersection.RData')
+save(targets_intersection, file='data/target_prediction/targets_intersection2.RData')
 
 N = 22500
 K = length(all_sea)
