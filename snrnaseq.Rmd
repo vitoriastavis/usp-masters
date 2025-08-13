@@ -817,6 +817,7 @@ p_bhe_GSE144136 <- ppcor_network_analysis(expr_matrix_GSE144136, bhe_genes)
 # Prepare FC data for GSEA
 
 ```{r}
+library(Seurat)
 gse_path <- "data/snrnaseq/GSE213982/"
 load(paste0(gse_path, "GSE213982_counts.RData"))
 
@@ -824,20 +825,91 @@ gse_path <- "data/snrnaseq/GSE144136/"
 load(paste0(gse_path, "GSE144136_counts.RData"))
 
 obj_list <- list(GSE213982 = GSE213982, GSE144136 = GSE144136)
-# n variables = 2000
-features <- SelectIntegrationFeatures(object.list = obj_list)
-# Integrate datasets
-anchors <- FindIntegrationAnchors(object.list = obj_list, 
-                                 anchor.features = features)
-merged <- IntegrateData(anchorset = anchors)
 
-GSE144136 <- NULL
-GSE213982 <- NULL
-gc()
+obj_list_processed <- lapply(obj_list, function(obj) {
+  obj <- FindVariableFeatures(obj, nfeatures = 2000, assay = "RNA", slot = "data")
+  obj <- ScaleData(obj, features = VariableFeatures(obj))
+  obj <- RunPCA(obj, features = VariableFeatures(obj))
+  return(obj)
+})
+
+# n variables = 2000
+features <- SelectIntegrationFeatures(object.list = obj_list_processed, nfeatures = 2000)
+
+integrate_in_chunks_with_global_anchors <- function(obj_list_processed, features, chunk_size,
+                                                    out_dir = "chunks_integrados", seed = 42) {
+  if (!dir.exists(out_dir)) dir.create(out_dir)
+
+  set.seed(seed)
+
+  message("=== Passo 1: Encontrando âncoras globais ===")
+  anchors <- FindIntegrationAnchors(
+    object.list = obj_list_processed,
+    anchor.features = features,
+    reduction = "rpca"
+  )
+
+  # Todas as células (union, já que nomes diferem)
+  all_cells <- Reduce(union, lapply(obj_list_processed, colnames))
+
+  # Dividir em chunks
+  chunks <- split(all_cells, ceiling(seq_along(all_cells) / chunk_size))
+
+  message("=== Passo 2: Integrando em ", length(chunks), " chunks ===")
+  for (i in seq_along(chunks)) {
+    message("Integrando chunk ", i, " de ", length(chunks))
+
+    # Filtrar cada objeto para as células do chunk (pode ficar vazio em alguns)
+    chunk_objs <- lapply(obj_list_processed, function(obj) {
+      keep_cells <- intersect(colnames(obj), chunks[[i]])
+      if (length(keep_cells) > 0) subset(obj, cells = keep_cells) else NULL
+    })
+    chunk_objs <- Filter(Negate(is.null), chunk_objs)
+
+    if (length(chunk_objs) < 2) {
+      message("Chunk ", i, " ignorado (menos de 2 objetos com células).")
+      next
+    }
+
+    # Integrar usando âncoras globais
+    integrated_chunk <- IntegrateData(anchorset = anchors, new.data = chunk_objs)
+
+    # Salvar
+    saveRDS(integrated_chunk, file = file.path(out_dir, sprintf("chunk_%03d.rds", i)))
+
+    rm(integrated_chunk, chunk_objs)
+    gc()
+  }
+
+  invisible(TRUE)
+}
+
+merge_integrated_chunks <- function(chunks_dir) {
+  chunk_files <- list.files(chunks_dir, pattern = "\\.rds$", full.names = TRUE)
+  if (length(chunk_files) == 0) stop("Nenhum arquivo .rds encontrado em: ", chunks_dir)
+  
+  message("Lendo e juntando chunks...")
+  merged <- readRDS(chunk_files[1])
+  
+  for (i in 2:length(chunk_files)) {
+    message("Merge chunk ", i, " de ", length(chunk_files))
+    chunk <- readRDS(chunk_files[i])
+    merged <- merge(merged, chunk)
+  }
+  
+  return(merged)
+}
 
 gse_path <- "data/snrnaseq/merged/"
-save(merged, file=paste0(gse_path, "merged_counts.RData"))
+
+# Rodar integração em chunks e salvar
+integrate_in_chunks(obj_list_processed, features, chunk_size = 300, out_dir = gse_path)
+
+merged_obj <- merge_integrated_chunks(gse_path)
+
+save(merged_obj, file=paste0(gse_path, "merged_counts.RData"))
 ```
+
 ```{r}
 gse_path <- "data/snrnaseq/merged/"
 load(paste0(gse_path, "merged_counts.RData"))
