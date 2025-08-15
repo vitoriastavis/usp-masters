@@ -717,13 +717,21 @@ ppcor_network_analysis <- function(expr_matrix, query_genes){
   
   # Criar grafo
   g <- graph_from_data_frame(sig_results[, c("Gene1", "Gene2")], directed = FALSE)
-  E(g)$weight <- sig_results$Estimate
+  E(g)$weight <- abs(sig_results$Estimate)
   
   # Calcular métricas
   Degree <- degree(g)
-  bet <- betweenness(g)
-  close <- closeness(g)
-  eigen <- eigen_centrality(g)$vector
+  bet <- betweenness(g, weights = abs(E(g)$weight))
+  close <- closeness(g, weights = abs(E(g)$weight))
+  eigen <- eigen_centrality(g, weights = abs(E(g)$weight))$vector
+  
+  safe_norm <- function(x) {
+    if (max(x) == min(x)) {
+      return(rep(0.5, length(x))) 
+    } else {
+      return((x - min(x)) / (max(x) - min(x)))
+    }
+  }
   
   # Criar data.frame dos nós com métricas e cores normalizadas
   norm <- function(x) (x - min(x)) / (max(x) - min(x))
@@ -737,48 +745,48 @@ ppcor_network_analysis <- function(expr_matrix, query_genes){
   )
   
   # Normalizar métricas para escala de cor
-  nodes$cor_degree <- norm(nodes$degree)
-  nodes$cor_bet <- norm(nodes$bet)
-  nodes$cor_close <- norm(nodes$close)
-  nodes$cor_eigen <- norm(nodes$eigen)
-  
+  nodes$cor_degree <- safe_norm(nodes$degree)
+  nodes$cor_bet <- safe_norm(nodes$bet)
+  nodes$cor_close <- safe_norm(nodes$close)
+  nodes$cor_eigen <- safe_norm(nodes$eigen)
+
   # Layout fixo para todos os plots
-  layout <- create_layout(g, layout = "fr")
+  layout <- create_layout(g, layout = "kk")
   
   # Função para gerar plots
   plot_grafo <- function(metric_col, title) {
     ggraph(layout) +
-        geom_edge_link(aes(width = log1p(abs(E(g)$weight))),
-                       alpha = 0.3) +
-      geom_node_point(aes(fill = metric_col),
-                      size = 6, shape = 21, color = "gray", stroke = 1) +
-      geom_text_repel(data = layout,
-                      aes(x = x, y = y, label = name),
-                      size = 4,
-                      force = 2,              
-                      max.overlaps = Inf,
-                      box.padding = 0.5,
-                      point.padding = 0.3,
-                      segment.color = "grey50") +
-      scale_fill_gradient(low = "white", high = "darkred") +
-      labs(title = title, color = "") +
-      theme_void() +
-      theme(
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "bottom",
-        plot.margin = margin(5, 5, 5, 5)
-      )
+        geom_edge_link(aes(),  width = 0.8,
+                       alpha = 0.3, color = "gray80") +
+        geom_node_point(aes(fill = metric_col),
+                        size = 6, shape = 21, color = "gray", stroke = 1) +
+        geom_text_repel(data = layout,
+                        aes(x = x, y = y, label = name),
+                        size = 4,
+                        force = 2,              
+                        max.overlaps = Inf,
+                        box.padding = 0.5,
+                        point.padding = 0.3,
+                        segment.color = "grey50") +
+        scale_fill_gradient(low = "white", high = "darkred") +
+        labs(title = title, color = "") +
+        theme_void() +
+        theme(
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "bottom",
+          plot.margin = margin(5, 5, 5, 5)
+        )
   }
   
   # Gerar os quatro plots
-  p1 <- plot_grafo(nodes$cor_degree, "Degree")
-  p2 <- plot_grafo(nodes$cor_bet, "Betweenness")
+  p1 <- plot_grafo(nodes$cor_bet, "Betweenness")
+  p2 <- plot_grafo(nodes$cor_eigen, "Eigenvector")
   p3 <- plot_grafo(nodes$cor_close, "Closeness")
-  p4 <- plot_grafo(nodes$cor_eigen, "Eigenvector")
-  
+  p4 <- plot_grafo(nodes$cor_degree, "Degree")
+
   p_final <- (p1 | p2) / (p3 | p4) + plot_layout(guides = "collect") & theme(legend.position = "bottom")
   
-  return(p_final)
+  return(list(sig_results, p_final))
 
 }
 ```
@@ -800,18 +808,42 @@ p_final_GSE144136 <- ppcor_network_analysis(expr_matrix_GSE213982, final_genes)
 ```
 
 ```{r}
-bhe_genes <- c("F3", "CLDN10", "GJA1", "APOE", "S1PR1", "EDNRB", 
-               "GLUL", "ATP1B2", "FGFR3", "AGT", "DDIT4")
-
-expr_matrix_GSE213982 <- get_expr_matrix(GSE213982, bhe_genes)
-GSE213982 <- NULL
-gc()
-p_bhe_GSE213982 <- ppcor_network_analysis(expr_matrix_GSE213982, bhe_genes)
-
-expr_matrix_GSE144136 <- get_expr_matrix(GSE144136, bhe_genes)
+gse_path <- "data/snrnaseq/GSE144136/"
+load(paste0(gse_path, "GSE144136_counts.RData"))
+genes_f3 <- related_genes_f3$intersect
+expr_matrix_GSE144136 <- get_expr_matrix(GSE144136, genes_f3)
 GSE144136 <- NULL
 gc()
-p_bhe_GSE144136 <- ppcor_network_analysis(expr_matrix_GSE144136, bhe_genes)
+GSE144136_f3_results <- ppcor_network_analysis(expr_matrix_GSE144136, genes_f3)
+p_GSE144136_f3 <- GSE144136_f3_results[[2]]
+ggsave(paste0(gse_path, "f3_network_GSE144136.jpg"), p_GSE144136_f3)
+
+gse_path <- "data/snrnaseq/GSE213982/"
+load(paste0(gse_path, "GSE213982_counts.RData"))
+genes_f3 <- related_genes_f3$intersect
+expr_matrix_GSE213982 <- get_expr_matrix(GSE213982, genes_f3)
+GSE213982 <- NULL
+gc()
+GSE213982_f3_results <- ppcor_network_analysis(expr_matrix_GSE213982, genes_f3)
+p_GSE213982_f3 <- GSE213982_f3_results[[2]]
+ggsave(paste0(gse_path, "f3_network_GSE213982.jpg"), p_GSE213982_f3)
+```
+
+```{r}
+# pegar gse 213, pegar só Ast. Pegar expr
+gse_path <- "data/snrnaseq/GSE213982/"
+load(paste0(gse_path, "GSE213982_counts.RData"))
+seurat_Ast <- subset(GSE213982, subset = cell_type == "Ast")
+seurat_Ast <- NormalizeData(seurat_Ast,
+                              normalization.method = "LogNormalize")
+genes_fos <- related_genes_fos$GSE213982_celltype
+
+expr_matrix_GSE213982 <- get_expr_matrix(seurat_Ast, genes_fos)
+GSE213982 <- NULL
+gc()
+p_GSE213982_fos <- ppcor_network_analysis(expr_matrix_GSE213982, genes_fos)
+
+ggsave(paste0(gse_path, "fos_network_GSE144136.jpg"), p_GSE213982_fos)
 ```
 
 # Prepare FC data for GSEA
@@ -884,28 +916,84 @@ integrate_in_chunks_with_global_anchors <- function(obj_list_processed, features
   invisible(TRUE)
 }
 
-merge_integrated_chunks <- function(chunks_dir) {
+merge_chunks_to_dataset <- function(chunks_dir, block_size = 20, final_outfile = "merged_dataset.rds") {
   chunk_files <- list.files(chunks_dir, pattern = "\\.rds$", full.names = TRUE)
-  if (length(chunk_files) == 0) stop("Nenhum arquivo .rds encontrado em: ", chunks_dir)
   
-  message("Lendo e juntando chunks...")
-  merged <- readRDS(chunk_files[1])
-  
-  for (i in 2:length(chunk_files)) {
-    message("Merge chunk ", i, " de ", length(chunk_files))
-    chunk <- readRDS(chunk_files[i])
-    merged <- merge(merged, chunk)
+  if (length(chunk_files) == 0) {
+    stop("Nenhum arquivo .rds encontrado no diretório.")
   }
   
-  return(merged)
+  message("Total de chunks encontrados: ", length(chunk_files))
+  
+  # Criar pasta para blocos intermediários
+  blocks_dir <- file.path(chunks_dir, "blocks")
+  if (!dir.exists(blocks_dir)) dir.create(blocks_dir)
+  
+  # block_idx <- 1
+  # for (i in seq(1, length(chunk_files), by = block_size)) {
+  #   message("fazendo merge do bloco ", block_idx)
+  #   block_files <- chunk_files[i:min(i + block_size - 1, length(chunk_files))]
+  #   
+  #   objs <- lapply(block_files, readRDS)
+  #   merged_block <- Reduce(function(x, y) merge(x, y), objs)
+  #   
+  #   saveRDS(merged_block, file.path(blocks_dir, paste0("block_", block_idx, ".rds")))
+  #   rm(objs, merged_block)
+  #   gc()
+  #   
+  #   block_idx <- block_idx + 1
+  # }
+  
+  # Merge final dos blocos salvos
+  message("merge final dos blocos...")
+  block_files <- list.files(blocks_dir, pattern = "\\.rds$", full.names = TRUE)
+  final_objs <- lapply(block_files, readRDS)
+  final_merged <- Reduce(function(x, y) merge(x, y), final_objs)
+  
+  saveRDS(final_merged, final_outfile)
+  message("merge final salvo em: ", final_outfile)
+  
+  invisible(final_merged)
 }
 
-gse_path <- "data/snrnaseq/merged/"
+merge_chunks_incremental <- function(blocks_dir, final_outfile = "merged_dataset.rds") {
+  block_files <- list.files(blocks_dir, pattern = "\\.rds$", full.names = TRUE)
+  
+  if (length(block_files) == 0) {
+    stop("Nenhum arquivo de bloco encontrado.")
+  }
+  
+  message("Total de blocos encontrados: ", length(block_files))
+  
+  # Carrega o primeiro bloco como base
+  message("Carregando bloco 1 como base...")
+  merged_obj <- readRDS(block_files[1])
+  
+  # Faz merge um a um para economizar RAM
+  if (length(block_files) > 1) {
+    for (i in 2:length(block_files)) {
+      message("merge com bloco ", i, " de ", length(block_files))
+      
+      obj_next <- readRDS(block_files[i])
+      merged_obj <- merge(merged_obj, obj_next)
+      
+      rm(obj_next)
+      gc()
+    }
+  }
+  
+  saveRDS(merged_obj, final_outfile)
+  message("mrge final salvo em: ", final_outfile)
+  
+  invisible(merged_obj)
+}
+
+gse_path <- "data/snrnaseq/merged/integration"
 
 # Rodar integração em chunks e salvar
 integrate_in_chunks(obj_list_processed, features, chunk_size = 300, out_dir = gse_path)
 
-merged_obj <- merge_integrated_chunks(gse_path)
+merged_obj <- merge_chunks_to_dataset(gse_path)
 
 save(merged_obj, file=paste0(gse_path, "merged_counts.RData"))
 ```
@@ -928,33 +1016,39 @@ save(notype_intersection, file = "data/snrnaseq/degs_intersections_merged_notype
 ```
 
 ```{r}
-degs_merged_expr <- read.csv(paste0(gse_path, "degs/merged_results_filtered.csv"))
-degs_merged <- degs_merged_expr$X
-## GSEA
+gse_path <- "data/snrnaseq/GSE144136/"
+degs_GSE144136_expr <- read.csv(paste0(gse_path, "degs/GSE144136_results_filtered.csv"))
+degs_GSE144136 <- degs_GSE144136_expr$X
 
-merged_gene_fc <- degs_merged_expr$avg_log2FC
-names(merged_gene_fc) = degs_merged_expr$X
-merged_gene_fc = sort(merged_gene_fc, decreasing = TRUE)
+# gse_path <- "data/snrnaseq/GSE213982/"
+# degs_GSE213982_expr <- read.csv(paste0(gse_path, "degs/GSE213982_results_filtered.csv"))
+# degs_GSE213982 <- degs_GSE213982_expr$X
 
-merged_gsea_mf <- gseGO(geneList   = merged_gene_fc,
-                      OrgDb        = org.Hs.eg.db,
-                      ont          = "MF",
-                      minGSSize    = 100,
-                      maxGSSize    = 500,
-                      pvalueCutoff = 0.05,
-                      verbose      = FALSE)
+mapped_ids <- convert_ids(degs_GSE144136_expr$X)
+valid_genes <- names(mapped_ids)[!is.na(mapped_ids)]
+gene_fc <- degs_GSE144136_expr$avg_log2FC[degs_GSE144136_expr$X %in% valid_genes]
+names(gene_fc) <- unlist(mapped_ids[valid_genes])
+gene_fc <- sort(gene_fc, decreasing = TRUE)
 
-edox <- setReadable(merged_gsea_mf, 'org.Hs.eg.db', 'ENTREZID')
-p_merged_gsea_mf <- cnetplot(edox, categorySize="geneNum", foldChange=merged_gene_fc)
 
-merged_gsea_bp <- gseGO(geneList      = merged_gene_fc,
+gsea_reactome <- gsePathway(geneList = gene_fc,
+                              organism = "human",   # or "mouse"
+                              minGSSize    = 5,
+                              maxGSSize    = 1000,
+                              pvalueCutoff = 0.05,
+                              verbose = FALSE
+                            )
+edox <- setReadable(gsea_reactome, 'org.Hs.eg.db', 'ENTREZID')
+p_gsea_reactome <- cnetplot(edox, categorySize="geneNum", foldChange=gene_fc)
+
+gsea_bp <- gseGO(geneList          = gene_fc,
                       OrgDb        = org.Hs.eg.db,
                       ont          = "BP",
-                      minGSSize    = 100,
-                      maxGSSize    = 500,
+                      minGSSize    = 5,
+                      maxGSSize    = 1000,
                       pvalueCutoff = 0.05,
                       verbose      = FALSE)
 
-edox <- setReadable(merged_gene_fc, 'org.Hs.eg.db', 'ENTREZID')
-p_merged_gsea_mf <- cnetplot(edox, categorySize="geneNum", foldChange=merged_gene_fc)
+edox <- setReadable(gsea_bp, 'org.Hs.eg.db', 'ENTREZID')
+p_gsea_bp <- cnetplot(edox, categorySize="geneNum", foldChange=gene_fc)
 ```
