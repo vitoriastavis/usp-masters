@@ -31,6 +31,7 @@ ligand_counts <- ligand_table %>%
 top_metabolites <- ligand_counts %>%
   filter(Target_Count > 1) %>%
   pull(Ligand)
+
 top_metabolites_targets <- metabolites_to_targets[top_metabolites]
 
 ###
