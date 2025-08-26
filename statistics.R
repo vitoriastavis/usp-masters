@@ -37,7 +37,8 @@ top_metabolites_targets <- metabolites_to_targets[top_metabolites]
 targets_to_metabolites_filtered <- targets_to_metabolites
 targets_to_metabolites_filtered$S1PR1 <- NULL
 targets_to_metabolites_filtered$NR4A1 <- NULL
-targets_to_metabolites_filtered$EDNRB<- NULL
+targets_to_metabolites_filtered$EDNRB <- NULL
+targets_to_metabolites_filtered$TRIL <- NULL
 
 # Number of targets per metabolite
 ligand_table <- tibble(

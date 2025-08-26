@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.1/cytoscape.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        
+        .container {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            min-height: 600px;
+        }
+        
+        .network-section {
+            width: 65%;
+            min-width: 600px;
+            flex-shrink: 0;
+        }
+        
+        .centrality-section {
+            width: 35%;
+            min-width: 300px;
+            max-width: 400px;
+            max-height: 600px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+        
+        .centrality-results {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .centrality-results h3 {
+            margin-top: 0;
+            color: #000000;
+            font-size: 14px;
+        }
+        
+        .centrality-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 14px;
+        }
+        
+        .centrality-list li {
+            padding: 5px 0;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+        }
+        
+        .centrality-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .metabolite-name {
+            color: #000000;
+            font-size: 14px;
+        }
+        
+        .centrality-value {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .instructions {
+            background: #e8f4fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h2>Graph visualizer</h2>
+
+    <div class="container">
+        <div class="network-section">
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #c7c7c7;"></div>
+                    <span>Species</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #b4b3e8;"></div>
+                    <span>Gene</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #e5baff;"></div>
+                    <span>Metabolite</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #ffbadb;"></div>
+                    <span>MDD</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #b6e8b3;"></div>
+                    <span>Pathway</span>
+                </div>
+            </div>
+            
+            <div id="cy" style="width: 100%; height: 600px; border: 1px solid #ccc; min-width: 500px;"></div>
+        </div>
+        
+        <div class="centrality-section">
+            <!-- <div class="instructions">
+                <strong>Instructions:</strong><br>
+                • Click any node in the network to highlight it and its connections<br>
+                • Click the same node again to remove highlighting<br>
+                • Click metabolite names below to highlight from centrality rankings<br>
+                • Multiple nodes can be highlighted simultaneously
+            </div> -->
+            
+            <div id="centrality-results">
+                <p>Loading centrality analysis...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cy;
+        
+        function initializeCytoscape(data) {
+            console.log("=== Inicializando Cytoscape ===");
+            console.log("Dados recebidos:", data);
+            console.log("Elementos:", data.elements ? data.elements.length : 'N/A');
+            
+            cy = cytoscape({
+                container: document.getElementById('cy'),
+                elements: data.elements,
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'label': function(ele) {
+                                return ele.data('name') ? ele.data('name').replace(/"/g, '') : '';
+                            },
+                            'shape': 'round-rectangle',
+                            'background-color': function(ele) {
+                                var type = ele.data('type') ? ele.data('type').replace(/"/g, '').toLowerCase() : '';
+                                
+                                switch(type) {
+                                    case 'disorder': return '#ffbadb'; 
+                                    case 'gene': return '#b4b3e8';    
+                                    case 'pathway': return '#b6e8b3'; 
+                                    case 'species': return '#c7c7c7';
+                                    case 'metabolite': return '#e5baff';       
+                                }
+                            },
+                            'color': '#000000',
+                            'font-size': function(ele) {
+                                var type = ele.data('type') ? ele.data('type').replace(/"/g, '').trim().toLowerCase() : '';
+
+                                if (type === 'disorder' || type == 'gene') {
+                                    return 1000;
+                                } else {
+                                    return 250;
+                                }
+                            },
+                            'font-weight': 'bold',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'width': function(ele) {
+                                var text = ele.data('name') ? ele.data('name').replace(/"/g, '') : '';
+                                var type = ele.data('type') ? ele.data('type').replace(/"/g, '').toLowerCase() : '';
+                                var words = text.split(/\s+/);
+                                var maxWordLength = words.reduce((max, w) => Math.max(max, w.length), 0);
+                                if (type === 'disorder' || type == 'gene') {
+                                    return maxWordLength * 1200; 
+                                } else {
+                                    return maxWordLength * 200; 
+                                }                             
+             
+                            },
+                            'height': function(ele) {
+                                var text = ele.data('name') ? ele.data('name').replace(/"/g, '') : '';
+                                var type = ele.data('type') ? ele.data('type').replace(/"/g, '').toLowerCase() : '';
+                                var words = text.split(/\s+/).filter(w => w.length > 0); // ignore empty splits
+                                var nWords = words.length;
+
+                                if (type === 'disorder' || type == 'gene') {
+                                    return nWords * 1500;
+                                } else {
+                                    return nWords * 400;
+                                }                               
+
+                            },
+                            'text-wrap': 'wrap',
+                            'text-max-width': function(ele) {
+                                var text = ele.data('name') ? ele.data('name').replace(/"/g, '') : '';
+                                return text.length * 20;
+                            },
+                            'padding': '1px',
+                            'border-width': 0,
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'curve-style': 'bezier',
+                            'width': 20,
+                            'line-color': 'rgba(136, 136, 136, 0.4)',
+                            'target-arrow-shape': 'none',
+                            'opacity': 0.5
+                        }
+                    },
+                    // Highlighted node styles
+                    {
+                        selector: '.highlighted',
+                        style: {
+                            'border-width': 80,
+                            'border-color': '#c74040',
+                            'background-color': '#FFF'
+                        }
+                    },
+                    {
+                        selector: 'edge.highlighted',
+                        style: {
+                            'width': 80,
+                            'line-color': '#c74040',
+                            'opacity': 1,
+                            'z-index': 10
+                        }
+                    },
+                    {
+                        selector: '.connected',
+                        style: {
+                            'border-width': 5,
+                            'border-color': '#c74040',
+                            'opacity': 1
+                        }
+                    }
+                ],
+                layout: {
+                    name: 'concentric',
+                    equidistant: true,
+                    concentric: function(node) { 
+                        return node.data('layer') || 1;  
+                    },
+                    levelWidth: function(nodes) {
+                        return 1;
+                    },
+                    spacingFactor: 0.09,
+                    fit: true,
+                    padding: 20,
+                    avoidOverlap: true
+                }
+            });
+            
+            // Add click event listener to nodes for highlighting/unhighlighting
+            cy.on('tap', 'node', function(evt) {
+                const node = evt.target;
+                toggleNodeHighlight(node);
+            });
+            
+            // Calculate centrality measures after network is initialized
+            calculateCentralityMeasures();
+        }
+        
+        function toggleNodeHighlight(node) {
+            // Check if node is already highlighted
+            if (node.hasClass('highlighted')) {
+                // Remove highlighting from this node and its connections
+                const connectedEdges = node.connectedEdges();
+                const connectedNodes = connectedEdges.connectedNodes().difference(node);
+                
+                node.removeClass('highlighted');
+                connectedEdges.removeClass('highlighted');
+                connectedNodes.removeClass('connected');
+            } else {
+                // Add highlighting to this node and its connections
+                const connectedEdges = node.connectedEdges();
+                const connectedNodes = connectedEdges.connectedNodes().difference(node);
+                
+                node.addClass('highlighted');
+                connectedEdges.addClass('highlighted');
+                connectedNodes.addClass('connected');
+            }
+        }
+        
+        function calculateCentralityMeasures() {
+            console.log("Calculating centrality measures...");
+            
+            // Get all metabolite nodes
+            const metaboliteNodes = cy.nodes().filter(function(node) {
+                const type = node.data('type') ? node.data('type').replace(/"/g, '').toLowerCase() : '';
+                return type === 'metabolite';
+            });
+            
+            console.log("Found", metaboliteNodes.length, "metabolite nodes");
+            
+            if (metaboliteNodes.length === 0) {
+                document.getElementById('centrality-results').innerHTML = 
+                    '<div class="centrality-results"><h3>No Metabolites Found</h3><p>No metabolite nodes were found in the network.</p></div>';
+                return;
+            }
+            
+            // Calculate degree centrality
+            const degreeCentrality = [];
+            metaboliteNodes.forEach(function(node) {
+                const degree = node.degree();
+                const name = node.data('name') ? node.data('name').replace(/"/g, '') : node.id();
+                degreeCentrality.push({ name: name, value: degree, id: node.id() });
+            });
+            
+            // Calculate betweenness centrality
+            const betweenness = cy.elements().betweennessCentrality();
+            const betweennessCentrality = [];
+            metaboliteNodes.forEach(function(node) {
+                const betweennessValue = betweenness.betweenness('#' + node.id()) || 0;
+                const name = node.data('name') ? node.data('name').replace(/"/g, '') : node.id();
+                betweennessCentrality.push({ name: name, value: betweennessValue, id: node.id() });
+            });            
+
+            // Calculate PageRank centrality
+            const closeness = cy.elements().closenessCentralityNormalized();
+            const closenessCentrality = [];
+            metaboliteNodes.forEach(function(node) {
+                const closenessValue = closeness.closeness('#' + node.id()) || 0;
+                const name = node.data('name') ? node.data('name').replace(/"/g, '') : node.id();
+                closenessCentrality.push({ name: name, value: closenessValue, id: node.id() });
+            });
+            
+            // Sort and get top 5 for each measure
+            const topDegree = degreeCentrality.sort((a, b) => b.value - a.value).slice(0, 5);
+            const topBetweenness = betweennessCentrality.sort((a, b) => b.value - a.value).slice(0, 5);
+            const topCloseness = closenessCentrality.sort((a, b) => b.value - a.value).slice(0, 5);
+            
+            // Display results
+            displayCentralityResults(topDegree, topBetweenness, topCloseness);
+        }
+        
+        function displayCentralityResults(degree, betweenness, closeness) {
+            const resultsDiv = document.getElementById('centrality-results');
+            
+            let html = '';
+            
+            // Degree Centrality
+            html += '<div class="centrality-results">';
+            html += '<h3>Top 5 - Degree Centrality</h3>';
+            html += '<ul class="centrality-list">';
+            degree.forEach((item, index) => {
+                html += `<li><span class="metabolite-name">${index + 1}. ${item.name}</span><span class="centrality-value">${item.value}</span></li>`;
+            });
+            html += '</ul></div>';
+            
+            // Betweenness Centrality
+            html += '<div class="centrality-results">';
+            html += '<h3>Top 5 - Betweenness Centrality</h3>';
+            html += '<ul class="centrality-list">';
+            betweenness.forEach((item, index) => {
+                html += `<li><span class="metabolite-name">${index + 1}. ${item.name}</span><span class="centrality-value">${item.value.toFixed(6)}</span></li>`;
+            });
+            html += '</ul></div>';
+            
+            // Closeness Centrality
+            html += '<div class="centrality-results">';
+            html += '<h3>Top 5 - Closeness Centrality</h3>';
+            html += '<ul class="centrality-list">';
+            closeness.forEach((item, index) => {
+                html += `<li><span class="metabolite-name">${index + 1}. ${item.name}</span><span class="centrality-value">${item.value.toFixed(6)}</span></li>`;
+            });
+            html += '</ul></div>';
+            
+            resultsDiv.innerHTML = html;
+            
+            // Add click functionality to highlight nodes from centrality lists
+            addHighlightFunctionality();
+        }
+        
+        function addHighlightFunctionality() {
+            const metaboliteItems = document.querySelectorAll('.metabolite-name');
+            
+            metaboliteItems.forEach(item => {
+                item.style.cursor = 'pointer';
+                item.addEventListener('click', function() {
+                    const metaboliteName = this.textContent.replace(/^\d+\.\s*/, ''); // Remove number prefix
+                    highlightMetaboliteFromList(metaboliteName);
+                });
+            });
+        }
+        
+        function highlightMetaboliteFromList(metaboliteName) {
+            // Find the metabolite node
+            const targetNode = cy.nodes().filter(function(node) {
+                const nodeName = node.data('name') ? node.data('name').replace(/"/g, '') : node.id();
+                return nodeName === metaboliteName;
+            });
+            
+            if (targetNode.length > 0) {
+                // Use the same toggle function as direct node clicks
+                toggleNodeHighlight(targetNode[0]);
+            }
+        }
+
+        // Load the file and initialize
+        fetch("cytoscape_edges.cyjs")
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Arquivo não encontrado.');
+                }
+                return res.json();
+            })
+            .then(data => {
+                initializeCytoscape(data);
+            })
+            .catch(error => {
+                console.error('Error loading data:', error);
+                document.getElementById('centrality-results').innerHTML = 
+                    '<div class="centrality-results"><h3>Error</h3><p>Could not load network data. Make sure cytoscape_edges.cyjs file exists.</p></div>';
+            });
+    </script>
+</body>
+</html>
