@@ -226,8 +226,9 @@ gutmgene1 <- gutmgene1[!grepl("Bacteria Latreille et al. 1825", gutmgene1$Gut_Mi
 # Remove not identified species
 gutmgene1 <- gutmgene1[!grepl("CEBAS", gutmgene1$Gut_Microbe_Name), ]
 
-gutmgene_targets <- unique(gutmgene2$Target_Name)
-all_targets <- union(targets_intersection, gutmgene_targets)
+# Save data with microbe info
+save(gutmgene1, file = "data/gutmgene/gutmgene1_beforemerging.RData")  
+
 ```
 
 ## Build plots of raw data
@@ -314,7 +315,6 @@ if (nrow(gutmgene %>% filter(is.na(Metabolite_CID))) != 0) {
   cat("No Metabolite_CID NAs found\n")
 }
 
-cat("N metabolites before removing duplicates:", length(gutmgene$Metabolite_CID), "\n")
 # Remove duplicates
 gutmgene_nodup <- gutmgene_clean %>%
   distinct(Metabolite_CID, .keep_all=TRUE)
@@ -324,7 +324,7 @@ cat("N metabolites without duplicates:", length(gutmgene_nodup$Metabolite_CID), 
 save(gutmgene_nodup, file = "data/gutmgene/gutmgene_nodup.RData")  # No duplicated metabolites
 save(gutmgene_na, file = "data/gutmgene/gutmgene_na.RData")        # Only the NAs
 
-
+# nao lembro aqui
 df <- data.frame(name=gutmgene_nodup$Metabolite_Name,
                          CID=gutmgene_nodup$Metabolite_CID,
                          stringsAsFactors=FALSE)
