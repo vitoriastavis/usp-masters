@@ -1,0 +1,23 @@
+open data/structure.cif
+surf
+hide solvent
+color protein #bdbdde
+color ligand magenta
+
+
+color name color_pocket1 #5c93e6
+
+name pocket1_atoms @@serial_number=852 @@serial_number=1517 @@serial_number=867 @@serial_number=1210 @@serial_number=1127 @@serial_number=863 @@serial_number=866 @@serial_number=1013
+color pocket1_atoms color_pocket1
+
+
+
+open data/structure.cif_points.pdb.gz
+color by bfactor #2 palette lime:red  range 0,0.7
+
+
+set bgcolor #242455
+transparency 35
+graphics silhouettes true
+lighting full
+view
