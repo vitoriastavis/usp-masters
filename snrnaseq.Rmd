@@ -133,7 +133,7 @@ run_DE_analysis <- function(seurat_obj,
   
   # Filter by p value and FC
   degs_filtered <- degs %>%
-    filter(p_val_adj < pval_adj_threshold, abs(avg_log2FC) > logfc_threshold)
+    filter(p_val_adj <= pval_adj_threshold, abs(avg_log2FC) >= logfc_threshold)
 
   # Save if requested
   if (save){
@@ -192,7 +192,7 @@ save(GSE213982, file=paste0(gse_path, "GSE213982_counts.RData"))
 gse_path <- "data/snrnaseq/GSE213982/"
 load(paste0(gse_path, "GSE213982_counts.RData"))
 
-degs_GSE213982 <- run_DE_analysis(GSE213982, save = TRUE,
+degs_GSE213982 <- run_DE_analysis(GSE213982, save = F,
                                   output_path = paste0(gse_path, "degs/"),
                                   prefix = "GSE213982")
 GSE213982 <- NULL
@@ -262,7 +262,7 @@ save(GSE144136, file=paste0(gse_path, "GSE144136_counts.RData"))
 gse_path <- "data/snrnaseq/GSE144136/"
 load(paste0(gse_path, "GSE144136_counts.RData"))
 
-degs_GSE144136 <- run_DE_analysis(GSE144136, save = TRUE,
+degs_GSE144136 <- run_DE_analysis(GSE144136, save = F,
                                   output_path = paste0(gse_path, "degs/"),
                                   prefix = "/GSE144136")
 GSE144136 <- NULL
@@ -322,7 +322,7 @@ for (ct in cell_types) {
   markers <- GSE213982_celltype[[ct]]
   
   markers_filtered <- markers %>%
-    filter(p_val_adj < 0.05, abs(avg_log2FC) >= 1)
+    filter(p_val_adj <= 0.05, abs(avg_log2FC) >= 1)
 
   GSE213982_celltype_filtered[[ct]] <- markers_filtered
 }
@@ -601,7 +601,7 @@ gse_path <- "data/snrnaseq/GSE213982/"
 extract_top_variable_genes(gse_path,use_variable_features = F,
                            chunk_size = 1000, n_cores = 4)
 combined_GSE213982 <- combine_varPart_results(gse_path)
-threshold <- quantile(combined_GSE213982$condition, 0.85)
+threshold <- quantile(combined_GSE213982$condition, 0.99)
 top_genes_GSE213982 <- subset(combined_GSE213982, condition >= threshold)
 save(combined_GSE213982, top_genes_GSE213982, file = paste0(gse_path, "variance/variance_GSE213982.RData"))
 
@@ -609,7 +609,7 @@ gse_path <- "data/snrnaseq/GSE144136/"
 extract_top_variable_genes(gse_path, use_variable_features = F,
                            chunk_size = 1000, n_cores = 4)
 combined_GSE144136 <- combine_varPart_results(gse_path)
-threshold <- quantile(combined_GSE144136$condition, 0.85)
+threshold <- quantile(combined_GSE144136$condition, 0.95)
 top_genes_GSE144136 <- subset(combined_GSE144136, condition >= threshold)
 save(combined_GSE144136, top_genes_GSE144136, file = paste0(gse_path, "variance/variance_GSE144136.RData"))
 

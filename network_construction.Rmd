@@ -19,7 +19,7 @@ edges_target_met <- data.frame(
                             Source = rep(names(targets_to_metabolites), lengths(targets_to_metabolites)),
                             Target = unlist(targets_to_metabolites))
 
-# Save information about node type
+# Save information about gene and metabolite nodes
 nodes <- data.frame(
   name = unique(c(edges_target_met$Source, edges_target_met$Target)),
   type = c(rep("Gene", length(unique(edges_target_met$Source))), rep("Metabolite", length(unique(edges_target_met$Target))))
@@ -27,25 +27,6 @@ nodes <- data.frame(
 
 relevant_metabolites <- unique(edges_target_met$Target)
 ```
-
-
-
-<!-- ## Conections between genes and GO -->
-
-<!-- ```{R} -->
-<!-- f3_go <- read.table("data/network/f3_go.tsv", sep = "\t", header = TRUE) -->
-<!-- fos_go <- read.table("data/network/fos_go.tsv", sep = "\t", header = TRUE) -->
-<!-- genes_go <- rbind(f3_go, fos_go) -->
-
-<!-- edges_target_go <- data.frame( -->
-<!--                             Source = genes_go$SYMBOL, -->
-<!--                             Target = genes_go$GO.NAME) -->
-
-<!-- nodes <- rbind(nodes, data.frame( -->
-<!--                         name = unique(edges_target_go$Target), -->
-<!--                         type = rep("Pathway", length(unique(edges_target_go$Target))) -->
-<!--               )) -->
-<!-- ``` -->
 
 ## Conections between species and metabolites
 
@@ -60,16 +41,10 @@ edges_species_met <- data.frame(
                             Source = gutmgene_species$Microbe_Species,
                             Target = gutmgene_species$Metabolite_Name)
 
-
-# Remove bacteria that do not produce the relevant metabolites
+# Remove bacteria that do not produce the relevant metabolites 
 edges_species_met <- edges_species_met[edges_species_met$Target %in% relevant_metabolites, ]
 
-# Save information about node type
-nodes <- rbind(nodes, data.frame(
-                          name = unique(c(edges_species_met$Source, edges_species_met$Target)),
-                          type = c(rep("Species", length(unique(edges_species_met$Source))), rep("Metabolite", length(unique(edges_species_met$Target))))
-                        ))
-
+# Get bacteria that produce the metabolites
 relevant_species <- unique(edges_species_met$Source)
 ```
 
@@ -78,6 +53,8 @@ relevant_species <- unique(edges_species_met$Source)
 ```{R}
 # install.packages("jsonlite")
 library(jsonlite)
+library(stringr)
+library(dplyr)
 
 disbiome.JSON <- fromJSON("data/network/species_mdd.json")
 disbiome_df <- as.data.frame(disbiome.JSON)
@@ -90,7 +67,10 @@ edges_species_mdd <- data.frame(
 
 edges_species_mdd <- edges_species_mdd[edges_species_mdd$Source %in% relevant_species, ]
 
-# Save information about node type
+# Remove bacteria that are not associated with MDD
+edges_species_met <- edges_species_met[edges_species_met$Source %in% unique(edges_species_mdd$Source), ]
+
+# Save information about species and MDD nodes
 nodes <- rbind(nodes, data.frame(
                           name = edges_species_mdd$Source,
                           type = rep("Species", length(unique(edges_species_mdd$Source)))
@@ -134,6 +114,7 @@ edges_target_kegg <- data.frame(
 
 edges_target_kegg <- edges_target_kegg[edges_target_kegg$Target %in% relevant_pathways, ]
 
+# Save information about KEGG pathway nodes
 nodes <- rbind(nodes, data.frame(
                         name = unique(edges_target_kegg$Target),
                         type = rep("Pathway", length(unique(edges_target_kegg$Target)))
@@ -152,6 +133,7 @@ edges_target_react <- data.frame(
 
 edges_target_react <- edges_target_react[edges_target_react$Target %in% relevant_pathways, ]
 
+# Save information about reactome pathway nodes
 nodes <- rbind(nodes, data.frame(
                         name = unique(edges_target_react$Target),
                         type = rep("Pathway", length(unique(edges_target_react$Target)))
@@ -159,6 +141,7 @@ nodes <- rbind(nodes, data.frame(
 ```
 
 ```{R}
+# Save information about MDD pathway nodes
 edges_mdd_pathways = edges_mdd_pathways[edges_mdd_pathways$Target %in% c(edges_target_react$Target, edges_target_kegg$Target), ]
 nodes <- rbind(nodes, data.frame(
                         name = unique(edges_mdd_pathways$Target),
@@ -174,27 +157,28 @@ edges <- rbind(edges_target_met, edges_target_react, edges_target_kegg, edges_md
 edges_clean <- distinct(edges)
 
 nodes_clean <- distinct(nodes)
+order <- c("Species", "Pathway", "Metabolite", "Gene", "Disorder")
 nodes_clean <- nodes_clean %>%
-  mutate(layer = as.numeric(factor(type, levels = unique(type))))
+  mutate(layer = as.numeric(factor(type, levels = order)))
 
 # Save
 write.table(edges_clean, file = "data/network/cytoscape_edges.tsv", row.names=FALSE, sep="\t")
 write.table(nodes_clean, file = "data/network/cytoscape_nodes.tsv", row.names=FALSE, sep="\t")
-
 ```
+
 ```{R}
 library(jsonlite)
 library(dplyr)
 
 nodes_list <- nodes_clean %>%
-  mutate(id = name) %>%         # id precisa ser único
+  mutate(id = name) %>%         
   rowwise() %>%
   mutate(data = list(list(
     id = id,
     type = type,
     layer = layer
   ))) %>%
-  pull(data)                     # extrai como lista
+  pull(data)                     
 
 # 2. Criar lista de arestas no formato Cytoscape.js
 edges_list <- edges_clean %>%
@@ -212,5 +196,5 @@ cyjs_list <- list(elements = list(
 ))
 
 # 4. Salvar como JSON
-write_json(cyjs_list, "data/network/network.cyjs", pretty = TRUE, auto_unbox = TRUE)
+write_json(cyjs_list, "data/network/network_elements.cyjs", pretty = TRUE, auto_unbox = TRUE)
 ```

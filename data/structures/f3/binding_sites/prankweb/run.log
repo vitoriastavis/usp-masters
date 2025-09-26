@@ -1,0 +1,47 @@
+[INFO] Console - predicting pockets for proteins from dataset [structure.cif]
+[INFO] PredictPocketsRoutine - outdir: db/v4-conservation-hmm/BO/1BOY/working/p2rank-output
+[INFO] Model - Loading model from directory (v3 format): /opt/p2rank/models/conservation_hmm
+[INFO] FeatureSetup - enabledFeatures: [chem, volsite, protrusion, bfactor, conservation, atom_table]
+[INFO] Dataset - processing dataset [structure.cif] using 1 thread
+[INFO] Dataset - 
+------------------------------------------------------------------------------------------------------------------------
+processing [structure.cif] (1/1)
+------------------------------------------------------------------------------------------------------------------------
+
+[INFO] Console - processing [structure.cif] (1/1)
+[INFO] Protein - loading protein [/opt/administration/db/v4-conservation-hmm/BO/1BOY/working/p2rank-input/structure.cif]
+[INFO] PdbUtils - loading file [db/v4-conservation-hmm/BO/1BOY/working/p2rank-input/structure.cif]
+[INFO] Struct - all groups in chain A: 211
+[INFO] Struct - all groups in chain A: 211
+[INFO] Struct - 211 groups in chain A
+[INFO] Protein - structure atoms: 1794
+[INFO] Protein - protein   atoms: 1655
+[INFO] Protein - ignoring ligands
+[INFO] FeatureSetup - enabledFeatures: [chem, volsite, protrusion, bfactor, conservation, atom_table]
+[INFO] Protein - SAS points: 3753
+[INFO] Protein - exposed protein atoms: 1148 of 1655
+[INFO] Protein - Loading conservation scores for [structure.cif]
+[INFO] ConservationLoader - Conservation lookup dirs: [db/v4-conservation-hmm/BO/1BOY/working/p2rank-input]
+[INFO] ConservationLoader - Looking for conservation in dirs [db/v4-conservation-hmm/BO/1BOY/working/p2rank-input]
+[INFO] ConservationLoader - Conservation file for [baseName:structure chain:A] found: [/opt/administration/db/v4-conservation-hmm/BO/1BOY/working/p2rank-input/structureA.hom]
+[INFO] ConservationScore - Loading conservation scores from file [db/v4-conservation-hmm/BO/1BOY/working/p2rank-input/structureA.hom]
+[INFO] ConservationScore - Matching pdb chain A (n=211) with score chain (n=211)
+[INFO] ConservationScore - chain A in structure: TTNTVAAYNLTWKSTNFKTILEWEPKPVNQVYTVQISTKSGDWKSKCFYTTDTECDLTDEIVKDVKQTYLARVFSYPAGNVESTGSAGEPLYENSPEFTPYLETNLGQPTIQSFEQVGTKVNVTVEDERTLVRRNNTFLSLRDVFGKDLIYTLYYWKSSSSGKKTAKTNTNEFLIDVDKGENYCFSVQAVIPSRTVNRKSTDSPVECMGQE
+[INFO] ConservationScore - chain A in scoreFile: TTNTVAAYNLTWKSTNFKTILEWEPKPVNQVYTVQISTKSGDWKSKCFYTTDTECDLTDEIVKDVKQTYLARVFSYPAGNVESTGSAGEPLYENSPEFTPYLETNLGQPTIQSFEQVGTKVNVTVEDERTLVRRNNTFLSLRDVFGKDLIYTLYYWKSSSSGKKTAKTNTNEFLIDVDKGENYCFSVQAVIPSRTVNRKSTDSPVECMGQE
+[INFO] ConservationScore - masked chain A in structure: TTNTVAAYNLTWKSTNFKTILEWEPKPVNQVYTVQISTKSGDWKSKCFYTTDTECDLTDEIVKDVKQTYLARVFSYPAGNVESTGSAGEPLYENSPEFTPYLETNLGQPTIQSFEQVGTKVNVTVEDERTLVRRNNTFLSLRDVFGKDLIYTLYYWKSSSSGKKTAKTNTNEFLIDVDKGENYCFSVQAVIPSRTVNRKSTDSPVECMGQE
+[INFO] ConservationScore - masked chain A in scoreFile: TTNTVAAYNLTWKSTNFKTILEWEPKPVNQVYTVQISTKSGDWKSKCFYTTDTECDLTDEIVKDVKQTYLARVFSYPAGNVESTGSAGEPLYENSPEFTPYLETNLGQPTIQSFEQVGTKVNVTVEDERTLVRRNNTFLSLRDVFGKDLIYTLYYWKSSSSGKKTAKTNTNEFLIDVDKGENYCFSVQAVIPSRTVNRKSTDSPVECMGQE
+[INFO] ConservationScore - Exact score sequence match
+[INFO] SLinkClusterer - clustering [4] elements
+[INFO] SLinkClusterer - clusters: [id:0( 1 ), id:3( 3 )]
+[INFO] SLinkClusterer - clusters together: 4 / 4
+[INFO] PocketPredictor - PREDICTING POCKETS.... ====================================
+[INFO] PocketPredictor - SAS POINTS: 3753
+[INFO] PocketPredictor - LIGANDABLE POINTS: 4
+[INFO] PocketPredictor - CLUSTERS: 2
+[INFO] PocketPredictor - FILTERED CLUSTERS: 1
+[INFO] PocketPredictor - pocket 1 -  surf_atoms:   8   points:   3   score:    0.9
+[INFO] PredictionVisualizer - copying [/opt/administration/db/v4-conservation-hmm/BO/1BOY/working/p2rank-input/structure.cif] to [db/v4-conservation-hmm/BO/1BOY/working/p2rank-output/visualizations/data/structure.cif]
+[INFO] Console - predicting pockets finished in 0 hours 0 minutes 2.829 seconds
+[INFO] Console - results saved to directory [/opt/administration/db/v4-conservation-hmm/BO/1BOY/working/p2rank-output]
+[INFO] Console - 
+[INFO] Console - Finished successfully in 0 hours 0 minutes 4.098 seconds.
