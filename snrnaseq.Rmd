@@ -285,16 +285,11 @@ degs_GSE213982 <- degs_GSE213982_expr$X
 load(file='data/target_prediction/targets_intersection.RData')
 
 snrnaseq_intersection <- intersect(degs_GSE213982, degs_GSE144136)
-notype_intersection  <- intersect(snrnaseq_intersection, targets_intersection)
-
-stp_chembl_degs <- intersect(stp_chembl, snrnaseq_intersection)
-sea_chembl_degs <- intersect(sea_chembl, snrnaseq_intersection)
-
-save(notype_intersection, file = "data/snrnaseq/degs_intersections_notype.RData")
+# notype_intersection  <- intersect(snrnaseq_intersection, targets_intersection)
+# save(notype_intersection, file = "data/snrnaseq/degs_intersections_notype.RData")
 ```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-
 # Pasta com os CSVs das interseções
 csv_folder <- "data/target_prediction/intersections"
 
@@ -325,8 +320,6 @@ for (file in csv_files) {
 }
 
 all_union <- unique((c(all_sea, all_stp, all_chembl, all_xfp, all_ecfp)))
-
-# Agora intersection_results tem cada combinação como chave e o resultado como vetor
 ```
 
 
@@ -411,7 +404,6 @@ save(GSE144136_celltype_filtered,
 load(file='data/target_prediction/targets_intersection.RData')
 
 cell_types <- names(GSE144136_celltype_filtered)
-
 intersection_celltypes <- list()
 for (ct in cell_types) {
   intersection_celltypes[[ct]] <- intersect(rownames(GSE144136_celltype_filtered[[ct]]),
@@ -427,6 +419,44 @@ for (ct in cell_types) {
 save(type_intersection, type_intersection_alltargets, file = "data/snrnaseq/degs_intersections_type.RData")
 ```
 
+## for the new prediction methods
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Pasta com os CSVs das interseções
+csv_folder <- "data/target_prediction/intersections"
+
+cell_types <- names(GSE144136_celltype_filtered)
+intersection_celltypes <- list()
+for (ct in cell_types) {
+  intersection_celltypes[[ct]] <- intersect(rownames(GSE144136_celltype_filtered[[ct]]),
+                                            rownames(GSE213982_celltype_filtered[[ct]]))
+}
+
+# Lista para guardar os resultados
+intersection_results <- list()
+
+# Ler cada arquivo CSV e fazer interseção com snrnaseq_intersection
+csv_files <- list.files(csv_folder, pattern = "\\.csv$", full.names = TRUE)
+
+for (file in csv_files){
+  for (ct in celltypes){
+    
+    # Prediction methods + cell type degs
+    key <- paste0(basename(file), "_", ct)
+    
+    # Read prediction methods intersections
+    df <- read.csv(file, stringsAsFactors = FALSE)
+    vec <- as.character(df$target)
+    
+    # Intersect with DEGs
+    inter <- intersect(vec, intersection_celltypes[ct])
+    
+    intersection_results[[key]] <- inter
+  }
+}
+
+all_union <- unique((c(all_sea, all_stp, all_chembl, all_xfp, all_ecfp)))
+```
 
 # Analysis considering cell subtypes
 
