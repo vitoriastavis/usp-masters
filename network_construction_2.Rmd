@@ -34,7 +34,7 @@ relevant_metabolites <- unique(edges_target_met$Target)
 
 ```{R}
 library(stringr)
-load("~/Documents/vitoria/usp-masters/data/gutmgene/gutmgene1_beforemerging.RData")
+load("data/gutmgene/gutmgene1_beforemerging.RData")
 
 gutmgene_species <- gutmgene1 %>%
                         mutate(Microbe_Species = word(Gut_Microbe_Name, 1))
@@ -106,13 +106,11 @@ relevant_pathways <- unique(edges_mdd_pathways$Target)
 ## Conections between genes and KEGG
 
 ```{R}
-s1pr1_kegg <- read.table("data/network/s1pr1_ednrb/s1pr1_kegg.txt", sep = "\t", header = F)
-ednrb_kegg <- read.table("data/network/s1pr1_ednrb/ednrb_kegg.txt", sep = "\t", header = F)
-genes_kegg <- rbind(s1pr1_kegg, ednrb_kegg)
+fgfr3_kegg <- read.table("data/network/fgfr3/fgfr3_kegg.txt", sep = "\t", header = F)
 
 edges_target_kegg <- data.frame(
-                            Source = c(rep("S1PR1", nrow(s1pr1_kegg)), rep("EDNRB", nrow(ednrb_kegg))),
-                            Target = c(s1pr1_kegg$V2, ednrb_kegg$V2))
+                            Source = rep("FGFR3", nrow(fgfr3_kegg)),
+                            Target = fgfr3_kegg$V2)
 
 edges_target_kegg <- edges_target_kegg[edges_target_kegg$Target %in% relevant_pathways, ]
 
@@ -126,12 +124,11 @@ nodes <- rbind(nodes, data.frame(
 ## Conections between genes and Reactome
 
 ```{R}
-s1pr1_react <- read.csv("data/network/s1pr1_ednrb/s1pr1_react.csv", sep = ",", header = TRUE)
-ednrb_react <- read.csv("data/network/s1pr1_ednrb/ednrb_react.csv", sep = ",", header = TRUE)
+fgfr3_react <- read.csv("data/network/fgfr3/fgfr3_react.csv", sep = ",", header = TRUE)
 
 edges_target_react <- data.frame(
-                            Source = c(rep("S1PR1", nrow(s1pr1_react)), rep("EDNRB", nrow(ednrb_react))),
-                            Target = c(s1pr1_react$Pathway.name, ednrb_react$Pathway.name))
+                            Source = rep("FGFR3", nrow(fgfr3_react)),
+                            Target = fgfr3_react$Pathway.name)
 
 edges_target_react <- edges_target_react[edges_target_react$Target %in% relevant_pathways, ]
 
@@ -164,8 +161,8 @@ nodes_clean <- nodes_clean %>%
   mutate(layer = as.numeric(factor(type, levels = order)))
 
 # Save
-write.table(edges_clean, file = "data/network/s1pr1_ednrb/cytoscape_edges.tsv", row.names=FALSE, sep="\t")
-write.table(nodes_clean, file = "data/network/s1pr1_ednrb/cytoscape_nodes.tsv", row.names=FALSE, sep="\t")
+write.table(edges_clean, file = "data/network/fgfr3/cytoscape_edges.tsv", row.names=FALSE, sep="\t")
+write.table(nodes_clean, file = "data/network/fgfr3/cytoscape_nodes.tsv", row.names=FALSE, sep="\t")
 ```
 
 <!-- ```{R} -->
