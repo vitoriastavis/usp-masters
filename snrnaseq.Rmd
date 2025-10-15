@@ -287,7 +287,46 @@ load(file='data/target_prediction/targets_intersection.RData')
 snrnaseq_intersection <- intersect(degs_GSE213982, degs_GSE144136)
 notype_intersection  <- intersect(snrnaseq_intersection, targets_intersection)
 
+stp_chembl_degs <- intersect(stp_chembl, snrnaseq_intersection)
+sea_chembl_degs <- intersect(sea_chembl, snrnaseq_intersection)
+
 save(notype_intersection, file = "data/snrnaseq/degs_intersections_notype.RData")
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+
+# Pasta com os CSVs das interseções
+csv_folder <- "data/target_prediction/intersections"
+
+# Lista fixa para intersectar
+snrnaseq_intersection <- as.character(snrnaseq_intersection)  # garantir vetor de caracteres
+
+# Lista para guardar os resultados
+intersection_results <- list()
+
+# Ler cada arquivo CSV e fazer interseção com snrnaseq_intersection
+csv_files <- list.files(csv_folder, pattern = "\\.csv$", full.names = TRUE)
+
+for (file in csv_files) {
+  # Nome base do arquivo para usar como key
+  key <- gsub("^intersection_|\\.csv$", "", basename(file))
+  
+  # Ler CSV
+  df <- read.csv(file, stringsAsFactors = FALSE)
+  
+  # Garantir vetor
+  vec <- as.character(df$target)
+  
+  # Interseção com snrnaseq_intersection
+  inter <- intersect(vec, snrnaseq_intersection)
+  
+  # Salvar na lista
+  intersection_results[[key]] <- inter
+}
+
+all_union <- unique((c(all_sea, all_stp, all_chembl, all_xfp, all_ecfp)))
+
+# Agora intersection_results tem cada combinação como chave e o resultado como vetor
 ```
 
 
@@ -627,33 +666,37 @@ save(variance_intersection, file = "data/snrnaseq/variance_intersection.RData")
 ```{r}
 source("get_metabolites.R")  
 
-load("data/all_analyses_comparison.RData")
-rnaseq_genes <- gene_analyses_df[!gene_analyses_df$analyses %in% c("twas", "variance"), ]$gene
+# df3?
+met_name_cid <- read.csv("data/gutmgene/name_cid.csv") 
 
-targets_to_metabolites <- get_metabolites(rnaseq_genes)
+# load("data/all_analyses_comparison.RData")
+# rnaseq_genes <- gene_analyses_df[!gene_analyses_df$analyses %in% c("twas", "variance"), ]$gene
+rnaseq_genes <- c("FGFR3")
 
-for (target in names(targets_to_metabolites)){
-  mets <- targets_to_metabolites[[target]]
+targets_to_metabolites_fgfr3 <- get_metabolites(rnaseq_genes)
+
+for (target in names(targets_to_metabolites_fgfr3)){
+  mets <- targets_to_metabolites_fgfr3[[target]]
   new_mets <- c()
   for (met in mets){
-    name <- df3[df3$CID == met,]$name
+    # cid -> name
+    name <- met_name_cid[met_name_cid$CID == met,]$name
     new_mets <- c(new_mets, name)
   }
-  targets_to_metabolites[[target]] <- new_mets
+  targets_to_metabolites_fgfr3[[target]] <- new_mets
 }
 
-metabolites_to_targets <- list()
-
-for (gene in names(targets_to_metabolites)) {
-  print(gene)
-  for (metabolite in targets_to_metabolites[[gene]]) {
-    print(metabolite)
-    metabolites_to_targets[[metabolite]] <- c(metabolites_to_targets[[metabolite]], gene)
+metabolites_to_targets_fgfr3 <- list()
+for (gene in names(targets_to_metabolites_fgfr3)) {
+  # print(gene)
+  for (metabolite in targets_to_metabolites_fgfr3[[gene]]) {
+    # print(metabolite)
+    metabolites_to_targets_fgfr3[[metabolite]] <- c(metabolites_to_targets_fgfr3[[metabolite]], gene)
   }
 }
-metabolites_to_targets <- lapply(metabolites_to_targets, unique)
+metabolites_to_targets_fgfr3 <- lapply(metabolites_to_targets_fgfr3, unique)
 
-save(targets_to_metabolites, metabolites_to_targets, file="targets_metabolites.RData")
+save(metabolites_to_targets_fgfr3, metabolites_to_targets_fgfr3, file="data/targets_metabolites_fgfr3.RData")
 ```
 
 # Regulatory network analysis

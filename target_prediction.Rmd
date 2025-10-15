@@ -503,6 +503,122 @@ stp_targets <- stp_result$Common_name
 cat(length(stp_targets), "targets were predicted with STP\n")
 ```
 
+## CHEMBL
+
+
+```{r}
+library(readr)
+library(dplyr)
+# Directory with STP .csv files
+directory <- "data/target_prediction/chemblpred"
+
+# Get the files
+files <- list.files(path = directory, pattern = "\\.csv$", full.names = TRUE)
+
+# Iterate over the files creating dataframes
+dataframes <- list()
+for (file_path in files) {
+  df <- read_csv(file_path, show_col_types = FALSE)
+  if(dim(df)[1] > 0){
+    dataframes[[length(dataframes) + 1]] <- df
+  } else {
+    cat("No targets predicted:", basename(file_path), "\n")
+  }
+}
+
+# Concatenate dataframes
+chembl_results <- bind_rows(dataframes)
+
+# Write final dataframe
+write_csv(chembl_results, file.path(directory, "chemblpred_results.csv"))
+```
+
+```{r}
+# Read STP dataframe
+chembl_result <- read.csv("data/target_prediction/chemblpred/chemblpred_results.csv")
+
+# Rename columns to avoid special character issues
+colnames(chembl_result) <- c("Target_ID", "Probability")
+
+# Remove targets with probability = 0
+chembl_result <- chembl_result[chembl_result$Probability != 0, ]
+
+# Filter the rows with higher probability
+chembl_result <- chembl_result[order(chembl_result$Target_ID, chembl_result$Probability), ]
+
+# Get unique targets
+chembl_result <- chembl_result %>% distinct(Target_ID, .keep_all=TRUE)
+chembl_targets <- chembl_result$Target_ID  
+
+write.table(chembl_targets, file = "data/target_prediction/chemblpred/chembl_chembls.txt",col.names=FALSE, row.names = FALSE,quote = FALSE)
+
+cat(length(chembl_targets), "targets were predicted with ChemblPred\n")
+```
+
+## PPB2
+
+```{r}
+library(readr)
+library(dplyr)
+# Directory with STP .csv files
+directory <- "data/target_prediction/ppb2"
+
+# Get the files
+files <- list.files(path = directory, pattern = "\\.txt$", full.names = TRUE)
+
+# Iterate over the files creating dataframes
+dataframes_xfp <- list()
+dataframes_ecfp <- list()
+for (file_path in files) {
+  df <- read_tsv(file_path, show_col_types = FALSE)
+  if(dim(df)[1] > 0){
+    
+    if (grepl("Xfp", file_path)){
+      dataframes_xfp[[length(dataframes_xfp) + 1]] <- as.data.frame(df)
+    } else if (grepl("ECfp4", file_path)){
+      dataframes_ecfp[[length(dataframes_ecfp) + 1]] <- as.data.frame(df)
+    }
+  } else {
+    cat("No targets predicted:", basename(file_path), "\n")
+  }
+}
+
+# Concatenate dataframes
+xfp_results <- bind_rows(dataframes_xfp)
+ecfp_results <- bind_rows(dataframes_ecfp)
+
+# Write final dataframe
+write_csv(xfp_results, file.path(directory, "xfp_results.csv"))
+write_csv(ecfp_results, file.path(directory, "ecfp_results.csv"))
+```
+
+```{r}
+library(dplyr)
+# Read STP dataframe
+xfp_result <- read.csv("data/target_prediction/ppb2/xfp_results.csv")
+ecfp_result <- read.csv("data/target_prediction/ppb2/ecfp_results.csv")
+
+# Rename columns to avoid special character issues
+colnames(xfp_result) <- c("Rank", "Target_ID", "Common.name")
+colnames(ecfp_result) <- c("Rank", "Target_ID", "Common.name")
+
+# Get unique targets
+xfp_result <- xfp_result %>% distinct(Target_ID, .keep_all=TRUE)
+ecfp_result <- ecfp_result %>% distinct(Target_ID, .keep_all=TRUE)
+
+xfp_targets <- xfp_result$Target_ID 
+ecfp_targets <- ecfp_result$Target_ID  
+
+write.table(xfp_targets, file = "data/target_prediction/ppb2/xfp_chembls.txt", col.names=FALSE, row.names = FALSE, quote = FALSE)
+write.table(ecfp_targets, file = "data/target_prediction/ppb2/ecfp_chembls.txt",col.names=FALSE, row.names = FALSE,quote = FALSE)
+
+cat(length(xfp_targets), "targets were predicted with PPB2 - Xfp\n",
+    length(ecfp_targets), "targets were predicted with PPB2 - ECfp4\n")
+```
+
+
+## Mapping
+
 ```{r message=FALSE, warning=FALSE}
 library(biomaRt)
 
@@ -521,9 +637,15 @@ biomart_mapping <- function(values,
     filters_to_try <- c(
       "hgnc_symbol", "chembl", "embl", "entrezgene_id", 
       "ensembl_gene_id", "external_gene_name", 
-      "hgnc_id", "hpa_id", "hpa_accession"
+      "hgnc_id", "hpa_id", "hpa_accession", "uniprot_gn_id"
     )
+  } else{
+    valid_filters <- listFilters(mart)$name
+    filters_to_try <- intersect(filters_to_try, valid_filters)
   }
+  
+  # filters_to_try <- c("uniprot_gn_id")
+  # cat(filters_to_try)
 
   # Lista para guardar os resultados como data frames
   all_results <- list()
@@ -563,46 +685,62 @@ biomart_mapping <- function(values,
 library(data.table)
 
 hgnc_dataset_mapping <- function(targets) {
-  # Baixar o dataset da HGNC
+  library(data.table)
+
+  # Baixar dataset HGNC
   hgnc_url <- "https://storage.googleapis.com/public-download-files/hgnc/tsv/tsv/hgnc_complete_set.txt"
   hgnc_file <- tempfile(fileext = ".tsv")
   download.file(hgnc_url, hgnc_file, quiet = TRUE)
-  hgnc <- fread(hgnc_file, sep = "\t", quote = "")
 
-  # Função para expandir aliases
+  # Ler com segurança
+  hgnc <- fread(hgnc_file, sep = "\t", quote = "", fill = TRUE)
+
+  # Garantir colunas necessárias
+  cols <- c("symbol", "alias_symbol", "prev_symbol", "name")
+  for (col in cols) if (!col %in% names(hgnc)) hgnc[[col]] <- NA_character_
+
+  # Função de expansão
   expand_aliases <- function(symbols, main_symbol) {
-    if (is.na(symbols)) return(NULL)
+    if (is.na(symbols) || symbols == "") return(NULL)
     expanded <- unlist(strsplit(symbols, "\\|"))
-    data.table(input = toupper(expanded), hgnc_symbol = main_symbol)
+    if (length(expanded) == 0) return(NULL)
+    data.table(input = toupper(trimws(expanded)), hgnc_symbol = main_symbol)
   }
-  
-    # Expandir alias_symbol
-  alias_dt <- rbindlist(mapply(expand_aliases, hgnc$alias_symbol, hgnc$symbol, SIMPLIFY = FALSE), fill = TRUE)
 
-  # Expandir prev_symbol
-  prev_dt <- rbindlist(mapply(expand_aliases, hgnc$prev_symbol, hgnc$symbol, SIMPLIFY = FALSE), fill = TRUE)
+  safe_rbind <- function(lst) {
+    lst <- lst[!sapply(lst, is.null)]
+    if (length(lst) == 0) return(data.table(input = character(), hgnc_symbol = character()))
+    rbindlist(lst, fill = TRUE)
+  }
 
-  # Expandir symbol e name diretamente
+  # Expandir
+  alias_dt  <- safe_rbind(mapply(expand_aliases, hgnc$alias_symbol, hgnc$symbol, SIMPLIFY = FALSE))
+  prev_dt   <- safe_rbind(mapply(expand_aliases, hgnc$prev_symbol, hgnc$symbol, SIMPLIFY = FALSE))
   symbol_dt <- data.table(input = toupper(hgnc$symbol), hgnc_symbol = hgnc$symbol)
   name_dt   <- data.table(input = toupper(hgnc$name), hgnc_symbol = hgnc$symbol)
 
-   # Unir tudo
-  expanded <- rbindlist(list(symbol_dt, alias_dt, prev_dt, name_dt), use.names = TRUE, fill = TRUE)
+  expanded <- rbindlist(list(symbol_dt, alias_dt, prev_dt, name_dt), fill = TRUE, use.names = TRUE)
   expanded <- unique(expanded[!is.na(input)])
 
-  # Normalizar e mapear
+  # Mapeamento
   targets_clean <- toupper(trimws(targets))
   mapped <- expanded[input %in% targets_clean]
 
-  # Criar a saída final com o input original
-  result <- data.table(Query = mapped$input, HGNC_ID = mapped$hgnc_symbol)
-  return(as.data.frame(unique(result)))
+  if (nrow(mapped) == 0) {
+    warning("Nenhum mapeamento encontrado para os targets fornecidos.")
+    return(data.frame(Query = targets, HGNC_ID = NA_character_))
+  }
+
+  result <- unique(data.table(Query = mapped$input, HGNC_ID = mapped$hgnc_symbol))
+  return(as.data.frame(result))
 }
-  
+
 #######################################################################
   
 library(hgnc)
 library(lubridate)
+library(data.table)
+
 
 hgnc_mapping <- function(values, 
                          from_cols = NULL, 
@@ -615,9 +753,14 @@ hgnc_mapping <- function(values,
   }
 
   if (is.null(from_cols)) {
-    from_cols <- c("hgnc_id", "symbol", "name", "entrez_id", "ensembl_gene_id",
-    "vega_id", "ucsc_id")
+    from_cols <- c("hgnc_id", "symbol", "name", "entrez_id", "ensembl_gene_id", "uniprot_ids")
   }
+  
+  hgnc_long <- setDT(hgnc_dataset)[
+    , .(uniprot_id = unlist(strsplit(as.character(uniprot_ids), ",\\s*"))),  # force to character
+    by = .(hgnc_id, symbol)
+  ]
+
 
   # Safe wrapper
   safe_crosswalk <- function(value, from, to, hgnc_dataset) {
@@ -634,15 +777,21 @@ hgnc_mapping <- function(values,
 
   for (col in from_cols) {
     if (verbose) cat("Tentando coluna:", col, "\n")
-
-    for (val in values) {
-      res <- safe_crosswalk(val, from = col, to = to, hgnc_dataset = hgnc_dataset)
-      if (!is.null(res) && length(res) > 0) {
-        results_list[[length(results_list) + 1]] <- data.frame(
-          Query = val,
-          HGNC_ID = res,
-          stringsAsFactors = FALSE
-        )
+    
+    if (col == "uniprot_ids") {
+      matched <- hgnc_long[uniprot_id %in% values, .(Query = uniprot_id, HGNC_ID = symbol)]
+      if (nrow(matched) > 0) results_list[[length(results_list) + 1]] <- matched
+    } else {
+      for (val in values) {
+        res <- tryCatch({
+          crosswalk(value = val, from = col, to = to, hgnc_dataset = hgnc_dataset)
+        }, error = function(e) {
+          if (verbose) message("Erro na coluna ", col, ": ", e$message)
+          NULL
+        })
+        if (!is.null(res) && length(res) > 0) {
+          results_list[[length(results_list) + 1]] <- data.frame(Query = val, HGNC_ID = res)
+        }
       }
     }
   }
@@ -658,30 +807,90 @@ hgnc_mapping <- function(values,
 
 #######################################################################
 library(mygene)
-mygene_mapping <- function(targets) {
-  res <- queryMany(targets, scopes = "symbol,alias,name",
-                   fields = "symbol", species = "human")
 
+mygene_mapping <- function(targets, filters=NULL) {
+  
+  if(is.null(filters)){
+    filters <- "uniprot,entrezgene,symbol,name,hgnc,refseq,alias"
+  }
+  
+  res <- suppressWarnings(
+    queryMany(targets, scopes = filters,
+              fields = "symbol", species = "human", 
+              return.as = "records")
+  )
+  
+  if (is.null(res) || length(res) == 0) {
+    return(data.frame(Query = character(0), HGNC_ID = character(0), 
+                     stringsAsFactors = FALSE))
+  }
+  
+  # Helper for NULL coalescing
+  `%||%` <- function(x, y) if (is.null(x)) y else x
+  
+  # Process the records format
+  queries <- sapply(res, function(x) x$query %||% NA)
+  symbols <- sapply(res, function(x) x$symbol %||% NA)
+  
   df <- data.frame(
-    Query = res$query,
-    HGNC_ID = res$symbol,
+    Query = queries,
+    HGNC_ID = symbols,
     stringsAsFactors = FALSE
   )
-
-  df <- df[!is.na(df$HGNC_ID), ]
+  
+  # Remove rows without valid HGNC mapping (including notfound entries)
+  df <- df[!is.na(df$HGNC_ID) & df$HGNC_ID != "" & !is.na(df$Query), , drop = FALSE]
+  rownames(df) <- NULL
+  
   return(df)
 }
 
 #######################################################################
 
-map_hgnc_all_methods <- function(genes, verbose = TRUE) {
+library(httr)
+library(jsonlite)
+library(biomaRt)
+library(UniProt.ws)
+
+
+chembl_database_mapping <- function(query_targets){
+  res <- GET("https://www.ebi.ac.uk/chembl/api/data/target.json?target_type=SINGLE%20PROTEIN&limit=1000")
+  data <- fromJSON(httr::content(res, "text"), flatten = TRUE)$targets
+  
+  df_uniprot <- data.frame(
+    chembl_id = data$target_chembl_id,
+    # pref_name = data$pref_name,
+    uniprot = sapply(data$target_components, function(x) {
+      if (is.data.frame(x) && "accession" %in% names(x)) {
+        x$accession[1]   # take the first accession if multiple
+      } else {
+        NA
+      }
+    })
+  )
+
+  df_uniprot <- df_uniprot[df_uniprot$chembl_id %in% query_targets, ]
+
+  df_biomart <- biomart_mapping(df_uniprot$uniprot, filters_to_try = c("uniprot_gn_id"))
+  
+  df_mygene <- mygene_mapping(df_uniprot$uniprot, "uniprot")
+  
+  final_df <- rbind(df_biomart, df_mygene)
+
+  return(final_df)
+}
+
+
+#######################################################################
+
+map_hgnc_all_methods <- function(targets, verbose = TRUE) {
   # Run each mapping function with proper error handling
   results <- list()
 
   # Biomart
   if (verbose) cat("Running biomart_mapping...\n")
   res_biomart <- tryCatch({
-    df <- biomart_mapping(genes)
+    df <- biomart_mapping(targets)
     df$Source <- "biomart"
     df
   }, error = function(e) {
@@ -691,9 +900,9 @@ map_hgnc_all_methods <- function(genes, verbose = TRUE) {
   if (!is.null(res_biomart)) results[["biomart"]] <- res_biomart
 
   # HGNC downloaded dataset
-  if (verbose) cat("Running hgnc_dataset_mapping...\n")
+  if (verbose) cat("\nRunning hgnc_dataset_mapping...\n")
   res_dataset <- tryCatch({
-    df <- hgnc_dataset_mapping(genes)
+    df <- hgnc_dataset_mapping(targets)
     df$Source <- "hgnc_dataset"
     df
   }, error = function(e) {
@@ -703,61 +912,134 @@ map_hgnc_all_methods <- function(genes, verbose = TRUE) {
   if (!is.null(res_dataset)) results[["hgnc_dataset"]] <- res_dataset
 
   # hgnc package
-  if (verbose) cat("Running hgnc_mapping...\n")
+  if (verbose) cat("\nRunning hgnc_package\n")
   res_hgnc <- tryCatch({
-    df <- hgnc_mapping(genes)
+    df <- hgnc_mapping(targets)
     df$Source <- "hgnc_package"
     df
   }, error = function(e) {
-    warning("hgnc_mapping failed: ", e$message)
+    warning("hgnc_package failed: ", e$message)
     NULL
   })
   if (!is.null(res_hgnc)) results[["hgnc_package"]] <- res_hgnc
 
   # mygene
-  if (verbose) cat("Running mygene_mapping...\n")
+  if (verbose) cat("\nRunning mygene_mapping...\n")
   res_mygene <- tryCatch({
-    df <- mygene_mapping(genes)
-    df$Source <- "mygene"
-    df
+    df <- mygene_mapping(targets)
+    
+    # Only add Source if df is not empty
+    if (nrow(df) > 0) {
+      # Remove rownames before adding column
+      rownames(df) <- NULL
+      df$Source <- "mygene"
+      df
+    } else {
+      message("No HGNC IDs found for these targets")
+      NULL
+    }
   }, error = function(e) {
     warning("mygene_mapping failed: ", e$message)
     NULL
   })
   if (!is.null(res_mygene)) results[["mygene"]] <- res_mygene
-
+  
+  # # CHEMBL
+  # if (verbose) cat("\nRunning chembl_database_mapping\n")
+  # res_chembl <- tryCatch({
+  #   df <- as.data.frame(chembl_database_mapping(targets))
+  #   if (nrow(df) > 0) {
+  #     # Remove rownames before adding column
+  #     rownames(df) <- NULL
+  #     df$Source <- "chembl_database"
+  #     df
+  #   }
+  # }, error = function(e) {
+  #   warning("chembl_database_mapping failed: ", e$message)
+  #   NULL
+  # })
+  # 
+  # print(head(res_chembl))
+  
+  # if (!is.null(res_chembl)) results[["chembl_database"]] <- res_chembl
+  if (verbose) cat("\nCombining results...\n")
+  
   # Combine all results
   if (length(results) == 0) {
     return(data.frame(Query = character(0), HGNC_ID = character(0), Source = character(0)))
   }
 
   combined <- do.call(rbind, results)
-
   return(combined)
 }
-
 ```
 
 ```{r}
+library(readr)
 sea_mappings <- map_hgnc_all_methods(sea_targets)
 all_sea <- unique(sea_mappings$HGNC_ID)
+all_sea <- all_sea[!is.na(all_sea)]
 write.csv(sea_mappings, "data/target_prediction/sea/sea_mappings.csv", row.names = FALSE)
 write.csv(all_sea, "data/target_prediction/sea/sea_targets.csv", row.names = FALSE)
 
 stp_mappings <- map_hgnc_all_methods(stp_targets)
 all_stp <- unique(stp_mappings$HGNC_ID)
+all_stp <- all_stp[!is.na(all_stp)]
 write.csv(stp_mappings, "data/target_prediction/stpnovo/stp_mappings.csv", row.names = FALSE)
 write.csv(all_stp, "data/target_prediction/stpnovo/stp_targets.csv", row.names = FALSE)
 
-targets_intersection <- intersect(all_sea, all_stp)
-save(targets_intersection, file='data/target_prediction/targets_intersection2.RData')
+chembl_uniprot_ids <- read.table("data/target_prediction/chemblpred/uniprot_ids_chembl.txt",
+                                 header = FALSE,
+                                 stringsAsFactors = FALSE) 
+chembl_mappings <- map_hgnc_all_methods(chembl_targets)
+chembl_mappings_python <- map_hgnc_all_methods(chembl_uniprot_ids$V1)
+all_chembl <- unique(chembl_mappings$HGNC_ID)
+all_chembl <- all_chembl[!is.na(all_chembl)]
+write.csv(chembl_mappings, "data/target_prediction/chemblpred/chemblpred_mappings.csv", row.names = FALSE)
+write.csv(all_chembl, "data/target_prediction/chemblpred/chemblpred_targets.csv", row.names = FALSE)
 
-N = 22500
-K = length(all_sea)
-n = length(all_stp)
-k = length(targets_intersection)
-  
-overlap_hypergeometric <- phyper(k-1, K, N - K, n, lower.tail = FALSE)
+ppb_uniprot_ids <- read.table("data/target_prediction/ppb2/ppb2_chembls.txt", row.names = NULL, col.names = NULL)
+ppb_mappings <- map_hgnc_all_methods(ppb_uniprot_ids)
+all_xfp <- unique(xfp_mappings$HGNC_ID)
+all_xfp <- all_xfp[!is.na(all_xfp)]
+write.csv(xfp_mappings, "data/target_prediction/ppb2/xfp_mappings.csv", row.names = FALSE)
+write.csv(all_xfp, "data/target_prediction/ppb2/xfp_targets.csv", row.names = FALSE)
+
+ecfp_mappings <- map_hgnc_all_methods(ecfp_targets)
+all_ecfp <- unique(ecfp_mappings$HGNC_ID)
+all_ecfp <- all_ecfp[!is.na(all_ecfp)]
+write.csv(xfp_mappings, "data/target_prediction/ppb2/ecfp_mappings.csv", row.names = FALSE)
+write.csv(all_ecfp, "data/target_prediction/ppb2/ecfp_targets.csv", row.names = FALSE)
+
+all_sea <- read_csv("data/target_prediction/sea/sea_targets.csv", show_col_types = FALSE)$x
+all_stp <- read_csv("data/target_prediction/stp/stp_targets.csv", show_col_types = FALSE)$Targets
+all_xfp <- read_csv("data/target_prediction/ppb2/xfp_targets.csv", show_col_types = FALSE)$x
+all_chembl <- read_csv("data/target_prediction/chemblpred/chemblpred_targets.csv", show_col_types = FALSE)$x
+all_ecfp <- read_csv("data/target_prediction/ppb2/ecfp_targets.csv", show_col_types = FALSE)$x
+
+# Coloque todos os vetores em uma lista nomeada
+sets <- list(
+  chembl = all_chembl,
+  stp = all_stp,
+  sea = all_sea,
+  xfp = all_xfp,
+  ecfp = all_ecfp
+)
+
+# Criar diretório de saída
+dir.create("data/target_prediction/intersections", recursive = TRUE, showWarnings = FALSE)
+
+# Gerar todas as combinações de 2 até o máximo
+for (k in 2:length(sets)) {
+  combos <- combn(names(sets), k, simplify = FALSE)
+  for (combo in combos) {
+    inter <- Reduce(intersect, sets[combo])
+    df <- data.frame(target = inter)
+    fname <- paste0("data/target_prediction/intersections/intersection_", 
+                    paste(combo, collapse = "_"), ".csv")
+    write.csv(df, fname, row.names = FALSE)
+  }
+}
 ```
 
 # Getting the predicted metabolites/ligands for the intersection genes
@@ -796,4 +1078,108 @@ teng_i <- read_excel("data/teng3.xlsx", col_names = TRUE)$Common
 
 sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
 stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
+```
+
+# Getting metabolites for STP and chemblpred
+
+```{r}
+library(readxl)
+get_targets_to_metabolites <- function(folder_path) {
+  # Listar todos os arquivos CSV
+  csv_files <- list.files(path = folder_path, 
+                          pattern = "^(cid|nocid).*\\.csv$", 
+                          full.names = TRUE)
+  
+  # Lista final
+  targets_to_metabolites <- list()
+  
+  for (file_path in csv_files) {
+    file_name <- basename(file_path)
+    
+    # Extrair ID do metabólito (cidXXX ou nome completo se for nocid)
+    if (grepl("^cid", file_name)) {
+      metabolite_id <- sub("cid(.*)\\.csv", "\\1", file_name)
+    } else if (grepl("^nocid", file_name)) {
+      metabolite_id <- sub("\\.csv$", "", file_name)
+    }
+    
+    # Ignorar arquivos vazios
+    if (file.info(file_path)$size == 0) next
+    
+    # Ler dados
+    data <- read.csv(file_path, stringsAsFactors = FALSE)
+    
+    if (nrow(data) == 0 || !"Common.name" %in% names(data)) next
+    
+    for (target in data[["Common.name"]]) {
+      if (!is.character(target) || is.na(target) || target == "") next
+      
+      if (is.null(targets_to_metabolites[[target]])) {
+        targets_to_metabolites[[target]] <- c()
+      }
+      
+      targets_to_metabolites[[target]] <- c(targets_to_metabolites[[target]], metabolite_id)
+    }
+  }
+  
+  return(targets_to_metabolites)
+}
+
+target_metabolites_stp <- get_targets_to_metabolites("data/target_prediction/stpnovo")
+save(target_metabolites_stp, file="data/target_prediction/stpnovo/target_metabolites_stp.RData")
+```
+
+```{r}
+library(readxl)
+get_targets_to_metabolites <- function(folder_path) {
+  # Listar todos os arquivos CSV
+  csv_files <- list.files(path = folder_path, 
+                          pattern = "^(cid|nocid).*\\.csv$", 
+                          full.names = TRUE)
+  
+  # Lista final
+  targets_to_metabolites <- list()
+  
+  for (file_path in csv_files) {
+    file_name <- basename(file_path)
+    
+    # Extrair ID do metabólito (cidXXX ou nome completo se for nocid)
+    if (grepl("^cid", file_name)) {
+      metabolite_id <- sub("cid(.*)\\.csv", "\\1", file_name)
+    } else if (grepl("^nocid", file_name)) {
+      metabolite_id <- sub("\\.csv$", "", file_name)
+    }
+    
+    # print(metabolite_id)
+    
+    # Ignorar arquivos vazios
+    if (file.info(file_path)$size == 0) next
+    
+    # Ler dados
+    prediction_data <- read.csv(file_path, stringsAsFactors = FALSE)
+    # print(paste0(file_path, " ", nrow(prediction_data)))
+    # print(colnames(prediction_data))
+    
+    if (nrow(prediction_data) == 0 || !"Target.ChEMBL.ID" %in% names(prediction_data)){
+      print(paste0(file_name, "  sem data"))
+      next
+    } 
+    
+    for (target in prediction_data[["Target.ChEMBL.ID"]]) {
+      # print(target)
+      if (!is.character(target) || is.na(target) || target == "") next
+      
+      if (is.null(targets_to_metabolites[[target]])) {
+        targets_to_metabolites[[target]] <- c()
+      }
+      
+      targets_to_metabolites[[target]] <- c(targets_to_metabolites[[target]], metabolite_id)
+    }
+  }
+  
+  return(targets_to_metabolites)
+}
+
+target_metabolites_chemblpred <- get_targets_to_metabolites("data/target_prediction/chemblpred")
+save(target_metabolites_chemblpred, file="data/target_prediction/chemblpred/target_metabolites_chemblpred.RData")
 ```
