@@ -228,7 +228,6 @@ gutmgene1 <- gutmgene1[!grepl("CEBAS", gutmgene1$Gut_Microbe_Name), ]
 
 # Save data with microbe info
 save(gutmgene1, file = "data/gutmgene/gutmgene1_beforemerging.RData")  
-
 ```
 
 ## Build plots of raw data
@@ -510,7 +509,7 @@ cat(length(stp_targets), "targets were predicted with STP\n")
 library(readr)
 library(dplyr)
 # Directory with STP .csv files
-directory <- "data/target_prediction/chemblpred"
+directory <- "data/target_prediction/multitask"
 
 # Get the files
 files <- list.files(path = directory, pattern = "\\.csv$", full.names = TRUE)
@@ -527,32 +526,32 @@ for (file_path in files) {
 }
 
 # Concatenate dataframes
-chembl_results <- bind_rows(dataframes)
+multitask_results <- bind_rows(dataframes)
 
 # Write final dataframe
-write_csv(chembl_results, file.path(directory, "chemblpred_results.csv"))
+write_csv(multitask_results, file.path(directory, "multitask_results.csv"))
 ```
 
 ```{r}
 # Read STP dataframe
-chembl_result <- read.csv("data/target_prediction/chemblpred/chemblpred_results.csv")
+multitask_result <- read.csv("data/target_prediction/chemblpred/chemblpred_results.csv")
 
 # Rename columns to avoid special character issues
-colnames(chembl_result) <- c("Target_ID", "Probability")
+colnames(multitask_result) <- c("Target_ID", "Probability")
 
 # Remove targets with probability = 0
-chembl_result <- chembl_result[chembl_result$Probability != 0, ]
+multitask_result <- multitask_result[multitask_result$Probability != 0, ]
 
 # Filter the rows with higher probability
-chembl_result <- chembl_result[order(chembl_result$Target_ID, chembl_result$Probability), ]
+multitask_result <- multitask_result[order(multitask_result$Target_ID, multitask_result$Probability), ]
 
 # Get unique targets
-chembl_result <- chembl_result %>% distinct(Target_ID, .keep_all=TRUE)
-chembl_targets <- chembl_result$Target_ID  
+multitask_result <- multitask_result %>% distinct(Target_ID, .keep_all=TRUE)
+multitask_targets <- multitask_result$Target_ID  
 
-write.table(chembl_targets, file = "data/target_prediction/chemblpred/chembl_chembls.txt",col.names=FALSE, row.names = FALSE,quote = FALSE)
+# write.table(multitask_targets, file = "data/target_prediction/multitask/multitask_chembl_ids.txt",col.names=FALSE, row.names = FALSE,quote = FALSE)
 
-cat(length(chembl_targets), "targets were predicted with ChemblPred\n")
+cat(length(multitask_targets), "targets were predicted with Multitask CHEMBL\n")
 ```
 
 ## PPB2
@@ -567,55 +566,41 @@ directory <- "data/target_prediction/ppb2"
 files <- list.files(path = directory, pattern = "\\.txt$", full.names = TRUE)
 
 # Iterate over the files creating dataframes
-dataframes_xfp <- list()
-dataframes_ecfp <- list()
+dataframes_ppb <- list()
 for (file_path in files) {
   df <- read_tsv(file_path, show_col_types = FALSE)
   if(dim(df)[1] > 0){
-    
-    if (grepl("Xfp", file_path)){
-      dataframes_xfp[[length(dataframes_xfp) + 1]] <- as.data.frame(df)
-    } else if (grepl("ECfp4", file_path)){
-      dataframes_ecfp[[length(dataframes_ecfp) + 1]] <- as.data.frame(df)
-    }
+    dataframes_ppb[[length(dataframes_ppb) + 1]] <- as.data.frame(df)
   } else {
     cat("No targets predicted:", basename(file_path), "\n")
   }
 }
 
 # Concatenate dataframes
-xfp_results <- bind_rows(dataframes_xfp)
-ecfp_results <- bind_rows(dataframes_ecfp)
+ppb_results <- bind_rows(dataframes_ppb)
 
 # Write final dataframe
-write_csv(xfp_results, file.path(directory, "xfp_results.csv"))
-write_csv(ecfp_results, file.path(directory, "ecfp_results.csv"))
+write_csv(ppb_results, file.path(directory, "ppb_results.csv"))
 ```
 
 ```{r}
 library(dplyr)
 # Read STP dataframe
-xfp_result <- read.csv("data/target_prediction/ppb2/xfp_results.csv")
-ecfp_result <- read.csv("data/target_prediction/ppb2/ecfp_results.csv")
+ppb_result <- read.csv("data/target_prediction/ppb2/ppb_results.csv")
 
 # Rename columns to avoid special character issues
-colnames(xfp_result) <- c("Rank", "Target_ID", "Common.name")
-colnames(ecfp_result) <- c("Rank", "Target_ID", "Common.name")
+colnames(ppb_result) <- c("Rank", "Target_ID", "Common.name")
 
 # Get unique targets
-xfp_result <- xfp_result %>% distinct(Target_ID, .keep_all=TRUE)
-ecfp_result <- ecfp_result %>% distinct(Target_ID, .keep_all=TRUE)
+ppb_result <- ppb_result %>% distinct(Target_ID, .keep_all=TRUE)
 
-xfp_targets <- xfp_result$Target_ID 
-ecfp_targets <- ecfp_result$Target_ID  
+ppb_targets <- ppb_result$Target_ID 
 
-write.table(xfp_targets, file = "data/target_prediction/ppb2/xfp_chembls.txt", col.names=FALSE, row.names = FALSE, quote = FALSE)
-write.table(ecfp_targets, file = "data/target_prediction/ppb2/ecfp_chembls.txt",col.names=FALSE, row.names = FALSE,quote = FALSE)
+write.table(ppb_targets, file = "data/target_prediction/ppb2/ppb_chembl_ids.txt",
+            col.names = FALSE, row.names = FALSE, quote = FALSE)
 
-cat(length(xfp_targets), "targets were predicted with PPB2 - Xfp\n",
-    length(ecfp_targets), "targets were predicted with PPB2 - ECfp4\n")
+cat(length(ppb_targets), "targets were predicted with PPB2")
 ```
-
 
 ## Mapping
 
@@ -741,7 +726,6 @@ library(hgnc)
 library(lubridate)
 library(data.table)
 
-
 hgnc_mapping <- function(values, 
                          from_cols = NULL, 
                          to = "symbol", 
@@ -852,11 +836,11 @@ library(jsonlite)
 library(biomaRt)
 library(UniProt.ws)
 
-
+# 
 chembl_database_mapping <- function(query_targets){
   res <- GET("https://www.ebi.ac.uk/chembl/api/data/target.json?target_type=SINGLE%20PROTEIN&limit=1000")
   data <- fromJSON(httr::content(res, "text"), flatten = TRUE)$targets
-  
+
   df_uniprot <- data.frame(
     chembl_id = data$target_chembl_id,
     # pref_name = data$pref_name,
@@ -872,9 +856,9 @@ chembl_database_mapping <- function(query_targets){
   df_uniprot <- df_uniprot[df_uniprot$chembl_id %in% query_targets, ]
 
   df_biomart <- biomart_mapping(df_uniprot$uniprot, filters_to_try = c("uniprot_gn_id"))
-  
+
   df_mygene <- mygene_mapping(df_uniprot$uniprot, "uniprot")
-  
+
   final_df <- rbind(df_biomart, df_mygene)
 
   return(final_df)
@@ -914,7 +898,7 @@ map_hgnc_all_methods <- function(targets, verbose = TRUE) {
   # hgnc package
   if (verbose) cat("\nRunning hgnc_package\n")
   res_hgnc <- tryCatch({
-    df <- hgnc_mapping(targets)
+    df <- hgnc_mapping(targets, verbose)
     df$Source <- "hgnc_package"
     df
   }, error = function(e) {
@@ -958,10 +942,8 @@ map_hgnc_all_methods <- function(targets, verbose = TRUE) {
   #   warning("chembl_database_mapping failed: ", e$message)
   #   NULL
   # })
-  # 
-  # print(head(res_chembl))
-  
   # if (!is.null(res_chembl)) results[["chembl_database"]] <- res_chembl
+  # 
   if (verbose) cat("\nCombining results...\n")
   
   # Combine all results
@@ -976,60 +958,58 @@ map_hgnc_all_methods <- function(targets, verbose = TRUE) {
 
 ```{r}
 library(readr)
+
+# SEA
 sea_mappings <- map_hgnc_all_methods(sea_targets)
 all_sea <- unique(sea_mappings$HGNC_ID)
 all_sea <- all_sea[!is.na(all_sea)]
 write.csv(sea_mappings, "data/target_prediction/sea/sea_mappings.csv", row.names = FALSE)
 write.csv(all_sea, "data/target_prediction/sea/sea_targets.csv", row.names = FALSE)
 
+# STP
 stp_mappings <- map_hgnc_all_methods(stp_targets)
 all_stp <- unique(stp_mappings$HGNC_ID)
 all_stp <- all_stp[!is.na(all_stp)]
 write.csv(stp_mappings, "data/target_prediction/stpnovo/stp_mappings.csv", row.names = FALSE)
 write.csv(all_stp, "data/target_prediction/stpnovo/stp_targets.csv", row.names = FALSE)
 
-chembl_uniprot_ids <- read.table("data/target_prediction/chemblpred/uniprot_ids_chembl.txt",
-                                 header = FALSE,
-                                 stringsAsFactors = FALSE) 
-chembl_mappings <- map_hgnc_all_methods(chembl_targets)
-chembl_mappings_python <- map_hgnc_all_methods(chembl_uniprot_ids$V1)
-all_chembl <- unique(chembl_mappings$HGNC_ID)
-all_chembl <- all_chembl[!is.na(all_chembl)]
-write.csv(chembl_mappings, "data/target_prediction/chemblpred/chemblpred_mappings.csv", row.names = FALSE)
-write.csv(all_chembl, "data/target_prediction/chemblpred/chemblpred_targets.csv", row.names = FALSE)
+# Multitask CHEMBL
+multitask_uniprot_ids <- read.table("data/target_prediction/multitask/uniprot_ids_multitask.txt",
+                                     header = FALSE,
+                                     stringsAsFactors = FALSE) 
+multitask_from_chembl_mapping <- chembl_database_mapping(multitask_targets)
+multitask_from_chembl_mapping$Source <- "chembl_database"
+multitask_from_uniprot_mapping <- map_hgnc_all_methods(multitask_uniprot_ids$V1)
+multitask_mappings <- rbind(multitask_from_uniprot_mapping, multitask_from_chembl_mapping)
+all_multitask <- unique(all_multitask$HGNC_ID)
+all_multitask <- all_multitask[!is.na(all_multitask)]
+write.csv(multitask_mappings, "data/target_prediction/multitask/multitask_mappings.csv", row.names = FALSE)
+write.csv(all_multitask, "data/target_prediction/multitask/multitask_targets.csv", row.names = FALSE)
 
+# PPB2
 ppb_uniprot_ids <- read.table("data/target_prediction/ppb2/ppb2_chembls.txt", row.names = NULL, col.names = NULL)
 ppb_mappings <- map_hgnc_all_methods(ppb_uniprot_ids)
-all_xfp <- unique(xfp_mappings$HGNC_ID)
-all_xfp <- all_xfp[!is.na(all_xfp)]
-write.csv(xfp_mappings, "data/target_prediction/ppb2/xfp_mappings.csv", row.names = FALSE)
-write.csv(all_xfp, "data/target_prediction/ppb2/xfp_targets.csv", row.names = FALSE)
+all_ppb <- unique(ppb_mappings$HGNC_ID)
+all_ppb <- all_ppb[!is.na(all_ppb)]
+write.csv(xfp_mappings, "data/target_prediction/ppb2/ppb_mappings.csv", row.names = FALSE)
+write.csv(all_ppb, "data/target_prediction/ppb2/ppb_targets.csv", row.names = FALSE)
 
-ecfp_mappings <- map_hgnc_all_methods(ecfp_targets)
-all_ecfp <- unique(ecfp_mappings$HGNC_ID)
-all_ecfp <- all_ecfp[!is.na(all_ecfp)]
-write.csv(xfp_mappings, "data/target_prediction/ppb2/ecfp_mappings.csv", row.names = FALSE)
-write.csv(all_ecfp, "data/target_prediction/ppb2/ecfp_targets.csv", row.names = FALSE)
-
+# Getting intersections 
 all_sea <- read_csv("data/target_prediction/sea/sea_targets.csv", show_col_types = FALSE)$x
 all_stp <- read_csv("data/target_prediction/stp/stp_targets.csv", show_col_types = FALSE)$Targets
-all_xfp <- read_csv("data/target_prediction/ppb2/xfp_targets.csv", show_col_types = FALSE)$x
-all_chembl <- read_csv("data/target_prediction/chemblpred/chemblpred_targets.csv", show_col_types = FALSE)$x
-all_ecfp <- read_csv("data/target_prediction/ppb2/ecfp_targets.csv", show_col_types = FALSE)$x
+all_ppb <- read_csv("data/target_prediction/ppb2/xfp_targets.csv", show_col_types = FALSE)$x
+all_multitask <- read_csv("data/target_prediction/multitask/multitask_targets.csv", show_col_types = FALSE)$x
 
-# Coloque todos os vetores em uma lista nomeada
 sets <- list(
-  chembl = all_chembl,
+  multitask = all_multitask,
   stp = all_stp,
   sea = all_sea,
-  xfp = all_xfp,
-  ecfp = all_ecfp
+  ppb = all_ppb,
 )
 
-# Criar diretório de saída
 dir.create("data/target_prediction/intersections", recursive = TRUE, showWarnings = FALSE)
 
-# Gerar todas as combinações de 2 até o máximo
+# Generate combinations 
 for (k in 2:length(sets)) {
   combos <- combn(names(sets), k, simplify = FALSE)
   for (combo in combos) {
