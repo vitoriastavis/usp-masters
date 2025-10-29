@@ -6,20 +6,14 @@ output: html_document
 ## Conections between targets and metabolites
 
 ```{R}
-load("targets_metabolites.RData")
+load("data/targets_metabolites_fgfr3.RData")
 library(dplyr)
 
-targets_to_metabolites$S1PR1 <- unique(targets_to_metabolites$S1PR1)
-targets_to_metabolites$EDNRB <- unique(targets_to_metabolites$EDNRB)
-
-targets_to_metabolites$NR4A1 <- NULL
-targets_to_metabolites$TRIL <- NULL
-targets_to_metabolites$FOS <- NULL
-targets_to_metabolites$F3 <- NULL
+targets_to_metabolites_fgfr3$FGFR3 <- unique(targets_to_metabolites_fgfr3$FGFR3)
 
 edges_target_met <- data.frame(
-                            Source = rep(names(targets_to_metabolites), lengths(targets_to_metabolites)),
-                            Target = unlist(targets_to_metabolites))
+                            Source = rep(names(targets_to_metabolites_fgfr3), lengths(targets_to_metabolites_fgfr3)),
+                            Target = unlist(targets_to_metabolites_fgfr3))
 
 # Save information about gene and metabolite nodes
 nodes <- data.frame(
