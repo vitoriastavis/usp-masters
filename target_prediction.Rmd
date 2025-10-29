@@ -534,7 +534,7 @@ write_csv(multitask_results, file.path(directory, "multitask_results.csv"))
 
 ```{r}
 # Read STP dataframe
-multitask_result <- read.csv("data/target_prediction/chemblpred/chemblpred_results.csv")
+multitask_result <- read.csv("data/target_prediction/multitask/multitask_results.csv")
 
 # Rename columns to avoid special character issues
 colnames(multitask_result) <- c("Target_ID", "Probability")
@@ -981,30 +981,40 @@ multitask_from_chembl_mapping <- chembl_database_mapping(multitask_targets)
 multitask_from_chembl_mapping$Source <- "chembl_database"
 multitask_from_uniprot_mapping <- map_hgnc_all_methods(multitask_uniprot_ids$V1)
 multitask_mappings <- rbind(multitask_from_uniprot_mapping, multitask_from_chembl_mapping)
-all_multitask <- unique(all_multitask$HGNC_ID)
+all_multitask <- unique(multitask_mappings$HGNC_ID)
 all_multitask <- all_multitask[!is.na(all_multitask)]
 write.csv(multitask_mappings, "data/target_prediction/multitask/multitask_mappings.csv", row.names = FALSE)
 write.csv(all_multitask, "data/target_prediction/multitask/multitask_targets.csv", row.names = FALSE)
 
-# PPB2
-ppb_uniprot_ids <- read.table("data/target_prediction/ppb2/ppb2_chembls.txt", row.names = NULL, col.names = NULL)
-ppb_mappings <- map_hgnc_all_methods(ppb_uniprot_ids)
+# PPB2.
+ppb_uniprot_ids <- read.table("data/target_prediction/ppb2/uniprot_ids_ppb.txt",
+                                     header = FALSE,
+                                     stringsAsFactors = FALSE) 
+
+ppb_chembl_ids <- read.table("data/target_prediction/ppb2/ppb_chembl_ids.txt", header = FALSE)
+
+ppb_from_chembl_mapping <- chembl_database_mapping(ppb_chembl_ids$V1)
+ppb_from_chembl_mapping$Source <- "chembl_database"
+
+ppb_from_uniprot_mapping <- map_hgnc_all_methods(ppb_uniprot_ids$V1)
+ppb_mappings <- rbind(ppb_from_uniprot_mapping, ppb_from_chembl_mapping)
+
 all_ppb <- unique(ppb_mappings$HGNC_ID)
 all_ppb <- all_ppb[!is.na(all_ppb)]
-write.csv(xfp_mappings, "data/target_prediction/ppb2/ppb_mappings.csv", row.names = FALSE)
+write.csv(ppb_mappings, "data/target_prediction/ppb2/ppb_mappings.csv", row.names = FALSE)
 write.csv(all_ppb, "data/target_prediction/ppb2/ppb_targets.csv", row.names = FALSE)
 
 # Getting intersections 
 all_sea <- read_csv("data/target_prediction/sea/sea_targets.csv", show_col_types = FALSE)$x
-all_stp <- read_csv("data/target_prediction/stp/stp_targets.csv", show_col_types = FALSE)$Targets
-all_ppb <- read_csv("data/target_prediction/ppb2/xfp_targets.csv", show_col_types = FALSE)$x
+all_stp <- read_csv("data/target_prediction/stpnovo/stp_targets.csv", show_col_types = FALSE)$x
+all_ppb <- read_csv("data/target_prediction/ppb2/ppb_targets.csv", show_col_types = FALSE)$x
 all_multitask <- read_csv("data/target_prediction/multitask/multitask_targets.csv", show_col_types = FALSE)$x
 
 sets <- list(
   multitask = all_multitask,
   stp = all_stp,
   sea = all_sea,
-  ppb = all_ppb,
+  ppb = all_ppb
 )
 
 dir.create("data/target_prediction/intersections", recursive = TRUE, showWarnings = FALSE)
@@ -1160,6 +1170,124 @@ get_targets_to_metabolites <- function(folder_path) {
   return(targets_to_metabolites)
 }
 
-target_metabolites_chemblpred <- get_targets_to_metabolites("data/target_prediction/chemblpred")
-save(target_metabolites_chemblpred, file="data/target_prediction/chemblpred/target_metabolites_chemblpred.RData")
+target_metabolites_multitask_chemblid <- get_targets_to_metabolites("data/target_prediction/multitask")
+save(target_metabolites_multitask_chemblid, file="data/target_prediction/multitask/target_metabolites_multitask_chemblid.RData")
+
+
+multitask_chembl_to_uniprot <- read.csv("data/target_prediction/multitask/multitask_chembl_uniprot.csv")
+multitask_mappings <- read.csv("data/target_prediction/multitask/multitask_mappings.csv")
+multitask_mappings <- multitask_mappings[!is.na(multitask_mappings$HGNC_ID),]
+
+
+target_metabolites_multitask <- list()
+for (target in names(target_metabolites_multitask_chemblid)) {
+  
+  # Get all UniProt IDs for this target
+  uniprot_targets <- multitask_chembl_to_uniprot$uniprot_id[
+    multitask_chembl_to_uniprot$chembl_id == target
+  ]
+  
+  # For each UniProt, get HGNC IDs and store metabolites
+  lapply(uniprot_targets, function(uniprot_id) {
+    
+    hgnc_ids <- multitask_mappings$HGNC_ID[
+      multitask_mappings$Query == uniprot_id
+    ]
+    
+    lapply(hgnc_ids, function(hgnc_id) {
+      target_metabolites_multitask[[hgnc_id]] <<- 
+        target_metabolites_multitask_chemblid[[target]]
+    })
+  })
+}
+
+save(target_metabolites_multitask, file="data/target_prediction/multitask/target_metabolites_multitask.RData")
+```
+
+
+```{r}
+library(readxl)
+get_targets_to_metabolites <- function(folder_path) {
+  # Listar todos os arquivos CSV
+  csv_files <- list.files(path = folder_path, 
+                          pattern = "^(cid|nocid).*\\.txt$", 
+                          full.names = TRUE)
+  
+  print(csv_files)
+  
+  # Lista final
+  targets_to_metabolites <- list()
+  
+  for (file_path in csv_files) {
+    file_name <- basename(file_path)
+    
+    # Extrair ID do metabólito (cidXXX ou nome completo se for nocid)
+    if (grepl("^cid", file_name)) {
+      metabolite_id <- sub("^cid([0-9]+).*\\.txt$", "\\1", file_name)
+    } else if (grepl("^nocid", file_name)) {
+      metabolite_id <- sub("^(nocid[0-9]+).*\\.txt$", "\\1", file_name)
+    }
+
+    # Ignorar arquivos vazios
+    if (file.info(file_path)$size == 0) next
+    
+    # Ler dados
+    prediction_data <- read.csv(file_path, stringsAsFactors = FALSE, sep="\t")
+    # print(paste0(file_path, " ", nrow(prediction_data)))
+    # print(colnames(prediction_data))
+    
+    if (nrow(prediction_data) == 0 || !"ChEMBL.ID" %in% names(prediction_data)){
+      print(paste0(file_name, "  sem data"))
+      next
+    } 
+    
+    for (target in prediction_data[["ChEMBL.ID"]]) {
+      # print(target)
+      if (!is.character(target) || is.na(target) || target == "") next
+      
+      if (is.null(targets_to_metabolites[[target]])) {
+        targets_to_metabolites[[target]] <- c()
+      }
+      
+      if (!(metabolite_id %in%targets_to_metabolites[[target]])){
+        targets_to_metabolites[[target]] <- c(targets_to_metabolites[[target]], metabolite_id)
+      }
+      
+    }
+  }
+  
+  return(targets_to_metabolites)
+}
+
+target_metabolites_ppb_chemblid <- get_targets_to_metabolites("data/target_prediction/ppb2")
+names(target_metabolites_ppb_chemblid) <- trimws(names(target_metabolites_ppb_chemblid))
+# save(target_metabolites_multitask_chemblid, file="data/target_prediction/multitask/target_metabolites_multitask_chemblid.RData")
+
+ppb_chembl_to_uniprot <- read.csv("data/target_prediction/ppb2/ppb_chembl_uniprot.csv")
+ppb_mappings <- read.csv("data/target_prediction/ppb2/ppb_mappings.csv")
+ppb_mappings <- ppb_mappings[!is.na(ppb_mappings$HGNC_ID),]
+
+target_metabolites_ppb <- list()
+for (target in names(target_metabolites_ppb_chemblid)) {
+  
+  # Get all UniProt IDs for this target
+  uniprot_targets <- ppb_chembl_to_uniprot$uniprot_id[
+    ppb_chembl_to_uniprot$chembl_id == target
+  ]
+  
+  # For each UniProt, get HGNC IDs and store metabolites
+  lapply(uniprot_targets, function(uniprot_id) {
+    
+    hgnc_ids <- ppb_mappings$HGNC_ID[
+      ppb_mappings$Query == uniprot_id
+    ]
+    
+    lapply(hgnc_ids, function(hgnc_id) {
+      target_metabolites_ppb[[hgnc_id]] <<- 
+        target_metabolites_ppb_chemblid[[target]]
+    })
+  })
+}
+
+save(target_metabolites_ppb, file="data/target_prediction/ppb2/target_metabolites_ppb.RData")
 ```
