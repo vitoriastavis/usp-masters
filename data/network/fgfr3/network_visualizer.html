@@ -182,26 +182,27 @@
                                 var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').trim().toLowerCase() : '';
 
                                 if (type === 'disorder' || type == 'gene') {
-                                    return 1000;
+                                    return 8000;
                                 } else {
-                                    return 250;
+                                    return 5000;
                                 }
                             },
                             'font-weight': 'bold',
                             'text-valign': 'center',
                             'text-halign': 'center',
-                            'width': function(ele) {
-                                var text = ele.data('name') ? ele.data('name').replace(/"/g, '') : '';
-                                var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
-                                var words = text.split(/\s+/);
-                                var maxWordLength = words.reduce((max, w) => Math.max(max, w.length), 0);
-                                if (type === 'disorder' || type == 'gene') {
-                                    return maxWordLength * 1200; 
-                                } else {
-                                    return maxWordLength * 200; 
-                                }                             
+                            'width': 50000,
+                            // function(ele) {
+                            //     var text = ele.data('name') ? ele.data('name').replace(/"/g, '') : '';
+                            //     var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
+                            //     var words = text.split(/\s+/);
+                            //     var maxWordLength = words.reduce((max, w) => Math.max(max, w.length), 0);
+                            //     if (type === 'disorder' || type == 'gene') {
+                            //         return maxWordLength * 1200; 
+                            //     } else {
+                            //         return maxWordLength * 500; 
+                            //     }                             
              
-                            },
+                            //},
                             'height': function(ele) {
                                 var text = ele.data('name') ? ele.data('name').replace(/"/g, '') : '';
                                 var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
@@ -211,14 +212,14 @@
                                 if (type === 'disorder' || type == 'gene') {
                                     return nWords * 1500;
                                 } else {
-                                    return nWords * 400;
+                                    return nWords * 1400;
                                 }                               
 
                             },
                             'text-wrap': 'wrap',
                             'text-max-width': function(ele) {
                                 var text = ele.data('name') ? ele.data('name').replace(/"/g, '') : '';
-                                return text.length * 20;
+                                return text.length * 1000;
                             },
                             'padding': '1px',
                             'border-width': 0,
@@ -265,7 +266,7 @@
                     name: 'concentric',
                     equidistant: true,
                     concentric: function(node) { 
-                        return node.data('layer') || 1;  
+                        return node.data('_layer_') || 1;  
                     },
                     levelWidth: function(nodes) {
                         return 1;
@@ -310,55 +311,140 @@
         
         function calculateCentralityMeasures() {
             console.log("Calculating centrality measures...");
-            
-            // Get all metabolite nodes
-            const metaboliteNodes = cy.nodes().filter(function(node) {
-                const type = node.data('_type_') ? node.data('_type_').replace(/"/g, '').toLowerCase() : '';
-                return type === 'metabolite';
+
+            // === sanitize quotes from all nodes ===
+            cy.nodes().forEach(node => {
+                ['name','shared_name','_type_'].forEach(field => {
+                    if (node.data(field)) {
+                        node.data(field, node.data(field).replace(/^"|"$/g,''));
+                    }
+                });
             });
-            
-            console.log("Found", metaboliteNodes.length, "metabolite nodes");
-            
-            if (metaboliteNodes.length === 0) {
-                document.getElementById('centrality-results').innerHTML = 
-                    '<div class="centrality-results"><h3>No Metabolites Found</h3><p>No metabolite nodes were found in the network.</p></div>';
+
+            // find FGFR3 by name
+            const fgfr3Node = cy.nodes().filter(n => n.data('name') === 'FGFR3');
+            if(fgfr3Node.length === 0) {
+                console.warn("FGFR3 node not found!");
                 return;
             }
-            
-            // Calculate degree centrality
+            console.log("Found FGFR3");
+
+            // // fgfr3Node é uma coleção, pegamos o primeiro nó real
+            // const fgfr3 = fgfr3Node[0];
+
+            // // agora connectedEdges funciona
+            // const metaboliteNodes = fgfr3.connectedEdges().map(e =>
+            //     e.source().data('_type_') === 'metabolite' ? e.source() :
+            //     e.target().data('_type_') === 'metabolite' ? e.target() : null
+            // ).filter(n => n != null);
+
+            const fgfr3 = fgfr3Node.first();
+            const metaboliteNodes = fgfr3.connectedEdges().connectedNodes().filter(n => n.data('_type_') === 'metabolite');
+
+
+            console.log("Metabolites connected to FGFR3:", metaboliteNodes.length);
+    
+            if(metaboliteNodes.length === 0){
+                document.getElementById('centrality-results').innerHTML =
+                    '<div class="centrality-results"><h3>No Metabolites Found</h3><p>No metabolite nodes were found connected to FGFR3.</p></div>';
+                return;
+            }
+
+            // === Calculate degree centrality ===
             const degreeCentrality = [];
-            metaboliteNodes.forEach(function(node) {
+            metaboliteNodes.forEach(function (node) {
                 const degree = node.degree();
                 const name = node.data('name') ? node.data('name').replace(/"/g, '') : node.id();
                 degreeCentrality.push({ name: name, value: degree, id: node.id() });
             });
-            
-            // Calculate betweenness centrality
+
+            // === Calculate betweenness centrality ===
             const betweenness = cy.elements().betweennessCentrality();
             const betweennessCentrality = [];
-            metaboliteNodes.forEach(function(node) {
+            metaboliteNodes.forEach(function (node) {
                 const betweennessValue = betweenness.betweenness('#' + node.id()) || 0;
                 const name = node.data('name') ? node.data('name').replace(/"/g, '') : node.id();
                 betweennessCentrality.push({ name: name, value: betweennessValue, id: node.id() });
-            });            
+            });
 
-            // Calculate PageRank centrality
+            // === Calculate closeness centrality ===
             const closeness = cy.elements().closenessCentralityNormalized();
             const closenessCentrality = [];
-            metaboliteNodes.forEach(function(node) {
+            metaboliteNodes.forEach(function (node) {
                 const closenessValue = closeness.closeness('#' + node.id()) || 0;
                 const name = node.data('name') ? node.data('name').replace(/"/g, '') : node.id();
                 closenessCentrality.push({ name: name, value: closenessValue, id: node.id() });
             });
-            
-            // Sort and get top 5 for each measure
-            const topDegree = degreeCentrality.sort((a, b) => b.value - a.value).slice(0, 5);
-            const topBetweenness = betweennessCentrality.sort((a, b) => b.value - a.value).slice(0, 5);
-            const topCloseness = closenessCentrality.sort((a, b) => b.value - a.value).slice(0, 5);
-            
-            // Display results
+
+            // === Display top 20 for each metric ===
+            const topDegree = degreeCentrality.sort((a, b) => b.value - a.value).slice(0, 20);
+            const topBetweenness = betweennessCentrality.sort((a, b) => b.value - a.value).slice(0, 20);
+            const topCloseness = closenessCentrality.sort((a, b) => b.value - a.value).slice(0, 20);
+
             displayCentralityResults(topDegree, topBetweenness, topCloseness);
+
+            // === Percentile function ===
+            function percentile(arr, p) {
+                const sorted = [...arr].sort((a, b) => a - b);
+                const idx = (p / 100) * (sorted.length - 1);
+                const lower = Math.floor(idx);
+                const upper = Math.ceil(idx);
+                const weight = idx - lower;
+                return sorted[lower] + weight * (sorted[upper] - sorted[lower]);
+            }
+
+            // === Percentile threshold (e.g., 95 = top 5%) ===
+            const Q = 95;
+            const degVals = degreeCentrality.map(d => d.value);
+            const betVals = betweennessCentrality.map(b => b.value);
+            const cloVals = closenessCentrality.map(c => c.value);
+
+            const degThr = percentile(degVals, Q);
+            const betThr = percentile(betVals, Q);
+            const cloThr = percentile(cloVals, Q);
+
+            // === Calculate distances from MDD ===
+            const dijkstra = cy.elements().dijkstra('#MDD', () => 1);
+
+            // === Filter metabolites above quantile thresholds and store distance ===
+            const filtered = metaboliteNodes.map((node, i) => {
+                const id = node.id();
+                const name = node.data('name') ? node.data('name').replace(/"/g, '') : id;
+                const deg = degreeCentrality[i].value;
+                const bet = betweennessCentrality[i].value;
+                const clo = closenessCentrality[i].value;
+                const dist = dijkstra.distanceTo('#' + id);
+                return { id, name, deg, bet, clo, dist, passes: deg >= degThr && bet >= betThr && clo >= cloThr };
+            });
+
+            // === Keep only those that pass thresholds ===
+            let topPercentileMetabolites = filtered.filter(x => x.passes);
+
+            // === Sort by distance (shorter = closer to MDD), then degree ===
+            topPercentileMetabolites.sort((a, b) => {
+                if (a.dist !== b.dist) return a.dist - b.dist;
+                return b.deg - a.deg;
+            });
+
+            // === Display results ===
+            const container = document.getElementById('centrality-results');
+            const htmlQ = `
+                <div class="centrality-results" style="font-size: 0.85em; margin-top: 10px;">
+                    <h3 style="font-size: 1em;">Top ${100 - Q} Percentile Metabolites (connected to FGFR3, sorted by distance to MDD)</h3>
+                    ${
+                        topPercentileMetabolites.length > 0
+                            ? `<ol style="margin-left: 20px;">
+                                ${topPercentileMetabolites.map(n => 
+                                    `<li>${n.name} — dist: ${isFinite(n.dist) ? n.dist : '∞'}, deg: ${n.deg}, bet: ${n.bet.toFixed(2)}, clo: ${n.clo.toFixed(3)}</li>`
+                                ).join('')}
+                            </ol>`
+                            : `<p>No metabolites found above ${Q}th percentile thresholds.</p>`
+                    }
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', htmlQ);
         }
+
         
         function displayCentralityResults(degree, betweenness, closeness) {
             const resultsDiv = document.getElementById('centrality-results');
