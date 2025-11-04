@@ -1,4 +1,4 @@
-load("data/targets_metabolites.RData")
+load("data/targets_metabolites_fgfr3.RData")
 library(dplyr)
 
 # Number of unique metabolites
