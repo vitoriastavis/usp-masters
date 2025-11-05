@@ -1,0 +1,320 @@
+---
+title: "rnaseq"
+output: html_document
+---
+
+```{R}
+# ============================
+# DEG: MDD vs Control (GEO)
+# ============================
+
+# Pacotes ----
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(data.table)
+  library(DESeq2)
+  library(GEOquery)
+})
+
+# Pastas ----
+DATA_DIR <- "."
+OUT_DIR  <- "deg_outputs"
+dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
+
+# Utils ----
+read_any <- function(path) {
+  # Lê .csv(.gz) ou .txt(.gz); infere separador
+  ext <- tools::file_ext(path)
+  if (grepl("csv", ext, ignore.case = TRUE)) {
+    dt <- data.table::fread(path, sep = ",", header = TRUE, data.table = FALSE)
+  } else {
+    # tenta tab; se falhar, vírgula
+    dt <- tryCatch(
+      data.table::fread(path, sep = "\t", header = TRUE, data.table = FALSE),
+      error = function(e) data.table::fread(path, sep = ",", header = TRUE, data.table = FALSE)
+    )
+  }
+  as.data.frame(dt)
+}
+
+make_counts_matrix <- function(df, gene_col = NULL) {
+  # If user tells us which column holds gene IDs, use it
+  if (!is.null(gene_col) && gene_col %in% colnames(df)) {
+    rn <- as.character(df[[gene_col]])
+    df <- df[, setdiff(colnames(df), gene_col), drop = FALSE]
+    rownames(df) <- rn
+  } else {
+    # Fallback: common ID column names
+    id_names <- c("gene_id","Geneid","GeneID","Gene","EntrezID","Gene.Symbol","GeneSymbol")
+    if (colnames(df)[1] %in% id_names) {
+      rn <- as.character(df[[1]])
+      df <- df[, -1, drop = FALSE]
+      rownames(df) <- rn
+    }
+  }
+
+  # Convert remaining columns to numeric safely
+  numdf <- suppressWarnings(
+    as.data.frame(lapply(df, function(x) as.numeric(as.character(x))), check.names = FALSE)
+  )
+  rownames(numdf) <- rownames(df)
+  numdf[is.na(numdf)] <- 0
+  as.matrix(numdf)
+}
+
+save_results <- function(dds, res, tag) {
+  # Resultados
+  res_df <- as.data.frame(res) %>%
+    rownames_to_column("gene") %>%
+    arrange(padj, pvalue)
+  write.csv(res_df, file = file.path(OUT_DIR, paste0(tag, "_DESeq2_results.csv")), row.names = FALSE)
+  
+  # MA plot
+  png(file.path(OUT_DIR, paste0(tag, "_MAplot.png")), width = 1200, height = 900, res = 150)
+  DESeq2::plotMA(res, main = paste(tag, "MA plot"), ylim = c(-4,4))
+  dev.off()
+  
+  # Volcano
+  vol <- res_df %>%
+    mutate(sig = !is.na(padj) & padj < 0.05) %>%
+    ggplot(aes(x = log2FoldChange, y = -log10(pvalue))) +
+    geom_point(aes(alpha = sig)) +
+    scale_alpha_manual(values = c("TRUE" = 0.9, "FALSE" = 0.3)) +
+    labs(title = paste(tag, "Volcano"), x = "log2FC (MDD vs Control)", y = "-log10(p)") +
+    theme_minimal()
+  ggsave(filename = file.path(OUT_DIR, paste0(tag, "_Volcano.png")), plot = vol, width = 7, height = 6, dpi = 150)
+}
+
+# ---- Add once to your script ----
+run_deg_auto <- function(counts, meta, sample_col, condition_col, mdd_values, control_values, tag) {
+  stopifnot(sample_col %in% colnames(meta))
+  meta[[sample_col]] <- make.names(as.character(meta[[sample_col]]))
+  colnames(counts)   <- make.names(colnames(counts))
+  common <- intersect(colnames(counts), meta[[sample_col]])
+  
+  if (length(common) < 4) stop(paste("Poucas amostras em comum para", tag))
+  
+  counts <- counts[, common, drop = FALSE]
+  meta   <- meta[match(common, meta[[sample_col]]), , drop = FALSE]
+
+  cond_raw <- as.character(meta[[condition_col]])
+  cond     <- ifelse(cond_raw %in% mdd_values, "MDD",
+              ifelse(cond_raw %in% control_values, "Control", NA))
+  keep_s   <- !is.na(cond)
+  counts   <- counts[, keep_s, drop = FALSE]
+  cond     <- cond[keep_s]
+  meta     <- meta[keep_s, , drop = FALSE]
+  meta$condition <- factor(cond, levels = c("Control","MDD"))
+
+  # quick gene filter
+  keep_g <- rowSums(counts >= 10) >= max(2, floor(0.1*ncol(counts)))
+  counts <- counts[keep_g, , drop = FALSE]
+
+  non_integer <- any(abs(counts - round(counts)) > 1e-8)
+
+  if (!non_integer) {
+    # ---- DESeq2 path ----
+    suppressPackageStartupMessages(library(DESeq2))
+    dds <- DESeqDataSetFromMatrix(countData = round(counts),
+                                  colData   = data.frame(condition=meta$condition,row.names=colnames(counts)),
+                                  design    = ~ condition)
+    dds <- DESeq(dds)
+    res <- results(dds, contrast = c("condition","MDD","Control"))
+    # save
+    res_df <- as.data.frame(res) %>% tibble::rownames_to_column("gene") %>% dplyr::arrange(padj, pvalue)
+    dir.create("deg_outputs", showWarnings = FALSE)
+    write.csv(res_df, file = file.path("deg_outputs", paste0(tag,"_results.csv")), row.names = FALSE)
+    vol <- res_df %>% dplyr::mutate(sig=!is.na(padj)&padj<0.05) %>%
+      ggplot2::ggplot(ggplot2::aes(log2FoldChange, -log10(pvalue))) +
+      ggplot2::geom_point(ggplot2::aes(alpha=sig)) + ggplot2::scale_alpha_manual(values=c("TRUE"=.9,"FALSE"=.3)) +
+      ggplot2::labs(title=paste(tag,"Volcano"), x="log2FC (MDD vs Control)", y="-log10(p)") + ggplot2::theme_minimal()
+    ggplot2::ggsave(file.path("deg_outputs", paste0(tag,"_Volcano.png")), vol, width=7, height=6, dpi=150)
+    return(list(method="DESeq2", res=res_df))
+  } else {
+    # ---- limma-voom path (for non-integers) ----
+    suppressPackageStartupMessages({
+      library(edgeR); library(limma); library(ggplot2)
+    })
+    y <- DGEList(counts=counts)
+    # TMM normalization still OK on non-integer library sizes
+    y <- calcNormFactors(y, method="TMM")
+    design <- model.matrix(~ meta$condition)
+    colnames(design) <- c("Intercept","MDD_vs_Control")
+    v <- voom(y, design, plot=FALSE)
+    fit <- lmFit(v, design)
+    fit <- eBayes(fit, trend=TRUE, robust=TRUE)
+    tt  <- topTable(fit, coef="MDD_vs_Control", number=Inf, sort.by="P")
+    tt  <- tt %>% tibble::rownames_to_column("gene") %>%
+      dplyr::rename(log2FoldChange = logFC, pvalue = P.Value, padj = adj.P.Val, baseMean = AveExpr)
+
+    dir.create("deg_outputs", showWarnings = FALSE)
+    write.csv(tt, file = file.path("deg_outputs", paste0(tag,"_results.csv")), row.names = FALSE)
+
+    # simple volcano
+    vol <- tt %>% dplyr::mutate(sig = padj < 0.05) %>%
+      ggplot2::ggplot(ggplot2::aes(log2FoldChange, -log10(pvalue))) +
+      ggplot2::geom_point(ggplot2::aes(alpha=sig)) +
+      ggplot2::scale_alpha_manual(values=c("TRUE"=.9,"FALSE"=.3)) +
+      ggplot2::labs(title=paste(tag,"Volcano (voom)"), x="log2FC (MDD vs Control)", y="-log10(p)") +
+      ggplot2::theme_minimal()
+    ggplot2::ggsave(file.path("deg_outputs", paste0(tag,"_Volcano.png")), vol, width=7, height=6, dpi=150)
+
+    return(list(method="voom", res=tt))
+  }
+}
+
+# ============================
+# GSE101521 (DLPFC BA9)
+# Arquivo: GSE101521_totalRNA_counts.csv.gz
+# Grupos: CON vs MDD (inclui MDD non-suicide e MDD suicides)
+# ============================
+message("Processando GSE101521 ...")
+
+## mudar make counts
+cnt_101521 <- read_any(file.path(DATA_DIR, "GSE101521_totalRNA_counts.csv.gz"))%>%
+  make_counts_matrix()
+
+# Metadata via GEOquery
+gse_101521 <- getGEO("GSE101521", GSEMatrix = TRUE)
+pheno_101521 <- Biobase::pData(gse_101521[[2]]) 
+
+# Deriva uma coluna 'group' a partir de characteristics
+extract_group <- function(df) {
+  ch <- df %>% select(starts_with("characteristics_")) %>% mutate(rowid = row_number())
+  long <- ch %>% pivot_longer(-rowid, names_to = "field", values_to = "value")
+  grp  <- long %>% 
+    filter(grepl("group|diagnos|phenotype|status", value, ignore.case = TRUE) |
+             grepl("CON|MDD", value, ignore.case = TRUE))
+  if (nrow(grp) == 0) {
+    # fallback: usa title
+    grp2 <- df %>% transmute(rowid = row_number(), value = title)
+  } else grp2 <- grp %>% group_by(rowid) %>% summarise(value = paste(value, collapse = " | "), .groups = "drop")
+  df$group_inferred <- grp2$value[match(1:nrow(df), grp2$rowid)]
+  df
+}
+
+pheno_101521 <- extract_group(pheno_101521)
+
+pheno_101521 <- pheno_101521 %>%
+  mutate(group_simple = case_when(
+    grepl("\\bCON\\b|control", group_inferred, ignore.case = TRUE) ~ "Control",
+    grepl("MDD", group_inferred, ignore.case = TRUE) ~ "MDD",
+    TRUE ~ NA_character_
+  ))
+
+res_101521 <- run_deg_auto(
+  counts        = cnt_101521,
+  meta          = pheno_101521 %>% select(sample_id = title, condition = group_simple),
+  sample_col    = "sample_id",
+  condition_col = "condition",
+  mdd_values    = c("MDD"),
+  control_values= c("Control"),
+  tag           = "GSE101521_MDD_vs_Control"
+)
+
+# ============================
+# GSE80655 (clinically annotated brain RNA-seq)
+# Arquivo: GSE80655_GeneExpressionData_Updated_3-26-2018.txt.gz
+# ============================
+message("Processando GSE80655 ...")
+cnt_80655 <- read_any(file.path(DATA_DIR, "GSE80655_GeneExpressionData_Updated_3-26-2018.txt.gz")) %>%
+  make_counts_matrix("gene_id")
+
+gse_80655 <- getGEO("GSE80655", GSEMatrix = TRUE)
+pheno_80655 <- Biobase::pData(gse_80655[[1]]) 
+
+pheno_80655 <- pheno_80655[, !duplicated(colnames(pheno_80655))]%>%
+  mutate(
+    group_simple = case_when(
+      grepl("\\bControl\\b|non-psy|healthy", `characteristics_ch1.3`, ignore.case = TRUE) ~ "Control",
+      grepl("\\bMajor Depression\\b|major\\s*depress", `characteristics_ch1.3`, ignore.case = TRUE) ~ "MDD",
+      grepl("\\bSchizophrenia", `characteristics_ch1.3`, ignore.case = TRUE) ~ "SCZ",
+      grepl("\\Bipolar Disorder", `characteristics_ch1.3`, ignore.case = TRUE) ~ "BPD",
+      TRUE ~ NA_character_
+    )
+  )
+
+# Roda (remove amostras que não são MDD/Control — e.g., SCZ/BD)
+try({
+  res_80655 <- run_deg_auto(
+    counts        = cnt_80655,
+    meta          = pheno_80655 %>% select(sample_id = description, condition = group_simple),
+    sample_col    = "sample_id",
+    condition_col = "condition",
+    mdd_values    = c("MDD"),
+    control_values= c("Control"),
+    tag           = "GSE80655_MDD_vs_Control"
+  )
+}, silent = TRUE)
+
+# ============================
+# GSE214921 (OFC bulk RNA-seq, MDD vs Control)
+# Arquivo: GSE214921_human_MDD_filtered_featurecounts_geo.txt.gz
+# ============================
+message("Processando GSE214921 ...")
+cnt_214921 <- read_any(file.path(DATA_DIR, "GSE214921_human_MDD_filtered_featurecounts_geo.txt.gz")) %>%
+  make_counts_matrix("gene_id")
+
+gse_214921 <- getGEO("GSE214921", GSEMatrix = TRUE)
+pheno_214921 <- Biobase::pData(gse_214921[[1]]) %>%
+  mutate(group = case_when(
+    grepl("MDD", `condition:ch1`, ignore.case = TRUE) ~ "MDD",
+    grepl("control", `condition:ch1`, ignore.case = TRUE) ~ "Control",
+    TRUE ~ NA_character_
+  ))
+
+res_214921 <- run_deg_auto(
+  counts        = cnt_214921, 
+  meta          = pheno_214921 %>% select(sample_id = title, condition = group),
+  sample_col    = "sample_id",
+  condition_col = "condition",
+  mdd_values    = c("MDD"),
+  control_values= c("Control"),
+  tag           = "GSE214921_MDD_vs_Control"
+)
+
+# ============================
+# GSE248260 (white matter BA47: suicide vs control)
+# Arquivo: GSE248260_white_matter_count_matrix.csv.gz
+# ATENÇÃO: este estudo é suicídio vs não-suicídio (nem sempre MDD). Rodamos separado.
+# ============================
+message("Processando GSE248260 ...")
+cnt_248260 <- read_any(file.path(DATA_DIR, "GSE248260_white_matter_count_matrix.csv.gz")) %>% make_counts_matrix()
+
+gse_248260 <- getGEO("GSE248260", GSEMatrix = TRUE)
+pheno_248260 <- Biobase::pData(gse_248260[[1]]) %>%
+  as_tibble(rownames = "geo_accession") %>%
+  extract_group()
+
+# Criamos uma comparação SUICIDE vs CONTROL (se quiser pular este, comente esta seção)
+pheno_248260 <- pheno_248260 %>%
+  mutate(group_simple = case_when(
+    grepl("suic", group_inferred, ignore.case = TRUE) ~ "Suicide",
+    grepl("control|non-psy|accidental", group_inferred, ignore.case = TRUE) ~ "Control",
+    TRUE ~ NA_character_
+  ))
+
+res_248260 <- prep_and_run_deseq(
+  counts        = cnt_248260,
+  meta          = pheno_248260 %>% select(sample_id = geo_accession, condition = group_simple),
+  sample_col    = "sample_id",
+  condition_col = "condition",
+  mdd_values    = c("Suicide"),   # por padrão, aqui não é MDD; é suicídio
+  control_values= c("Control"),
+  tag           = "GSE248260_Suicide_vs_Control"
+)
+
+message("Concluído. Resultados em: ", normalizePath(OUT_DIR))
+
+```
+```{R}
+# fitlra por p e log
+
+padj_thr <- 0.3
+logfc_thr <- 0.01
+
+res_101521_filtered <- res_101521$res %>%
+    filter(padj <= padj_thr, abs(log2FoldChange) >= logfc_thr)
+
+res_101521_degs <- res_101521_filtered$gene
+```
