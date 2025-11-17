@@ -20,8 +20,7 @@ cran_pkgs <- c(
 # Pacotes do Bioconductor necessários
 bioc_pkgs <- c(
   "GenomeInfoDb", "GenomicRanges", "IRanges", "Rsamtools", "S4Vectors", 
-  "SeuratObject", "Biostrings", "XVector", "Rhtslib", "BiocParallel", 
-  "UCSC.utils", "GENIE3", "variancePartition"
+  "SeuratObject", "Biostrings", "glmGamPoi"
 )
 
 # Função pra instalar se faltar
@@ -56,8 +55,13 @@ devtools::install_github("immunogenomics/presto")
 library(dplyr)
 library(Seurat)
 library(Matrix)
+library(glmGamPoi)
 # library(variancePartition)
 # library(BiocParallel)
+
+future::plan("sequential")
+Sys.setenv(OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1")
+
 ```
 
 # Functions
@@ -73,7 +77,7 @@ library(Matrix)
 #' @param min.features Integer - Minimum number of genes a cell must express to be included
 #' @param nfeatures Integer - Number of top variable features to select.
 #' @return seurat_obj - SeuratObject for downstream analyses
-process_seurat_object <- function(matrix_file, genes_file, cells_file, group_file,
+process_seurat_object <- function(matrix_file, genes_file, cells_file,
                                   project_name = "SeuratProject",
                                   min_cells = 3, min_features = 100) {
   
@@ -115,8 +119,8 @@ run_DE_analysis <- function(seurat_obj,
                             ident_1 = "MDD",
                             ident_2 = "Control",
                             method = "wilcox",
-                            logfc_threshold = 1,
-                            pval_adj_threshold = 0.05,
+                            min_pct = 0.1,
+                            max_cells = 10000,
                             save = FALSE,
                             output_path = "",
                             prefix = "") {
@@ -126,14 +130,12 @@ run_DE_analysis <- function(seurat_obj,
                       ident.1 = ident_1,
                       ident.2 = ident_2,
                       group.by = group_by,
-                      test.use = method)
+                      test.use = method,
+                      min.pct = min_pct,
+                      max.cells.per.ident = max_cells)
   
   # Adjust p value
   degs$p_val_adj <- p.adjust(degs$p_val, method = "fdr")
-  
-  # Filter by p value and FC
-  degs_filtered <- degs %>%
-    filter(p_val_adj <= pval_adj_threshold, abs(avg_log2FC) >= logfc_threshold)
 
   # Save if requested
   if (save){
@@ -142,13 +144,10 @@ run_DE_analysis <- function(seurat_obj,
     write.csv(degs,
               file = file.path(output_path, paste0(prefix, "_results_adj.csv")),
               row.names = TRUE)
-  
-    write.csv(degs_filtered,
-              file = file.path(output_path, paste0(prefix, "_results_filtered.csv")),
-              row.names = TRUE)    
+    save(degs, file=file.path(output_path, paste0(prefix, "_results_adj.RData")))
   }  
 
-  return(list(degs_all = degs, degs_filtered = degs_filtered))
+  return(degs)
 }
 
 ```
@@ -180,25 +179,79 @@ GSE213982$condition <- condition_info$Condition[match(GSE213982$sample_id,
                                                        condition_info$Sample)]
 GSE213982$condition[GSE213982$condition == "Case"] <- "MDD"
 
-# Normalization
-GSE213982 <- NormalizeData(GSE213982, normalization.method = "LogNormalize")
+# Remove noise, mitochondrial genes, ribosomal genes, and other contamination
+qc_metrics <- GSE213982@meta.data
+feature_cutoffs <- quantile(qc_metrics$nFeature_RNA, probs = c(0.02, 0.98))
+count_cutoffs   <- quantile(qc_metrics$nCount_RNA,   probs = c(0.02, 0.98))
 
-save(GSE213982, file=paste0(gse_path, "GSE213982_counts.RData"))
+p1 <- VlnPlot(GSE213982, features = "nFeature_RNA", slot = "counts", pt.size = 0) +
+  scale_y_continuous(breaks = pretty(c(0, max(GSE213982$nFeature_RNA)), n = 20))
+p2 <- VlnPlot(GSE213982, features = "nCount_RNA", slot = "counts", pt.size = 0) +
+  scale_y_continuous(breaks = pretty(c(0, max(GSE213982$nCount_RNA)), n = 20))
+p_violin_GSE213982 <- (p1 | p2)  # junta os dois mantendo eixos separados
+
+# Percentual de genes mitocondriais (MT-)
+GSE213982[["percent.mt"]] <- PercentageFeatureSet(GSE213982, pattern = "^MT-")
+# Percentual de genes ribossomais (RPS/RPL)
+GSE213982[["percent.ribo"]] <- PercentageFeatureSet(GSE213982, pattern = "^RPS|^RPL")
+# Percentual de genes de hemoglobina (HB, exceto pseudogenes HBP)
+GSE213982[["percent.hb"]] <- PercentageFeatureSet(GSE213982, pattern = "^HB[^(P)]")
+
+GSE213982 <- subset(
+  GSE213982,
+  subset = nFeature_RNA > feature_cutoffs[1] &
+            nFeature_RNA < feature_cutoffs[2] &
+            nCount_RNA   > count_cutoffs[1] &
+            nCount_RNA   < count_cutoffs[2] &
+            percent.mt < 5 & percent.ribo < 40 & percent.hb < 1
+)
+
+saveRDS(GSE213982, "prenormalization_213.rds")
+
+# Normalization in batches
+GSE213982 <- readRDS("prenormalization_213.rds")
+gc()
+Sys.setenv(OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1")
+future::plan("sequential")
+ids <- unique(GSE213982$sample_id)
+save(ids, file="213_ids.RData")
+
+objs <- lapply(ids, function(id){
+  x <- subset(GSE213982, subset = sample_id == id)
+  x <- SCTransform(x, method="glmGamPoi", vst.flavor="v2",
+                   vars.to.regress=c("percent.mt","nCount_RNA"),
+                   variable.features.n=2000,
+                   return.only.var.genes=FALSE,
+                   conserve.memory=TRUE, verbose=TRUE)
+  saveRDS(x, paste0("sct_", id, ".rds")); rm(x); gc(); NULL
+})
+# Integrate
+list_sct <- lapply(paste0("sct_", ids, ".rds"), readRDS)
+features <- SelectIntegrationFeatures(object.list = list_sct, nfeatures = 2000)
+list_sct <- PrepSCTIntegration(object.list = list_sct, anchor.features = features)
+anchors <- FindIntegrationAnchors(object.list = list_sct, normalization.method="SCT",
+                                  anchor.features=features)
+GSE213982_sct <- IntegrateData(anchorset = anchors, normalization.method="SCT")
+
+DefaultAssay(GSE213982_sct) <- "SCT"
+Idents(GSE213982_sct) <- "condition"
+levels(GSE213982_sct)
+
+save(GSE213982_sct, file=paste0(gse_path, "GSE213982_sct_counts.RData"))
 ```
 
 # Analysis without considering cell types
 
 ```{r}
 gse_path <- "data/snrnaseq/GSE213982/"
-load(paste0(gse_path, "GSE213982_counts.RData"))
+load(paste0(gse_path, "GSE213982_sct_counts.RData"))
 
-degs_GSE213982 <- run_DE_analysis(GSE213982, save = F,
-                                  output_path = paste0(gse_path, "degs/"),
+degs_GSE213982 <- run_DE_analysis(GSE213982, save = T,
+                                  output_path = paste0(gse_path, "degs_sct/"),
                                   prefix = "GSE213982")
 GSE213982 <- NULL
 gc()
 ```
-
 
 
 ## GSE144136
@@ -252,9 +305,53 @@ standardized_type <- dplyr::case_when(
 )
 GSE144136@meta.data$cell_subtype <- paste0(standardized_type, subtype_num)
 
-GSE144136 <- NormalizeData(GSE144136, normalization.method = "LogNormalize")
+# Remove noise, mitochondrial genes, ribosomal genes, and other contamination
+qc_metrics <- GSE144136@meta.data
+feature_cutoffs <- quantile(qc_metrics$nFeature_RNA, probs = c(0.05, 0.95))
+count_cutoffs   <- quantile(qc_metrics$nCount_RNA,   probs = c(0.05, 0.95))
 
-save(GSE144136, file=paste0(gse_path, "GSE144136_counts.RData"))
+p1 <- VlnPlot(GSE144136, features = "nFeature_RNA", slot = "counts", pt.size = 0) +
+  scale_y_continuous(breaks = pretty(c(0, max(GSE144136$nFeature_RNA)), n = 20))
+p2 <- VlnPlot(GSE144136, features = "nCount_RNA", slot = "counts", pt.size = 0) +
+  scale_y_continuous(breaks = pretty(c(0, max(GSE144136$nCount_RNA)), n = 20))
+p_violin_GSE144136 <- (p1 | p2)  # junta os dois mantendo eixos separados
+
+# Percentual de genes mitocondriais (MT-)
+GSE144136[["percent.mt"]] <- PercentageFeatureSet(GSE144136, pattern = "^MT-")
+# Percentual de genes ribossomais (RPS/RPL)
+GSE144136[["percent.ribo"]] <- PercentageFeatureSet(GSE144136, pattern = "^RPS|^RPL")
+# Percentual de genes de hemoglobina (HB, exceto pseudogenes HBP)
+GSE144136[["percent.hb"]] <- PercentageFeatureSet(GSE144136, pattern = "^HB[^(P)]")
+
+GSE144136 <- subset(
+  GSE144136,
+  subset = nFeature_RNA > feature_cutoffs[1] &
+            nFeature_RNA < feature_cutoffs[2] &
+            nCount_RNA   > count_cutoffs[1] &
+            nCount_RNA   < count_cutoffs[2] &
+            percent.mt < 5 & percent.ribo < 40 & percent.hb < 1
+)
+
+saveRDS(GSE144136, "pre_144_real.rds")
+GSE144136 <- readRDS( "pre_144_real.rds")
+
+future::plan("sequential")
+Sys.setenv(OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1")
+
+# Normalization
+GSE144136 <- SCTransform(GSE144136,
+  method="glmGamPoi", vst.flavor="v2",
+  vars.to.regress=c("percent.mt","nCount_RNA"),
+  variable.features.n=2000,
+  return.only.var.genes=TRUE,
+  conserve.memory=TRUE, verbose=TRUE
+)
+
+DefaultAssay(GSE144136) <- "SCT"
+Idents(GSE144136) <- "condition"
+levels(GSE144136)
+
+save(GSE144136, file=paste0(gse_path, "GSE144136_sct_counts.RData"))
 ```
 
 
@@ -262,8 +359,8 @@ save(GSE144136, file=paste0(gse_path, "GSE144136_counts.RData"))
 gse_path <- "data/snrnaseq/GSE144136/"
 load(paste0(gse_path, "GSE144136_counts.RData"))
 
-degs_GSE144136 <- run_DE_analysis(GSE144136, save = F,
-                                  output_path = paste0(gse_path, "degs/"),
+degs_GSE144136 <- run_DE_analysis(GSE144136, save = T,
+                                  output_path = paste0(gse_path, "degs_sct/"),
                                   prefix = "/GSE144136")
 GSE144136 <- NULL
 gc()
@@ -287,6 +384,18 @@ degs_GSE213982 <- degs_GSE213982_expr$X
 snrnaseq_intersection <- intersect(degs_GSE213982, degs_GSE144136)
 # notype_intersection  <- intersect(snrnaseq_intersection, targets_intersection)
 # save(notype_intersection, file = "data/snrnaseq/degs_intersections_notype.RData")
+
+pval_adj_threshold <- 0.05
+logfc_threshold <- 1
+degs_GSE213982 <- degs %>%
+  filter(p_val_adj <= pval_adj_threshold, abs(avg_log2FC) >= logfc_threshold) %>%
+  rownames()
+
+degs_GSE144136 <- degs %>%
+  filter(p_val_adj <= pval_adj_threshold, abs(avg_log2FC) >= logfc_threshold) %>%
+  rownames()
+
+snrnaseq_intersection <- intersect(degs_GSE213982, degs_GSE144136)
 ```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
@@ -316,9 +425,9 @@ for (file in csv_files) {
   key <- gsub("^intersection_|\\.csv$", "", basename(file))
   
   # Ler CSV
-  print(file)
+  # print(file)
   df <- read.csv(file, stringsAsFactors = FALSE)
-  print(file)
+  # print(file)
   # Garantir vetor
   vec <- as.character(df$target)
   
@@ -329,7 +438,7 @@ for (file in csv_files) {
   intersection_results[[key]] <- inter
 }
 
-all_union <- unique((c(all_sea, all_stp, all_chembl, all_xfp, all_ecfp)))
+# all_union <- unique((c(all_sea, all_stp, all_chembl, all_xfp, all_ecfp)))
 ```
 
 # Analysis considering cell types
@@ -922,210 +1031,4 @@ p_GSE213982_f3 <- GSE213982_f3_results[[2]]
 ggsave(paste0(gse_path, "f3_network_GSE213982.jpg"), p_GSE213982_f3)
 ```
 
-```{r}
-# pegar gse 213, pegar só Ast. Pegar expr
-gse_path <- "data/snrnaseq/GSE213982/"
-load(paste0(gse_path, "GSE213982_counts.RData"))
-seurat_Ast <- subset(GSE213982, subset = cell_type == "Ast")
-seurat_Ast <- NormalizeData(seurat_Ast,
-                              normalization.method = "LogNormalize")
-genes_fos <- related_genes_fos$GSE213982_celltype
 
-expr_matrix_GSE213982 <- get_expr_matrix(seurat_Ast, genes_fos)
-GSE213982 <- NULL
-gc()
-p_GSE213982_fos <- ppcor_network_analysis(expr_matrix_GSE213982, genes_fos)
-
-ggsave(paste0(gse_path, "fos_network_GSE144136.jpg"), p_GSE213982_fos)
-```
-
-# Prepare FC data for GSEA
-
-```{r}
-library(Seurat)
-gse_path <- "data/snrnaseq/GSE213982/"
-load(paste0(gse_path, "GSE213982_counts.RData"))
-
-gse_path <- "data/snrnaseq/GSE144136/"
-load(paste0(gse_path, "GSE144136_counts.RData"))
-
-obj_list <- list(GSE213982 = GSE213982, GSE144136 = GSE144136)
-
-obj_list_processed <- lapply(obj_list, function(obj) {
-  obj <- FindVariableFeatures(obj, nfeatures = 2000, assay = "RNA", slot = "data")
-  obj <- ScaleData(obj, features = VariableFeatures(obj))
-  obj <- RunPCA(obj, features = VariableFeatures(obj))
-  return(obj)
-})
-
-# n variables = 2000
-features <- SelectIntegrationFeatures(object.list = obj_list_processed, nfeatures = 2000)
-
-integrate_in_chunks_with_global_anchors <- function(obj_list_processed, features, chunk_size,
-                                                    out_dir = "chunks_integrados", seed = 42) {
-  if (!dir.exists(out_dir)) dir.create(out_dir)
-
-  set.seed(seed)
-
-  message("=== Passo 1: Encontrando âncoras globais ===")
-  anchors <- FindIntegrationAnchors(
-    object.list = obj_list_processed,
-    anchor.features = features,
-    reduction = "rpca"
-  )
-
-  # Todas as células (union, já que nomes diferem)
-  all_cells <- Reduce(union, lapply(obj_list_processed, colnames))
-
-  # Dividir em chunks
-  chunks <- split(all_cells, ceiling(seq_along(all_cells) / chunk_size))
-
-  message("=== Passo 2: Integrando em ", length(chunks), " chunks ===")
-  for (i in seq_along(chunks)) {
-    message("Integrando chunk ", i, " de ", length(chunks))
-
-    # Filtrar cada objeto para as células do chunk (pode ficar vazio em alguns)
-    chunk_objs <- lapply(obj_list_processed, function(obj) {
-      keep_cells <- intersect(colnames(obj), chunks[[i]])
-      if (length(keep_cells) > 0) subset(obj, cells = keep_cells) else NULL
-    })
-    chunk_objs <- Filter(Negate(is.null), chunk_objs)
-
-    if (length(chunk_objs) < 2) {
-      message("Chunk ", i, " ignorado (menos de 2 objetos com células).")
-      next
-    }
-
-    # Integrar usando âncoras globais
-    integrated_chunk <- IntegrateData(anchorset = anchors, new.data = chunk_objs)
-
-    # Salvar
-    saveRDS(integrated_chunk, file = file.path(out_dir, sprintf("chunk_%03d.rds", i)))
-
-    rm(integrated_chunk, chunk_objs)
-    gc()
-  }
-
-  invisible(TRUE)
-}
-
-merge_chunks_to_dataset <- function(chunks_dir, block_size = 20, final_outfile = "merged_dataset.rds") {
-  chunk_files <- list.files(chunks_dir, pattern = "\\.rds$", full.names = TRUE)
-  
-  if (length(chunk_files) == 0) {
-    stop("Nenhum arquivo .rds encontrado no diretório.")
-  }
-  
-  message("Total de chunks encontrados: ", length(chunk_files))
-  
-  # Criar pasta para blocos intermediários
-  blocks_dir <- file.path(chunks_dir, "blocks")
-  if (!dir.exists(blocks_dir)) dir.create(blocks_dir)
-  
-  # block_idx <- 1
-  # for (i in seq(1, length(chunk_files), by = block_size)) {
-  #   message("fazendo merge do bloco ", block_idx)
-  #   block_files <- chunk_files[i:min(i + block_size - 1, length(chunk_files))]
-  #   
-  #   objs <- lapply(block_files, readRDS)
-  #   merged_block <- Reduce(function(x, y) merge(x, y), objs)
-  #   
-  #   saveRDS(merged_block, file.path(blocks_dir, paste0("block_", block_idx, ".rds")))
-  #   rm(objs, merged_block)
-  #   gc()
-  #   
-  #   block_idx <- block_idx + 1
-  # }
-  
-  # Merge final dos blocos salvos
-  message("merge final dos blocos...")
-  block_files <- list.files(blocks_dir, pattern = "\\.rds$", full.names = TRUE)
-  final_objs <- lapply(block_files, readRDS)
-  final_merged <- Reduce(function(x, y) merge(x, y), final_objs)
-  
-  saveRDS(final_merged, final_outfile)
-  message("merge final salvo em: ", final_outfile)
-  
-  invisible(final_merged)
-}
-
-merge_chunks_incremental <- function(blocks_dir, final_outfile = "merged_dataset.rds") {
-  block_files <- list.files(blocks_dir, pattern = "\\.rds$", full.names = TRUE)
-  
-  if (length(block_files) == 0) {
-    stop("Nenhum arquivo de bloco encontrado.")
-  }
-  
-  message("Total de blocos encontrados: ", length(block_files))
-  
-  # Carrega o primeiro bloco como base
-  message("Carregando bloco 1 como base...")
-  merged_obj <- readRDS(block_files[1])
-  
-  # Faz merge um a um para economizar RAM
-  if (length(block_files) > 1) {
-    for (i in 2:length(block_files)) {
-      message("merge com bloco ", i, " de ", length(block_files))
-      
-      obj_next <- readRDS(block_files[i])
-      merged_obj <- merge(merged_obj, obj_next)
-      
-      rm(obj_next)
-      gc()
-    }
-  }
-  
-  saveRDS(merged_obj, final_outfile)
-  message("mrge final salvo em: ", final_outfile)
-  
-  invisible(merged_obj)
-}
-
-gse_path <- "data/snrnaseq/merged/integration"
-
-# Rodar integração em chunks e salvar
-integrate_in_chunks(obj_list_processed, features, chunk_size = 300, out_dir = gse_path)
-
-merged_obj <- merge_chunks_to_dataset(gse_path)
-
-save(merged_obj, file=paste0(gse_path, "merged_counts.RData"))
-```
-
-
-```{r}
-gse_path <- "data/snrnaseq/GSE144136/"
-degs_GSE144136_expr <- read.csv(paste0(gse_path, "degs/GSE144136_results_filtered.csv"))
-degs_GSE144136 <- degs_GSE144136_expr$X
-
-# gse_path <- "data/snrnaseq/GSE213982/"
-# degs_GSE213982_expr <- read.csv(paste0(gse_path, "degs/GSE213982_results_filtered.csv"))
-# degs_GSE213982 <- degs_GSE213982_expr$X
-
-mapped_ids <- convert_ids(degs_GSE144136_expr$X)
-valid_genes <- names(mapped_ids)[!is.na(mapped_ids)]
-gene_fc <- degs_GSE144136_expr$avg_log2FC[degs_GSE144136_expr$X %in% valid_genes]
-names(gene_fc) <- unlist(mapped_ids[valid_genes])
-gene_fc <- sort(gene_fc, decreasing = TRUE)
-
-
-gsea_reactome <- gsePathway(geneList = gene_fc,
-                              organism = "human",   # or "mouse"
-                              minGSSize    = 5,
-                              maxGSSize    = 1000,
-                              pvalueCutoff = 0.05,
-                              verbose = FALSE
-                            )
-edox <- setReadable(gsea_reactome, 'org.Hs.eg.db', 'ENTREZID')
-p_gsea_reactome <- cnetplot(edox, categorySize="geneNum", foldChange=gene_fc)
-
-gsea_bp <- gseGO(geneList          = gene_fc,
-                      OrgDb        = org.Hs.eg.db,
-                      ont          = "BP",
-                      minGSSize    = 5,
-                      maxGSSize    = 1000,
-                      pvalueCutoff = 0.05,
-                      verbose      = FALSE)
-
-edox <- setReadable(gsea_bp, 'org.Hs.eg.db', 'ENTREZID')
-p_gsea_bp <- cnetplot(edox, categorySize="geneNum", foldChange=gene_fc)
-```
