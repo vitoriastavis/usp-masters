@@ -149,7 +149,6 @@ run_DE_analysis <- function(seurat_obj,
 
   return(degs)
 }
-
 ```
 
 
@@ -370,32 +369,21 @@ gc()
 
 
 ```{r}
+pval_adj_threshold <- 0.05
+logfc_threshold <- 0.6
+
 gse_path <- "data/snrnaseq/GSE144136/"
-degs_GSE144136_expr <- read.csv(paste0(gse_path, "degs/GSE144136_results_filtered.csv"))
-degs_GSE144136 <- degs_GSE144136_expr$X
+degs_GSE144136_adj <- read.csv(paste0(gse_path, "degs/GSE144136_results_adj.csv"))
+degs_GSE144136_f <- degs_GSE144136_adj %>%
+  filter(p_val_adj <= pval_adj_threshold, abs(avg_log2FC) >= logfc_threshold)
 
 gse_path <- "data/snrnaseq/GSE213982/"
-degs_GSE213982_expr <- read.csv(paste0(gse_path, "degs/GSE213982_results_filtered.csv"))
-degs_GSE213982 <- degs_GSE213982_expr$X
+degs_GSE213982_adj <- read.csv(paste0(gse_path, "degs/GSE213982_results_adj.csv"))
+degs_GSE213982_f <- degs_GSE213982_adj %>%
+  filter(p_val_adj <= pval_adj_threshold, abs(avg_log2FC) >= logfc_threshold)
 
-# Load target_intersection 
-# load(file='data/target_prediction/targets_intersection.RData')
 
-snrnaseq_intersection <- intersect(degs_GSE213982, degs_GSE144136)
-# notype_intersection  <- intersect(snrnaseq_intersection, targets_intersection)
-# save(notype_intersection, file = "data/snrnaseq/degs_intersections_notype.RData")
-
-pval_adj_threshold <- 0.05
-logfc_threshold <- 1
-degs_GSE213982 <- degs %>%
-  filter(p_val_adj <= pval_adj_threshold, abs(avg_log2FC) >= logfc_threshold) %>%
-  rownames()
-
-degs_GSE144136 <- degs %>%
-  filter(p_val_adj <= pval_adj_threshold, abs(avg_log2FC) >= logfc_threshold) %>%
-  rownames()
-
-snrnaseq_intersection <- intersect(degs_GSE213982, degs_GSE144136)
+snrnaseq_intersection <- intersect(degs_GSE213982_f$X, degs_GSE144136_f$X)
 ```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
