@@ -10,17 +10,21 @@ output: html_document
 
 # Pacotes ----
 suppressPackageStartupMessages({
+  library(readr)
+  library(dplyr)
   library(tidyverse)
   library(data.table)
   library(DESeq2)
   library(GEOquery)
+  library(edgeR)
 })
 
 # Pastas ----
 DATA_DIR <- "."
 OUT_DIR  <- "deg_outputs"
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
-
+```
+```{R}
 # Utils ----
 read_any <- function(path) {
   # Lê .csv(.gz) ou .txt(.gz); infere separador
@@ -85,8 +89,9 @@ save_results <- function(dds, res, tag) {
   ggsave(filename = file.path(OUT_DIR, paste0(tag, "_Volcano.png")), plot = vol, width = 7, height = 6, dpi = 150)
 }
 
-# ---- Add once to your script ----
-find_degs <- function(counts, meta, sample_col, condition_col, mdd_values, control_values, tag) {
+find_degs <- function(counts, meta, sample_col, condition_col,
+                      mdd_values, control_values, tag,
+                      covariates = NULL) {
   stopifnot(sample_col %in% colnames(meta))
   meta[[sample_col]] <- make.names(as.character(meta[[sample_col]]))
   colnames(counts)   <- make.names(colnames(counts))
@@ -96,7 +101,8 @@ find_degs <- function(counts, meta, sample_col, condition_col, mdd_values, contr
   
   counts <- counts[, common, drop = FALSE]
   meta   <- meta[match(common, meta[[sample_col]]), , drop = FALSE]
-
+  
+  # Condição: MDD / Control
   cond_raw <- as.character(meta[[condition_col]])
   cond     <- ifelse(cond_raw %in% mdd_values, "MDD",
               ifelse(cond_raw %in% control_values, "Control", NA))
@@ -105,50 +111,196 @@ find_degs <- function(counts, meta, sample_col, condition_col, mdd_values, contr
   cond     <- cond[keep_s]
   meta     <- meta[keep_s, , drop = FALSE]
   meta$condition <- factor(cond, levels = c("Control","MDD"))
-
-  # quick gene filter
-  keep_g <- rowSums(counts >= 10) >= max(2, floor(0.1*ncol(counts)))
+  
+  # checar covariáveis
+  if (!is.null(covariates)) {
+    missing_cov <- setdiff(covariates, colnames(meta))
+    if (length(missing_cov) > 0) {
+      stop("Covariáveis não encontradas em meta: ",
+           paste(missing_cov, collapse = ", "))
+    }
+  }
+  
+  # construir colData/data.frame para design
+  if (is.null(covariates)) {
+    colData <- data.frame(condition = meta$condition,
+                          row.names = colnames(counts))
+  } else {
+    colData <- meta[, c("condition", covariates), drop = FALSE]
+    rownames(colData) <- colnames(counts)
+    colData$condition <- droplevels(colData$condition)
+  }
+  
+  # REMOVER amostras com NA em qualquer covariável/condition
+  na_samp <- apply(colData, 1, function(x) any(is.na(x)))
+  if (any(na_samp)) {
+    message("Removendo ", sum(na_samp),
+            " amostras com NA em covariáveis para ", tag)
+    colData <- colData[!na_samp, , drop = FALSE]
+    counts  <- counts[, rownames(colData), drop = FALSE]
+  }
+  
+  # filtro rápido de genes (já com amostras limpas)
+  keep_g <- rowSums(counts >= 4) >= max(2, floor(0.1 * ncol(counts)))
   counts <- counts[keep_g, , drop = FALSE]
-
+  
   non_integer <- any(abs(counts - round(counts)) > 1e-8)
-
+  
+  # fórmula do design: ~ cov1 + cov2 + ... + condition (sempre por último)
+  design_terms   <- c(if (!is.null(covariates)) covariates, "condition")
+  design_formula <- as.formula(paste("~", paste(design_terms, collapse = " + ")))
+  
   if (!non_integer) {
     # ---- DESeq2 path ----
     suppressPackageStartupMessages(library(DESeq2))
-    dds <- DESeqDataSetFromMatrix(countData = round(counts),
-                                  colData   = data.frame(condition=meta$condition,row.names=colnames(counts)),
-                                  design    = ~ condition)
+    dds <- DESeqDataSetFromMatrix(
+      countData = round(counts),
+      colData   = colData,
+      design    = design_formula
+    )
+    
     dds <- DESeq(dds)
     res <- results(dds, contrast = c("condition","MDD","Control"))
-    # save
-    res_df <- as.data.frame(res) %>% tibble::rownames_to_column("gene") %>% dplyr::arrange(padj, pvalue)
+    
+    res_df <- as.data.frame(res) %>%
+      tibble::rownames_to_column("gene") %>%
+      dplyr::arrange(padj, pvalue)
+    
     dir.create("deg_outputs", showWarnings = FALSE)
-    write.csv(res_df, file = file.path("deg_outputs", paste0(tag,"_deseq_degs.csv")), row.names = FALSE)
-
-    return(list(method="DESeq2", res=res_df))
+    write.csv(res_df,
+              file = file.path("deg_outputs", paste0(tag,"_deseq_degs.csv")),
+              row.names = FALSE)
+    
+    return(list(method = "DESeq2", res = res_df))
+    
   } else {
-    # ---- limma-voom path (for non-integers) ----
+    # ---- limma-voom path ----
     suppressPackageStartupMessages({
       library(edgeR); library(limma); library(ggplot2)
     })
-    y <- DGEList(counts=counts)
-    # TMM normalization still OK on non-integer library sizes
-    y <- calcNormFactors(y, method="TMM")
-    design <- model.matrix(~ meta$condition)
-    colnames(design) <- c("Intercept","MDD_vs_Control")
-    v <- voom(y, design, plot=FALSE)
+    
+    y <- DGEList(counts = counts)
+    y <- calcNormFactors(y, method = "TMM")
+    
+    design <- model.matrix(design_formula, data = colData)
+    colnames(design)[ncol(design)] <- "MDD_vs_Control"  # último coef. é conditionMDD
+    
+    v   <- voom(y, design, plot = FALSE)
     fit <- lmFit(v, design)
-    fit <- eBayes(fit, trend=TRUE, robust=TRUE)
-    tt  <- topTable(fit, coef="MDD_vs_Control", number=Inf, sort.by="P")
-    tt  <- tt %>% tibble::rownames_to_column("gene") %>%
-      dplyr::rename(log2FoldChange = logFC, pvalue = P.Value, padj = adj.P.Val, baseMean = AveExpr)
-
+    fit <- eBayes(fit, trend = TRUE, robust = TRUE)
+    
+    coef_name <- colnames(design)[ncol(design)]
+    tt  <- topTable(fit, coef = coef_name, number = Inf, sort.by = "P")
+    tt  <- tt %>%
+      tibble::rownames_to_column("gene") %>%
+      dplyr::rename(
+        log2FoldChange = logFC,
+        pvalue         = P.Value,
+        padj           = adj.P.Val,
+        baseMean       = AveExpr
+      )
+    
     dir.create("deg_outputs", showWarnings = FALSE)
-    write.csv(tt, file = file.path("deg_outputs", paste0(tag,"_voom_degs.csv")), row.names = FALSE)
-
-    return(list(method="voom", res=tt))
+    write.csv(tt,
+              file = file.path("deg_outputs", paste0(tag,"_voom_degs.csv")),
+              row.names = FALSE)
+    
+    return(list(method = "voom", res = tt))
   }
 }
+
+
+parse_geo_characteristics <- function(pheno) {
+  ph <- pheno %>%
+    as.data.frame() %>%
+    tibble::rownames_to_column("sample_id")
+  
+  long <- ph %>%
+    tidyr::pivot_longer(
+      cols = dplyr::starts_with("characteristics_ch1"),
+      names_to  = "char_col",
+      values_to = "char"
+    ) %>%
+    dplyr::filter(!is.na(char), char != "") %>%
+    tidyr::separate(
+      col  = char,
+      into = c("key", "value"),
+      sep  = ":\\s*",
+      extra = "merge",
+      fill  = "right"
+    ) %>%
+    dplyr::mutate(
+      key   = tolower(trimws(key)),
+      value = trimws(value)
+    ) %>%
+    dplyr::mutate(
+      std_key = dplyr::case_when(
+        # age at death → age
+        grepl("age at death", key) ~ "age",
+        # age "simples", evitando coisas tipo 'age of onset'
+        grepl("\\bage\\b", key) & !grepl("onset|first episode", key) ~ "age",
+        # sex ou gender → sex
+        grepl("sex|gender", key) ~ "sex",
+        # postmortem interval / PMI
+        grepl("post.?mortem|pmi", key) ~ "pmi",
+        # brain pH (ex: "brain ph")
+        grepl("brain\\s*pH", key, ignore.case = TRUE) ~ "brain_ph",
+        grepl("brain\\s*ph", key) ~ "brain_ph",
+        # RIN / RNA integrity
+        grepl("rin|rna integrity", key) ~ "rin",
+        TRUE ~ key
+      )
+    )
+
+  wide_char <- long %>%
+    dplyr::group_by(sample_id, std_key) %>%
+    dplyr::summarise(value = value[1], .groups = "drop") %>%  # escolhe o primeiro valor
+    tidyr::pivot_wider(
+      names_from  = std_key,
+      values_from = value
+    )
+  
+  ph_final <- ph %>%
+    dplyr::left_join(wide_char, by = "sample_id") %>%
+    tibble::column_to_rownames("sample_id")
+  
+  # Pós-processamento
+  # idade numérica (aceita "45", "45 years", etc.)
+  if ("age" %in% colnames(ph_final)) {
+    ph_final$age <- gsub("[^0-9.]", "", ph_final$age)
+    ph_final$age <- suppressWarnings(as.numeric(ph_final$age))
+  }
+
+  # PMI numérico (aceita "24", "24 hours", etc.)
+  if ("pmi" %in% colnames(ph_final)) {
+    ph_final$pmi <- gsub("[^0-9.]", "", ph_final$pmi)
+    ph_final$pmi <- suppressWarnings(as.numeric(ph_final$pmi))
+  }
+
+  # sexo como fator M/F (gender também cai aqui)
+  if ("sex" %in% colnames(ph_final)) {
+    ph_final$sex <- toupper(trimws(ph_final$sex))
+    ph_final$sex[ph_final$sex %in% c("MALE","M","1")]   <- "M"
+    ph_final$sex[ph_final$sex %in% c("FEMALE","F","2")] <- "F"
+    ph_final$sex <- factor(ph_final$sex)
+  }
+
+    # RIN numérico
+  if ("rin" %in% colnames(ph_final)) {
+    ph_final$rin <- gsub("[^0-9.]", "", ph_final$rin)
+    ph_final$rin <- suppressWarnings(as.numeric(ph_final$rin))
+  }
+  
+  # brain pH numérico
+  if ("brain_ph" %in% colnames(ph_final)) {
+    ph_final$brain_ph <- gsub("[^0-9.]", "", ph_final$brain_ph)
+    ph_final$brain_ph <- suppressWarnings(as.numeric(ph_final$brain_ph))
+  }
+  
+  return(ph_final)
+}
+
+
 ```
 
 
@@ -161,13 +313,17 @@ find_degs <- function(counts, meta, sample_col, condition_col, mdd_values, contr
 message("Processando GSE101521 ...")
 
 # Mudar make counts
-cnt_101521 <- read_any(file.path(DATA_DIR, "GSE101521_totalRNA_counts.csv.gz")) %>%
-  make_counts_matrix("V1")
+# cnt_101521 <- read_any(file.path(DATA_DIR, "GSE101521_totalRNA_counts.csv.gz")) %>%
+#   make_counts_matrix("V1")
+# 
+# save(cnt_101521, file="101521.RData")
+load("101521.RData")
 
 # Metadata via GEOquery
 gse_101521 <- getGEO("GSE101521", GSEMatrix = TRUE)
 pheno_101521 <- Biobase::pData(gse_101521[[2]]) 
 
+#BA9
 pheno_101521_ns <- pheno_101521 %>%
   mutate(group = case_when(
     grepl("\\bCON\\b|control", characteristics_ch1, ignore.case = TRUE) ~ "Control",
@@ -183,99 +339,175 @@ pheno_101521_s <- pheno_101521 %>%
     TRUE ~ NA_character_
   ))
 
-pheno_101521_s <- pheno_101521_s %>%
-  dplyr::filter(title %in% colnames(cnt_101521))
+pheno_101521_ns <- parse_geo_characteristics(pheno_101521_ns)
+pheno_101521_s <- parse_geo_characteristics(pheno_101521_s)
+
 pheno_101521_ns <- pheno_101521_ns %>%
+  dplyr::filter(title %in% colnames(cnt_101521))
+pheno_101521_s <- pheno_101521_s %>%
   dplyr::filter(title %in% colnames(cnt_101521))
 
 cat(length(pheno_101521_ns$title) == ncol(cnt_101521))
 cat(length(pheno_101521_s$title) == ncol(cnt_101521))
 
-res_101521_s <- find_degs(
-  counts        = cnt_101521,
-  meta          = pheno_101521_s %>% select(sample_id = title, condition = group),
-  sample_col    = "sample_id",
-  condition_col = "condition",
-  mdd_values    = c("MDD-S"),
-  control_values= c("Control"),
-  tag           = "101521_s"
-)
+covars <- intersect(c("age", "sex", "pmi", "brain_ph", "rin"), colnames(pheno_101521_ns))
+covars <- covars[ sapply(pheno_101521_ns[, covars, drop=FALSE], function(x) !all(is.na(x))) ]
 
 res_101521_ns <- find_degs(
   counts        = cnt_101521,
-  meta          = pheno_101521_ns %>% select(sample_id = title, condition = group),
+  meta          = pheno_101521_ns %>%
+                     dplyr::select(sample_id = title,
+                                   condition = group,
+                                   dplyr::all_of(covars)),  
   sample_col    = "sample_id",
   condition_col = "condition",
   mdd_values    = c("MDD"),
   control_values= c("Control"),
-  tag           = "101521_ns"
+  tag           = "101521_DLPFC_ns",
+  covariates     = covars
 )
+
+res_101521_s <- find_degs(
+  counts        = cnt_101521,
+  meta           = pheno_101521_s %>%
+                     dplyr::select(sample_id = title,
+                                   condition = group,
+                                   dplyr::all_of(covars)),
+  sample_col    = "sample_id",
+  condition_col = "condition",
+  mdd_values    = c("MDD-S"),
+  control_values= c("Control"),
+  tag           = "101521_DLPFC_s",
+  covariates     = covars
+)
+```
+
+```{R}
 
 # ============================
 # GSE80655 (clinically annotated brain RNA-seq)
 # Arquivo: GSE80655_GeneExpressionData_Updated_3-26-2018.txt.gz
 # ============================
 message("Processando GSE80655 ...")
-cnt_80655 <- read_any(file.path(DATA_DIR, "GSE80655_GeneExpressionData_Updated_3-26-2018.txt.gz")) %>%
-  make_counts_matrix("gene_id")
+# cnt_80655 <- read_any(file.path(DATA_DIR, "GSE80655_GeneExpressionData_Updated_3-26-2018.txt.gz")) %>%
+  # make_counts_matrix("gene_id")
+
+# save(cnt_80655, file="80655.RData")
+load("80655.RData")
 
 gse_80655 <- getGEO("GSE80655", GSEMatrix = TRUE)
 pheno_80655 <- Biobase::pData(gse_80655[[1]]) 
 
 cat(length(pheno_80655$description) == ncol(cnt_80655))
+print(unique(pheno_80655$characteristics_ch1.1))
 
 # Phenotypes
-pheno_80655 <- pheno_80655[, !duplicated(colnames(pheno_80655))]%>%
+pheno_80655 <- pheno_80655[, !duplicated(colnames(pheno_80655))] %>%
   mutate(
     group = case_when(
-      grepl("\\bControl\\b|non-psy|healthy", `characteristics_ch1.3`, ignore.case = TRUE) ~ "Control",
-      grepl("\\bMajor Depression\\b|major\\s*depress", `characteristics_ch1.3`, ignore.case = TRUE) ~ "MDD",
-      grepl("\\bSchizophrenia", `characteristics_ch1.3`, ignore.case = TRUE) ~ "SCZ",
-      grepl("\\Bipolar Disorder", `characteristics_ch1.3`, ignore.case = TRUE) ~ "BPD",
+      grepl("\\bControl\\b|non-psy|healthy", characteristics_ch1.3, ignore.case = TRUE) ~ "Control",
+      grepl("\\bMajor Depression\\b|major\\s*depress", characteristics_ch1.3, ignore.case = TRUE) ~ "MDD",
+      grepl("\\bSchizophrenia", characteristics_ch1.3, ignore.case = TRUE) ~ "SCZ",
+      grepl("\\bipolar Disorder", characteristics_ch1.3, ignore.case = TRUE) ~ "BPD",
       TRUE ~ NA_character_
-    )
+    ),
+    brain_region = sub("^brain region:\\s*", "", characteristics_ch1.1)  # "AnCg", "nAcc", "DLPFC"
   )
 
-res_80655 <- find_degs(
-  counts        = cnt_80655,
-  meta          = pheno_80655 %>% select(sample_id = description, condition = group),
-  sample_col    = "sample_id",
-  condition_col = "condition",
-  mdd_values    = c("MDD"),
-  control_values= c("Control"),
-  tag           = "80655"
-)
+pheno_80655 <- parse_geo_characteristics(pheno_80655)
+covars <- intersect(c("age", "sex", "pmi", "brain_ph", "rin"), colnames(pheno_80655))
+covars <- covars[sapply(pheno_80655[, covars, drop=FALSE], function(x) !all(is.na(x))) ]
 
+regions <- unique(pheno_80655$brain_region)
+res_80655_by_region <- setNames(vector("list", length(regions)), regions)
+for (reg in regions) {
+  message("Rodando DEGs para região: ", reg)
+  
+  # Metadados apenas daquela região
+  meta_reg <- pheno_80655 %>%
+    filter(brain_region == reg)
+  
+  # Chama sua função find_degs
+  res_80655_by_region[[reg]] <- tryCatch(
+    find_degs(
+      counts         = cnt_80655,
+      meta           = meta_reg %>%
+                         dplyr::select(sample_id = description,
+                                       condition = group,
+                                       dplyr::all_of(covars)),
+      sample_col    = "sample_id",
+      condition_col  = "condition",
+      mdd_values     = "MDD",
+      control_values = "Control",
+      tag            = paste0("80655_", reg),
+      covariates     = covars
+    ),
+    error = function(e) {
+      warning("Erro na região ", reg, ": ", conditionMessage(e))
+      NULL
+    }
+  )
+}
+
+```
+```{R}
 
 # ============================
 # GSE214921 (OFC bulk RNA-seq, MDD vs Control)
 # Arquivo: GSE214921_human_MDD_filtered_featurecounts_geo.txt.gz
 # ============================
 message("Processando GSE214921 ...")
-cnt_214921 <- read_any(file.path(DATA_DIR, "GSE214921_human_MDD_filtered_featurecounts_geo.txt.gz")) %>%
-  make_counts_matrix("gene_id")
+# cnt_214921 <- read_any(file.path(DATA_DIR, "GSE214921_human_MDD_filtered_featurecounts_geo.txt.gz")) %>%
+  # make_counts_matrix("gene_id")
+
+# save(cnt_214921, file="214921.RData")
+load("214921.RData")
 
 gse_214921 <- getGEO("GSE214921", GSEMatrix = TRUE)
 
+# OFC
+
 # Phenotypes
-pheno_214921 <- Biobase::pData(gse_214921[[1]]) %>%
+pheno_214921 <- Biobase::pData(gse_214921[[1]])
+pheno_214921 <- pheno_214921 %>%
   mutate(group = case_when(
     grepl("MDD", `condition:ch1`, ignore.case = TRUE) ~ "MDD",
     grepl("control", `condition:ch1`, ignore.case = TRUE) ~ "Control",
     TRUE ~ NA_character_
   ))
 
+pheno_214921 <- parse_geo_characteristics(pheno_214921)
+
 cat(length(pheno_214921$title) == ncol(cnt_214921))
+
+covars <- intersect(c("age", "sex", "pmi", "brain_ph", "rin"), colnames(pheno_214921))
+covars <- covars[ sapply(pheno_214921[, covars, drop=FALSE], function(x) !all(is.na(x))) ]
 
 res_214921 <- find_degs(
   counts        = cnt_214921, 
-  meta          = pheno_214921 %>% select(sample_id = title, condition = group),
+  meta          = pheno_214921 %>%
+                     dplyr::select(sample_id = title,
+                                   condition = group,
+                                   dplyr::all_of(covars)),
   sample_col    = "sample_id",
   condition_col = "condition",
   mdd_values    = c("MDD"),
   control_values= c("Control"),
-  tag           = "214921"
+  tag           = "214921_OFC",
+  covariates     = covars
 )
+
+```
+
+
+
+
+
+
+
+
+
+```{R}
 
 # ============================
 # GSE248260 (white matter BA47: suicide vs control)
@@ -300,7 +532,10 @@ pheno_248260 <- pheno_248260 %>%
 
 res_248260 <- prep_and_run_deseq(
   counts        = cnt_248260,
-  meta          = pheno_248260 %>% select(sample_id = geo_accession, condition = group_simple),
+  meta          = pheno_248260 %>%
+                     dplyr::select(sample_id = description,
+                                   condition = group,
+                                   dplyr::all_of(covars)),
   sample_col    = "sample_id",
   condition_col = "condition",
   mdd_values    = c("Suicide"),   # por padrão, aqui não é MDD; é suicídio
@@ -314,15 +549,19 @@ message("Concluído. Resultados em: ", normalizePath(OUT_DIR))
 ```{R}
 # filtra por p e log
 library(readr)
-setwd("/home/gbiuser/Documents/vitoria/usp-masters")
-res_101521_s <- read_csv("deg_outputs/101521_s_voom_degs.csv")
-res_101521_ns <- read_csv("deg_outputs/101521_ns_voom_degs.csv")
+library(dplyr)
+# setwd("/home/gbiuser/Documents/vitoria/usp-masters")
+res_101521_s <- read_csv("deg_outputs/101521_DLPFC_s_voom_degs.csv", show_col_types=F)
+res_101521_ns <- read_csv("deg_outputs/101521_DLPFC_ns_voom_degs.csv", show_col_types=F)
 
-res_80655 <- read_csv("deg_outputs/80655_deseq_degs.csv")
-res_214921 <- read_csv("deg_outputs/214921_deseq_degs.csv")
+res_80655_nAcc <- read_csv("deg_outputs/80655_nAcc_deseq_degs.csv", show_col_types=F)
+res_80655_DLPFC <- read_csv("deg_outputs/80655_DLPFC_deseq_degs.csv", show_col_types=F)
+res_80655_AnCg <- read_csv("deg_outputs/80655_AnCg_deseq_degs.csv", show_col_types=F)
+
+res_214921_OFC <- read_csv("deg_outputs/214921_OFC_deseq_degs.csv", show_col_types=F)
 
 padj_thr <- 0.1
-logfc_thr <- 0.5
+logfc_thr <- 0.02
 
 res_101521_ns_filtered <- res_101521_ns %>%
     filter(padj <= padj_thr, abs(log2FoldChange) >= logfc_thr)
@@ -330,15 +569,388 @@ res_101521_ns_filtered <- res_101521_ns %>%
 res_101521_s_filtered <- res_101521_s %>%
     filter(padj <= padj_thr, abs(log2FoldChange) >= logfc_thr)
 
-res_80655_filtered <- res_80655 %>%
+res_80655_nAcc_filtered <- res_80655_nAcc %>%
     filter(padj <= padj_thr, abs(log2FoldChange) >= logfc_thr)
 
-res_214951_filtered <- res_214921 %>%
+res_80655_DLPFC_filtered <- res_80655_DLPFC %>%
     filter(padj <= padj_thr, abs(log2FoldChange) >= logfc_thr)
 
-degs_80655 <- res_80655_filtered$gene
-degs_214951 <- res_214951_filtered$gene
+res_80655_AnCg_filtered <- res_80655_AnCg %>%
+    filter(padj <= padj_thr, abs(log2FoldChange) >= logfc_thr)
+
+res_214921_OFC_filtered <- res_214921_OFC %>%
+    filter(padj <= padj_thr, abs(log2FoldChange) >= logfc_thr)
 ```
+
+```{r}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(readr)
+})
+
+#========================
+# 0. LER GSEA DO DISCO
+#========================
+
+gsea_dir <- "gsea_outputs_hallmark"
+
+contrast_files <- list.files(
+  gsea_dir,
+  pattern = "_fgsea_hallmark_.*\\.csv$",
+  full.names = TRUE
+)
+
+# nome do contraste = prefixo antes de "_fgsea_hallmark_"
+gsea_results_df <- contrast_files %>%
+  setNames(nm = basename(.) %>% sub("_fgsea_hallmark_.*\\.csv$", "", .)) %>%
+  lapply(function(f) {
+    readr::read_csv(f, show_col_types = FALSE)
+  })
+
+# conferência rápida
+lapply(gsea_results_df, class)
+
+#========================
+# 1. FUNÇÃO POR DATASET
+#========================
+
+extract_top_genes <- function(gsea_df, deg_df,
+                              id_type = c("ensembl", "entrez"),
+                              padj_thr = 0.25) {
+  id_type <- match.arg(id_type)
+
+  # garantir tibble/data.frame
+  if (!inherits(gsea_df, c("data.frame", "tbl_df"))) {
+    gsea_df <- dplyr::bind_rows(gsea_df)
+  }
+
+  # tipos numéricos
+  gsea_df <- gsea_df %>%
+    mutate(
+      NES  = as.numeric(NES),
+      padj = as.numeric(padj),
+      pval = as.numeric(pval),
+      size = as.numeric(size)
+    )
+
+  # vias significativas
+  gsea_sig <- gsea_df %>%
+    filter(!is.na(padj), padj < padj_thr)
+
+  if (nrow(gsea_sig) == 0) {
+    return(list(top_genes = tibble(), gene_rank = tibble()))
+  }
+
+  # detectar coluna de leading edge
+  le_col <- grep("leading", names(gsea_sig), ignore.case = TRUE, value = TRUE)[1]
+  if (is.na(le_col)) {
+    stop("Nenhuma coluna de leading edge encontrada nesse resultado de GSEA.")
+  }
+
+  # leadingEdge pode vir como list ou char; forçar char e fazer split
+  gsea_sig <- gsea_sig %>%
+    mutate(
+      le_char   = as.character(.data[[le_col]]),
+      genes_list = strsplit(le_char, ",")
+    )
+
+  le <- gsea_sig %>%
+    select(pathway, NES, padj_pathway = padj, genes_list) %>%
+    unnest(genes_list) %>%
+    transmute(
+      pathway,
+      NES,
+      padj_pathway,
+      gene_clean = trimws(genes_list)
+    ) %>%
+    filter(!is.na(gene_clean), gene_clean != "")
+
+  if (nrow(le) == 0) {
+    return(list(top_genes = tibble(), gene_rank = tibble()))
+  }
+
+  # preparar DEGs (harmonizar IDs)
+  deg_df2 <- deg_df %>%
+    mutate(
+      gene = as.character(gene),
+      gene_clean = if (id_type == "ensembl") {
+        sub("\\.\\d+$", "", gene)
+      } else {
+        gene
+      }
+    )
+
+  merged <- le %>%
+    left_join(
+      deg_df2 %>% select(gene_clean, log2FoldChange, padj),
+      by = "gene_clean"
+    )
+
+  if (nrow(merged) == 0) {
+    return(list(top_genes = tibble(), gene_rank = tibble()))
+  }
+
+  gene_rank <- merged %>%
+    group_by(gene_clean) %>%
+    summarise(
+      n_pathways = n_distinct(pathway),
+      mean_NES   = mean(NES, na.rm = TRUE),
+      max_abs_fc = max(abs(log2FoldChange), na.rm = TRUE),
+      min_padj   = min(padj, na.rm = TRUE),
+      .groups    = "drop"
+    ) %>%
+    arrange(desc(n_pathways), desc(mean_NES), desc(max_abs_fc))
+
+  top_genes <- if (nrow(gene_rank) > 0) {
+    slice_head(gene_rank, n = 30)
+  } else {
+    gene_rank
+  }
+
+  list(top_genes = top_genes, gene_rank = gene_rank)
+}
+
+#========================
+# 2. INFO DOS DEGs
+#========================
+# Certifique-se de ter isso já no ambiente:
+# deg_results <- list(
+#   `101521_DLPFC_ns` = res_101521_ns$res,
+#   `101521_DLPFC_s`  = res_101521_s$res,
+#   `80655_AnCg`      = res_80655_by_region[["AnCg"]]$res,
+#   `80655_nAcc`      = res_80655_by_region[["nAcc"]]$res,
+#   `80655_DLPFC`     = res_80655_by_region[["DLPFC"]]$res,
+#   `214921_OFC`      = res_214921$res
+# )
+
+# tipos de ID por contraste
+id_type_by_contrast <- c(
+  `101521_DLPFC_ns` = "ensembl",
+  `101521_DLPFC_s`  = "ensembl",
+  `80655_AnCg`      = "ensembl",
+  `80655_nAcc`      = "ensembl",
+  `80655_DLPFC`     = "ensembl",
+  `214921_OFC`      = "entrez"  # troque para "ensembl" se esse também for ENSG
+)
+
+#========================
+# 3. LOOP POR DATASET
+#========================
+
+all_top_genes <- list()
+
+for (ds in names(gsea_results_df)) {
+  cat("=== PROCESSANDO:", ds, "===\n")
+
+  gsea_df <- gsea_results_df[[ds]]
+  deg_df  <- deg_results[[ds]]
+  id_type <- id_type_by_contrast[[ds]]
+
+  out <- extract_top_genes(
+    gsea_df  = gsea_df,
+    deg_df   = deg_df,
+    id_type  = id_type,
+    padj_thr = 0.25
+  )
+
+  all_top_genes[[ds]] <- out
+
+  if (nrow(out$gene_rank) > 0) {
+    write_csv(out$gene_rank, file.path(gsea_dir, paste0("gsea_gene_rank_", ds, ".csv")))
+    write_csv(out$top_genes, file.path(gsea_dir, paste0("gsea_top_genes_", ds, ".csv")))
+  }
+}
+
+# Você pode inspecionar, por exemplo:
+# all_top_genes$`101521_DLPFC_ns`$top_genes
+
+
+
+```
+```{r}
+suppressPackageStartupMessages({
+  library(WGCNA)
+  library(limma)
+  library(edgeR)
+  library(tidyverse)
+})
+
+options(stringsAsFactors = FALSE)
+allowWGCNAThreads()
+
+prepare_wgcna_matrix <- function(counts, meta, sample_col,
+                                 covars = c("age","sex","pmi","rin","brain_ph")) {
+
+  # 1) Checar coluna de amostra
+  if (!sample_col %in% colnames(meta)) {
+    stop("A coluna '", sample_col, "' não existe na tabela meta.")
+  }
+
+  # 2) Harmonizar nomes de amostras (como no find_degs)
+  meta[[sample_col]] <- make.names(as.character(meta[[sample_col]]))
+  colnames(counts)   <- make.names(colnames(counts))
+
+  # 3) Filtrar meta para amostras que existem no counts
+  meta <- meta %>% dplyr::filter(.data[[sample_col]] %in% colnames(counts))
+  counts <- counts[, meta[[sample_col]], drop = FALSE]
+
+  # 4) Normalização voom
+  y <- edgeR::DGEList(counts)
+  y <- edgeR::calcNormFactors(y, method = "TMM")
+  design0 <- model.matrix(~ 1, data = meta)
+  v <- limma::voom(y, design0, plot = FALSE)
+  expr <- v$E   # genes x samples
+
+  # 5) Reordenar meta para bater com colnames(expr)
+  meta <- meta[match(colnames(expr), meta[[sample_col]]), , drop = FALSE]
+
+  # 6) Selecionar covariáveis presentes
+  covars_present <- intersect(covars, colnames(meta))
+
+  if (length(covars_present) > 0) {
+    # remover amostras com NA em qualquer covariável usada
+    keep <- stats::complete.cases(meta[, covars_present, drop = FALSE])
+
+    if (sum(keep) < 4) {
+      stop("Menos de 4 amostras completas após filtrar covariáveis: ",
+           paste(covars_present, collapse = ", "))
+    }
+
+    meta  <- meta[keep, , drop = FALSE]
+    expr  <- expr[, keep, drop = FALSE]
+
+    # 7) Construir design das covariáveis
+    design_cov <- model.matrix(
+      as.formula(paste("~", paste(covars_present, collapse = "+"))),
+      data = meta
+    )
+
+    # segurança: checar dimensões
+    if (nrow(design_cov) != ncol(expr)) {
+      stop("Dimensões incompatíveis: nrow(design_cov) = ", nrow(design_cov),
+           " vs ncol(expr) = ", ncol(expr))
+    }
+
+    fit <- limma::lmFit(expr, design_cov)
+    expr_resid <- limma::residuals.MArrayLM(fit, expr)
+  } else {
+    expr_resid <- expr
+  }
+
+  expr_resid
+}
+
+run_wgcna <- function(expr_resid, meta, trait_col = "condition") {
+  datExpr <- t(expr_resid)   # WGCNA precisa: samples x genes
+  trait <- meta[[trait_col]]
+  
+  # converter trait p/ numérico (Control=0, MDD=1)
+  if (is.factor(trait)) trait <- as.character(trait)
+  trait_num <- ifelse(trait %in% c("MDD","MDD-S","MDD-NS"), 1, 0)
+
+  # detectar outliers grosseiros
+  gsg <- goodSamplesGenes(datExpr)
+  if (!gsg$allOK) {
+    datExpr <- datExpr[gsg$goodSamples, gsg$goodGenes]
+    trait_num <- trait_num[gsg$goodSamples]
+  }
+
+  # escolher soft-threshold
+  powers <- c(1:20)
+  sft <- pickSoftThreshold(datExpr, powerVector = powers, verbose = 0)
+
+  softPower <- sft$powerEstimate
+  if (is.na(softPower)) softPower <- 6  # fallback
+
+  # montar TOM
+  adjacency <- adjacency(datExpr, power = softPower)
+  TOM <- TOMsimilarity(adjacency)
+  dissTOM <- 1 - TOM
+
+  # clusterizar genes
+  geneTree <- flashClust(as.dist(dissTOM), method="average")
+
+  # detectar módulos
+  modules <- cutreeDynamic(
+    dendro = geneTree, distM = dissTOM,
+    deepSplit = 2, pamRespectsDendro = FALSE, minClusterSize = 30
+  )
+  moduleColors <- labels2colors(modules)
+
+  # calcular eigengenes
+  MEs <- moduleEigengenes(datExpr, colors = moduleColors)$eigengenes
+
+  # correlacionar módulos com MDD
+  moduleTraitCor <- cor(MEs, trait_num, use="pairwise.complete.obs")
+  moduleTraitP   <- corPvalueStudent(moduleTraitCor, nrow(datExpr))
+
+  list(
+    datExpr = datExpr,
+    moduleColors = moduleColors,
+    MEs = MEs,
+    moduleTraitCor = moduleTraitCor,
+    moduleTraitP = moduleTraitP,
+    softPower = softPower,
+    geneTree = geneTree
+  )
+}
+
+extract_module_genes <- function(expr_resid, moduleColors, MEs, trait_num, p_thr = 0.05) {
+  MEdf <- MEs
+  datExpr <- t(expr_resid)
+
+  moduleTraitCor <- cor(MEdf, trait_num, use="pairwise.complete.obs")
+  moduleTraitP <- corPvalueStudent(moduleTraitCor, nrow(datExpr))
+
+  sig_modules <- rownames(MEdf)[which(moduleTraitP < p_thr)]
+
+  result <- list()
+
+  for (mod in sig_modules) {
+    genes_mod <- names(moduleColors)[moduleColors == mod]
+
+    # module membership (kME)
+    kME <- cor(datExpr, MEdf[,mod], use="p")
+
+    result[[mod]] <- tibble(
+      gene = genes_mod,
+      kME  = kME[genes_mod],
+      module = mod
+    ) %>% arrange(desc(kME))
+  }
+
+  result
+}
+
+```
+
+```{r}
+# Exemplo: 80655 DLPFC
+
+expr_resid_80655_DLPFC <- prepare_wgcna_matrix(
+  counts = cnt_80655,
+  meta   = pheno_80655 %>% filter(brain_region == "DLPFC"),
+  "description",
+  covars = c("age","sex","pmi","rin","brain_ph")
+)
+
+wgcna_out <- run_wgcna(
+  expr_resid = expr_resid_80655_DLPFC,
+  meta = pheno_80655 %>% filter(brain_region == "DLPFC"),
+  trait_col = "group"
+)
+
+module_genes <- extract_module_genes(
+  expr_resid,
+  moduleColors = wgcna_out$moduleColors,
+  MEs = wgcna_out$MEs,
+  trait_num = ifelse(pheno_80655$group == "MDD",1,0),
+  p_thr = 0.05
+)
+
+module_genes
+```
+
 
 
 ```{r message=FALSE, warning=FALSE}
