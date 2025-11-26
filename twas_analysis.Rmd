@@ -52,64 +52,62 @@ for (subdir in subdirs) {
   }
 }
 
-all_genes <- unname(unlist(all_unique))
+all_twas <- unname(unlist(all_unique))
 ```
 
-```{r message=FALSE, warning=FALSE}
-load(file='data/target_prediction/targets_intersection.RData')
+```{r}
+# Lista para guardar os resultados
+intersection_results <- list()
 
-sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
-stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
-all_targets <- union(sea_targets, stp_targets)
+# Ler cada arquivo CSV e fazer interseção com snrnaseq_intersection
+csv_folder <- "./data/target_prediction/intersections"
+csv_files <- list.files(csv_folder, pattern = "\\.csv$", full.names = TRUE)
 
-all_analyses_intersect <- list()
-all_analyses_intersect_alltargets <- list()
+for (file in csv_files) {
+  # Read raw lines first
+  raw_lines <- readLines(file, warn = FALSE)
 
-all_unique_genes_intersect <- list()
-all_unique_genes_intersect_alltargets <- list()
-
-for (file_name in names(all_analyses)){
-  analyses_intersect <- list()
-  analyses_intersect_alltargets <- list()
-
-  analyses_genes <- all_analyses[[file_name]]
+  # Nome base do arquivo para usar como key
+  # key <- gsub("^intersection_|\\.csv$", "", basename(file))
   
-  for (analysis in names(analyses_genes)){
-    analysis_genes <- unname(unlist(analyses_genes[[analysis]]))
-    analyses_intersect[[paste0(file_name, '_', analysis)]] <- intersect(analysis_genes, targets_intersection)
-    analyses_intersect_alltargets[[paste0(file_name, '_', analysis)]] <- intersect(analysis_genes, all_targets)
+  # Ler CSV
+  # print(file)
+  df <- read.csv(file, stringsAsFactors = FALSE)
+  # print(file)
+  # Garantir vetor
+  vec <- as.character(df$target)
+  
+  # Interseção com snrnaseq_intersection
+  for (twas in names(all_unique)){
+    genes_twas <- all_unique[[twas]]
+    key <- paste0(basename(file), twas)
+    inter <- intersect(vec, genes_twas)
+    intersection_results[[key]] <- inter
   }
-  all_analyses_intersect[[file_name]] <- analyses_intersect
-  all_analyses_intersect_alltargets[[file_name]] <- analyses_intersect_alltargets
-
-  unique_genes <- unname(unlist(all_unique[[file_name]]))
-  all_unique_genes_intersect[[file_name]] <- intersect(unique_genes, targets_intersection)
-  all_unique_genes_intersect_alltargets[[file_name]] <- intersect(unique_genes, all_targets)
 }
 
-twas_targets <-  unique(unlist(all_analyses_intersect, use.names = FALSE))
-
-pairwise_intersections <- combn(all_unique_genes_intersect, 2, function(x) intersect(x[[1]], x[[2]]), simplify = FALSE)
-pairwise_genes <- unique(unlist(pairwise_intersections, use.names = FALSE))
-
-threewise_intersections <- combn(all_unique_genes_intersect, 3, function(x) Reduce(intersect, x), simplify = FALSE)
-threewise_genes <- unique(unlist(threewise_intersections, use.names = FALSE))
-
-save(all_analyses_intersect, all_unique_genes_intersect, file = "data/twas/intersections.RData")
 ```
-
 
 # Comparing with previous analyses
 
 ```{r}
-type_intersection <- unique(unlist(unname(type_intersection)))
-type_intersection_alltargets <- unique(unlist(unname(type_intersection_alltargets)))
 
-all_results <- list(notype_intersection, type_intersection, variance_intersection, twas_targets)
-all_results_alltargets <- list(notype_intersection_alltargets, type_intersection_alltargets, variance_intersection_alltargets, twas_targets_alltargets)
+load("./sct/degs_sct_celltype/results_sct_celltype.RData")
+load("./sct/degs_sct_novo/results_sct.RData")
+load("./rnaseq/deg_outputs/results_214951.RData")
+load("./data/snrnaseq/results_logn.RData")
+load("./data/snrnaseq/results_logn_celltype.RData")
+
+all_sct_celltype <- unique(unlist(unname(results_sct_celltype)))
+all_sct <- unique(unlist(unname(results_sct)))
+all_214951 <- unique(unlist(unname(results_214951)))
+all_logn <- unique(unlist(unname(results_logn)))
+all_logn_celltype <- unique(unlist(unname(results_logn_celltype)))
+
+all_results <- list(all_sct, all_sct_celltype, all_logn, all_logn_celltype, all_214951, all_twas)
 
 # Define names for the analyses
-analysis_names <- c("no_type", "type", "variance", "twas")
+analysis_names <- c("SCT", "SCT-celltype", "logn", "logn-celltype", "214951", "TWAS")
 names(all_results) <- analysis_names
 
 # Create a named list of all genes with their corresponding analysis
@@ -133,35 +131,19 @@ multi_analysis_genes <- gene_analyses_df %>%
   filter(lengths(gene_to_analyses) > 1)
 ```
 
-```{r}
-analysis_names_alltargets <- c("no_type", "type", "variance", "twas")
-names(all_results_alltargets) <- analysis_names_alltargets
-
-# Criar mapeamento gene → análises (para _alltargets)
-gene_to_analyses_alltargets <- list()
-
-for (i in seq_along(all_results_alltargets)) {
-  genes <- all_results_alltargets[[i]]
-  analysis <- analysis_names_alltargets[i]
-  
-  for (gene in genes) {
-    gene_to_analyses_alltargets[[gene]] <- unique(c(gene_to_analyses_alltargets[[gene]], analysis))
-  }
-}
-
-# Converter para data frame
-library(dplyr)
-
-gene_analyses_df_alltargets <- tibble::tibble(
-  gene = names(gene_to_analyses_alltargets),
-  analyses = sapply(gene_to_analyses_alltargets, function(x) paste(sort(x), collapse = ","))
-)
-
-multi_analysis_genes_alltargets <- gene_analyses_df_alltargets %>% 
-  filter(lengths(gene_to_analyses_alltargets) > 1)
-
-save(gene_analyses_df, gene_analyses_df_alltargets, file = "data/all_analyses_comparison.RData")
-```
-
 # Getting the predicted metabolites/ligands for the intersection genes
 
+```{r}
+gene <- "FOS"
+
+cat(gene)
+gene %in% rownames(GSE144136_celltype_filtered$InN) & gene %in% rownames(GSE213982_celltype_filtered$InN)
+gene %in% rownames(GSE144136_celltype_filtered$ExN) & gene %in% rownames(GSE213982_celltype_filtered$ExN)
+gene %in% rownames(GSE144136_celltype_filtered$Oli) & gene %in% rownames(GSE213982_celltype_filtered$Oli)
+gene %in% rownames(GSE144136_celltype_filtered$Ast) & gene %in% rownames(GSE213982_celltype_filtered$Ast)
+gene %in% rownames(GSE144136_celltype_filtered$Miv) & gene %in% rownames(GSE213982_celltype_filtered$Mic)
+gene %in% rownames(GSE144136_celltype_filtered$Mic) & gene %in% rownames(GSE213982_celltype_filtered$Mic)
+gene %in% rownames(GSE144136_celltype_filtered$OPC) & gene %in% rownames(GSE213982_celltype_filtered$OPC)
+gene %in% rownames(GSE144136_celltype_filtered$End) & gene %in% rownames(GSE213982_celltype_filtered$End)
+
+```
