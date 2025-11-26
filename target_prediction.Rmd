@@ -323,7 +323,7 @@ cat("N metabolites without duplicates:", length(gutmgene_nodup$Metabolite_CID), 
 save(gutmgene_nodup, file = "data/gutmgene/gutmgene_nodup.RData")  # No duplicated metabolites
 save(gutmgene_na, file = "data/gutmgene/gutmgene_na.RData")        # Only the NAs
 
-# nao lembro aqui
+# Criar df name e cid
 df <- data.frame(name=gutmgene_nodup$Metabolite_Name,
                          CID=gutmgene_nodup$Metabolite_CID,
                          stringsAsFactors=FALSE)
@@ -388,13 +388,14 @@ get_smiles_from_pubchem <- function(compound_id) {
   return(ifelse(is.null(smiles), NA, smiles))
 }
 
-smiles <- sapply(diff_cid, get_smiles_from_pubchem)
+all_cid <- unname(gutmgene_nodup$Metabolite_CID)
+smiles <- sapply(all_cid, get_smiles_from_pubchem)
 # Create dataframe to store SMILES and CIDs for target prediction
 df_smiles_ids <- data.frame(SMILES=smiles,
-                         pubchem_ids=paste0("cid", diff_cid),
+                         pubchem_ids=paste0("cid", all_cid),
                          stringsAsFactors=FALSE)
 # Save the dataframe as text file
-write.table(df_smiles_ids, file="smiles_others.txt",
+write.table(df_smiles_ids, file="data/gutmgene/smiles_withcid.txt",
             row.names=FALSE, col.names=FALSE,
             quote=FALSE, sep=" ")
 ```
@@ -430,13 +431,7 @@ After running SEA with smiles_ids.txt, read the results.
 
 ```{r}
 # Read SEA dataframe
-original <- read.csv("data/target_prediction/sea/original.xls")
-extra <- read.csv("data/target_prediction/sea/extra.xls")
-combined <- rbind(original, extra)
-# write.xlsx(combined, "data/target_prediction/sea/sea-combined.xlsx")
-
-# Rename columns to avoid special character issues
-sea_result <- combined
+sea_result <- read.csv("data/target_prediction/sea/sea-results.xls")
 colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
                           "Max_Tc", "Cut_Sum", "Z_Score", "Name", "Description", "Query_Smiles")
 
@@ -460,7 +455,17 @@ cat(length(sea_targets), "targets were predicted with SEA\n")
 directory <- "data/target_prediction/stpnovo"
 
 # Get the files
-files <- list.files(path = directory, pattern = "\\.csv$", full.names = TRUE)
+files <- list.files(path = directory, pattern = ".*cid.*\\.csv$", full.names = TRUE)
+
+names <- c()
+for (file_path in files) {
+  names <- c(str_remove(basename(file_path), "\\.csv$"), names)
+}
+
+# Lê o arquivo txt com separador de espaço
+dados <- read.table("data/gutmgene/smiles_all.txt", sep = " ", header = FALSE)
+# Pega só a segunda coluna como vetor
+segunda_coluna <- dados[[2]]
 
 # Iterate over the files creating dataframes
 dataframes <- list()
@@ -1025,7 +1030,7 @@ for (k in 2:length(sets)) {
   for (combo in combos) {
     inter <- Reduce(intersect, sets[combo])
     df <- data.frame(target = inter)
-    fname <- paste0("data/target_prediction/intersections/intersection_", 
+    fname <- paste0("data/target_prediction/intersections/intersection_",
                     paste(combo, collapse = "_"), ".csv")
     write.csv(df, fname, row.names = FALSE)
   }
