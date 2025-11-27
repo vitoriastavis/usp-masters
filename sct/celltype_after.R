@@ -17,8 +17,8 @@ for (ct in cell_types) {
   GSE213982_celltype_filtered[[ct]] <- markers_filtered
 }
 
-# save(GSE213982_celltype_filtered,
-     # file="degs_sct_celltype/GSE213982_celltype_f.RData")
+save(GSE213982_celltype_filtered,
+file="./sct/degs_sct_celltype/GSE213982_celltype_f.RData")
 
 # filter by p and FC
 GSE144136_celltype_filtered <- list()
@@ -31,8 +31,8 @@ for (ct in cell_types) {
   GSE144136_celltype_filtered[[ct]] <- markers_filtered
 }
 
-# save(GSE144136_celltype_filtered,
-     # file="degs_sct_celltype/GSE144136_celltype_f.RData")
+save(GSE144136_celltype_filtered,
+file="./sct/degs_sct_celltype/GSE144136_celltype_f.RData")
 
 # Pasta com os CSVs das interseções
 csv_folder <- "./data/target_prediction/intersections"

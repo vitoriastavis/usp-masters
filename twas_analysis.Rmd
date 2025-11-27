@@ -55,6 +55,7 @@ for (subdir in subdirs) {
 all_twas <- unname(unlist(all_unique))
 ```
 
+
 ```{r}
 # Lista para guardar os resultados
 intersection_results <- list()
@@ -68,7 +69,7 @@ for (file in csv_files) {
   raw_lines <- readLines(file, warn = FALSE)
 
   # Nome base do arquivo para usar como key
-  # key <- gsub("^intersection_|\\.csv$", "", basename(file))
+  key <- gsub("^intersection_|\\.csv$", "", basename(file))
   
   # Ler CSV
   # print(file)
@@ -77,15 +78,54 @@ for (file in csv_files) {
   # Garantir vetor
   vec <- as.character(df$target)
   
+  intersection_results[[key]] <- intersect(vec, all_twas)
+  
   # Interseção com snrnaseq_intersection
-  for (twas in names(all_unique)){
-    genes_twas <- all_unique[[twas]]
-    key <- paste0(basename(file), twas)
-    inter <- intersect(vec, genes_twas)
-    intersection_results[[key]] <- inter
-  }
+  # for (twas in names(all_unique)){
+  #   genes_twas <- all_unique[[twas]]
+  #   key <- paste0(basename(file), twas)
+  #   inter <- intersect(vec, genes_twas)
+  #   intersection_results[[key]] <- inter
+  # }
 }
 
+all_intersects <- unique(unname(unlist(intersection_results)))
+```
+
+
+```{r}
+library(dplyr)
+
+# all_unique: lista nomeada; cada elemento = vetor de genes de um autor
+# nomes da lista = Adams2025, etc.
+
+gene_author <- bind_rows(
+  lapply(names(all_unique), function(auth) {
+    data.frame(
+      gene   = all_unique[[auth]],
+      author = auth,
+      stringsAsFactors = FALSE
+    )
+  })
+)
+
+# remover NAs ou strings vazias se existirem
+gene_author <- gene_author %>%
+  filter(!is.na(gene), gene != "")
+
+genes_autores <- gene_author %>%
+  group_by(gene) %>%
+  summarise(
+    n_autores = n_distinct(author),
+    autores   = paste(sort(unique(author)), collapse = ", ")
+  ) 
+
+genes_autores_alvos <- genes_autores %>%
+  filter(gene %in% all_intersects) %>%
+  arrange(desc(n_autores), gene)
+
+genes_autores_alvos_filtrado <- genes_autores_alvos %>%
+  filter(n_autores > 1)
 ```
 
 # Comparing with previous analyses
@@ -134,7 +174,7 @@ multi_analysis_genes <- gene_analyses_df %>%
 # Getting the predicted metabolites/ligands for the intersection genes
 
 ```{r}
-gene <- "FOS"
+gene <- "CTSB"
 
 cat(gene)
 gene %in% rownames(GSE144136_celltype_filtered$InN) & gene %in% rownames(GSE213982_celltype_filtered$InN)
