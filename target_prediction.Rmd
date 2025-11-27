@@ -512,7 +512,6 @@ cat(length(stp_targets), "targets were predicted with STP\n")
 
 ## CHEMBL
 
-
 ```{r}
 library(readr)
 library(dplyr)
@@ -976,6 +975,7 @@ map_hgnc_all_methods <- function(targets, verbose = TRUE) {
 
 ```{r}
 library(readr)
+# falta sea e stp
 
 # SEA
 sea_mappings <- map_hgnc_all_methods(sea_targets)
@@ -992,7 +992,7 @@ write.csv(stp_mappings, "data/target_prediction/stp/stp_mappings.csv", row.names
 write.csv(all_stp, "data/target_prediction/stp/stp_targets.csv", row.names = FALSE)
 
 # Multitask CHEMBL
-multitask_uniprot_ids <- read.table("data/target_prediction/multitask/uniprot_ids_multitask.txt",
+multitask_uniprot_ids <- read.table("data/target_prediction/multitask/multitask_uniprot_ids.txt",
                                      header = FALSE,
                                      stringsAsFactors = FALSE) 
 multitask_from_chembl_mapping <- chembl_database_mapping(multitask_targets)
@@ -1004,8 +1004,8 @@ all_multitask <- all_multitask[!is.na(all_multitask)]
 write.csv(multitask_mappings, "data/target_prediction/multitask/multitask_mappings.csv", row.names = FALSE)
 write.csv(all_multitask, "data/target_prediction/multitask/multitask_targets.csv", row.names = FALSE)
 
-# PPB2.
-ppb_uniprot_ids <- read.table("data/target_prediction/ppb2/uniprot_ids_ppb.txt",
+# PPB2
+ppb_uniprot_ids <- read.table("data/target_prediction/ppb2/ppb_uniprot_ids.txt",
                                      header = FALSE,
                                      stringsAsFactors = FALSE) 
 
@@ -1013,10 +1013,8 @@ ppb_chembl_ids <- read.table("data/target_prediction/ppb2/ppb_chembl_ids.txt", h
 
 ppb_from_chembl_mapping <- chembl_database_mapping(ppb_chembl_ids$V1)
 ppb_from_chembl_mapping$Source <- "chembl_database"
-
 ppb_from_uniprot_mapping <- map_hgnc_all_methods(ppb_uniprot_ids$V1)
 ppb_mappings <- rbind(ppb_from_uniprot_mapping, ppb_from_chembl_mapping)
-
 all_ppb <- unique(ppb_mappings$HGNC_ID)
 all_ppb <- all_ppb[!is.na(all_ppb)]
 write.csv(ppb_mappings, "data/target_prediction/ppb2/ppb_mappings.csv", row.names = FALSE)

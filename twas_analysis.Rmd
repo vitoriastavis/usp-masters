@@ -174,7 +174,7 @@ multi_analysis_genes <- gene_analyses_df %>%
 # Getting the predicted metabolites/ligands for the intersection genes
 
 ```{r}
-gene <- "CTSB"
+gene <- "RARB"
 
 cat(gene)
 gene %in% rownames(GSE144136_celltype_filtered$InN) & gene %in% rownames(GSE213982_celltype_filtered$InN)
