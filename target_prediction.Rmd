@@ -452,20 +452,23 @@ cat(length(sea_targets), "targets were predicted with SEA\n")
 
 ```{r}
 # Directory with STP .csv files
-directory <- "data/target_prediction/stpnovo"
+directory <- "data/target_prediction/stp"
 
 # Get the files
 files <- list.files(path = directory, pattern = ".*cid.*\\.csv$", full.names = TRUE)
 
-names <- c()
+queries <- c()
 for (file_path in files) {
-  names <- c(str_remove(basename(file_path), "\\.csv$"), names)
+  queries <- c(str_remove(basename(file_path), "\\.csv$"), queries)
 }
 
 # Lê o arquivo txt com separador de espaço
-dados <- read.table("data/gutmgene/smiles_all.txt", sep = " ", header = FALSE)
+smiles_cids <- read.table("data/gutmgene/smiles_all.txt", sep = " ", header = FALSE)
 # Pega só a segunda coluna como vetor
-segunda_coluna <- dados[[2]]
+all_ids <- smiles_cids[[2]]
+
+# Check if there is any ID missing from STP prediction
+setdiff(all_ids, queries)
 
 # Iterate over the files creating dataframes
 dataframes <- list()
@@ -482,12 +485,12 @@ for (file_path in files) {
 stp_result <- bind_rows(dataframes)
 
 # Write final dataframe
-write_csv(stp_result_extra, file.path(directory, "stp_results.csv"))
+write_csv(stp_result, file.path(directory, "stp_results.csv"))
 ```
 
 ```{r}
 # Read STP dataframe
-stp_result <- read.csv("data/target_prediction/stpnovo/stp_results.csv")
+stp_result <- read.csv("data/target_prediction/stp/stp_results.csv")
 
 # Rename columns to avoid special character issues
 colnames(stp_result) <- c("Name", "Common_name", "Uniprot_ID",
@@ -518,6 +521,16 @@ directory <- "data/target_prediction/multitask"
 
 # Get the files
 files <- list.files(path = directory, pattern = "\\.csv$", full.names = TRUE)
+names <- c()
+for (file_path in files) {
+  names <- c(str_remove(basename(file_path), "\\.csv$"), names)
+}
+
+# Lê o arquivo txt com separador de espaço
+dados <- read.table("data/gutmgene/smiles_all.txt", sep = " ", header = FALSE)
+# Pega só a segunda coluna como vetor
+segunda_coluna <- dados[[2]]
+
 
 # Iterate over the files creating dataframes
 dataframes <- list()
@@ -554,7 +567,7 @@ multitask_result <- multitask_result[order(multitask_result$Target_ID, multitask
 multitask_result <- multitask_result %>% distinct(Target_ID, .keep_all=TRUE)
 multitask_targets <- multitask_result$Target_ID  
 
-# write.table(multitask_targets, file = "data/target_prediction/multitask/multitask_chembl_ids.txt",col.names=FALSE, row.names = FALSE,quote = FALSE)
+write.table(multitask_targets, file = "data/target_prediction/multitask/multitask_chembl_ids.txt",col.names=FALSE, row.names = FALSE,quote = FALSE)
 
 cat(length(multitask_targets), "targets were predicted with Multitask CHEMBL\n")
 ```
@@ -933,21 +946,21 @@ map_hgnc_all_methods <- function(targets, verbose = TRUE) {
   })
   if (!is.null(res_mygene)) results[["mygene"]] <- res_mygene
   
-  # # CHEMBL
-  # if (verbose) cat("\nRunning chembl_database_mapping\n")
-  # res_chembl <- tryCatch({
-  #   df <- as.data.frame(chembl_database_mapping(targets))
-  #   if (nrow(df) > 0) {
-  #     # Remove rownames before adding column
-  #     rownames(df) <- NULL
-  #     df$Source <- "chembl_database"
-  #     df
-  #   }
-  # }, error = function(e) {
-  #   warning("chembl_database_mapping failed: ", e$message)
-  #   NULL
-  # })
-  # if (!is.null(res_chembl)) results[["chembl_database"]] <- res_chembl
+  # CHEMBL
+  if (verbose) cat("\nRunning chembl_database_mapping\n")
+  res_chembl <- tryCatch({
+    df <- as.data.frame(chembl_database_mapping(targets))
+    if (nrow(df) > 0) {
+      # Remove rownames before adding column
+      rownames(df) <- NULL
+      df$Source <- "chembl_database"
+      df
+    }
+  }, error = function(e) {
+    warning("chembl_database_mapping failed: ", e$message)
+    NULL
+  })
+  if (!is.null(res_chembl)) results[["chembl_database"]] <- res_chembl
   # 
   if (verbose) cat("\nCombining results...\n")
   
@@ -975,8 +988,8 @@ write.csv(all_sea, "data/target_prediction/sea/sea_targets.csv", row.names = FAL
 stp_mappings <- map_hgnc_all_methods(stp_targets)
 all_stp <- unique(stp_mappings$HGNC_ID)
 all_stp <- all_stp[!is.na(all_stp)]
-write.csv(stp_mappings, "data/target_prediction/stpnovo/stp_mappings.csv", row.names = FALSE)
-write.csv(all_stp, "data/target_prediction/stpnovo/stp_targets.csv", row.names = FALSE)
+write.csv(stp_mappings, "data/target_prediction/stp/stp_mappings.csv", row.names = FALSE)
+write.csv(all_stp, "data/target_prediction/stp/stp_targets.csv", row.names = FALSE)
 
 # Multitask CHEMBL
 multitask_uniprot_ids <- read.table("data/target_prediction/multitask/uniprot_ids_multitask.txt",
@@ -1011,7 +1024,7 @@ write.csv(all_ppb, "data/target_prediction/ppb2/ppb_targets.csv", row.names = FA
 
 # Getting intersections 
 all_sea <- read_csv("data/target_prediction/sea/sea_targets.csv", show_col_types = FALSE)$x
-all_stp <- read_csv("data/target_prediction/stpnovo/stp_targets.csv", show_col_types = FALSE)$x
+all_stp <- read_csv("data/target_prediction/stp/stp_targets.csv", show_col_types = FALSE)$x
 all_ppb <- read_csv("data/target_prediction/ppb2/ppb_targets.csv", show_col_types = FALSE)$x
 all_multitask <- read_csv("data/target_prediction/multitask/multitask_targets.csv", show_col_types = FALSE)$x
 
@@ -1072,7 +1085,7 @@ teng_i <- read_excel("data/teng3.xlsx", col_names = TRUE)$Common
 
 
 sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
-stp_targets <- read.csv("data/target_prediction/stpnovo/stp_targets.csv")$x
+stp_targets <- read.csv("data/target_prediction/stp/stp_targets.csv")$x
 ```
 
 # Getting metabolites for STP and chemblpred
@@ -1120,8 +1133,8 @@ get_targets_to_metabolites <- function(folder_path) {
   return(targets_to_metabolites)
 }
 
-target_metabolites_stp <- get_targets_to_metabolites("data/target_prediction/stpnovo")
-save(target_metabolites_stp, file="data/target_prediction/stpnovo/target_metabolites_stp.RData")
+target_metabolites_stp <- get_targets_to_metabolites("data/target_prediction/stp")
+save(target_metabolites_stp, file="data/target_prediction/stp/target_metabolites_stp.RData")
 ```
 
 ```{r}
