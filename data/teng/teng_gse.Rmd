@@ -1,0 +1,78 @@
+---
+title: "teng_gse"
+output: html_document
+---
+
+```{r}
+install.packages("BiocManager")
+BiocManager::install(c("limma"))
+
+```
+```{r}
+library(limma)
+files <- list.files("GSE76826_RAW", full.names = TRUE, pattern = "txt.gz$")
+
+raw <- read.maimages(files,
+                     source = "agilent",
+                     green.only = TRUE)   
+
+bg <- backgroundCorrect(raw, method = "normexp")
+
+norm <- normalizeBetweenArrays(bg, method = "quantile")
+
+nms <- basename(files)
+group <- ifelse(grepl("HC_", nms), "Control",
+         ifelse(grepl("LOD-dep", nms), "MDD",
+         "Rem"))
+
+group <- factor(group, levels = c("Control","MDD","Rem"))
+
+design <- model.matrix(~0 + group)
+colnames(design) <- levels(group)
+
+fit <- lmFit(norm, design)
+cont <- makeContrasts(MDD - Control, levels = design)
+fit2 <- contrasts.fit(fit, cont)
+fit2 <- eBayes(fit2)
+
+#  |logFC|>0.5 and p<0.05.
+deg <- topTable(fit2, number = Inf, adjust.method = "fdr")
+deg.annot <- cbind(norm$genes, deg)
+
+deg.sig <- deg[deg$adj.P.Val < 0.05 & abs(deg$logFC) > 0.5, ]
+
+save(deg, deg.annot, deg.sig, file="GSE76826_RAW/degs.RData")
+```
+
+```{r}
+library(limma)
+files <- list.files("GSE182193_RAW", full.names = TRUE, pattern = "txt.gz$")
+
+raw <- read.maimages(files,
+                     source = "agilent",
+                     green.only = TRUE)   
+
+bg <- backgroundCorrect(raw, method = "normexp")
+
+norm <- normalizeBetweenArrays(bg, method = "quantile")
+
+nms <- basename(files)
+group <- ifelse(grepl("_C\\d", nms), "Control", "MDD")
+group <- factor(group, levels = c("Control","MDD"))
+
+design <- model.matrix(~0 + group)
+colnames(design) <- levels(group)
+
+fit <- lmFit(norm, design)
+cont <- makeContrasts(MDD - Control, levels = design)
+fit2 <- contrasts.fit(fit, cont)
+fit2 <- eBayes(fit2)
+
+#  |logFC|>0.5 and p<0.05.
+deg <- topTable(fit2, number = Inf, adjust.method = "fdr")
+deg.annot <- cbind(norm$genes, deg)
+
+deg.sig <- deg[deg$adj.P.Val < 0.05 & abs(deg$logFC) > 0.5, ]
+
+save(deg, deg.annot, deg.sig, file="GSE182193_RAW/degs.RData")
+```

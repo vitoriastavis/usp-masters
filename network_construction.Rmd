@@ -6,14 +6,8 @@ output: html_document
 ## Conections between targets and metabolites
 
 ```{R}
-load("targets_metabolites.RData")
+load("data/network/targets_metabolites.RData")
 library(dplyr)
-
-targets_to_metabolites$S1PR1 <- NULL
-targets_to_metabolites$NR4A1 <- NULL
-targets_to_metabolites$EDNRB <- NULL
-targets_to_metabolites$TRIL <- NULL
-targets_to_metabolites$FOS <- unique(targets_to_metabolites$FOS)
 
 edges_target_met <- data.frame(
                             Source = rep(names(targets_to_metabolites), lengths(targets_to_metabolites)),
@@ -24,8 +18,6 @@ nodes <- data.frame(
   name = unique(c(edges_target_met$Source, edges_target_met$Target)),
   type = c(rep("Gene", length(unique(edges_target_met$Source))), rep("Metabolite", length(unique(edges_target_met$Target))))
 )
-
-relevant_metabolites <- unique(edges_target_met$Target)
 ```
 
 ## Conections between species and metabolites
@@ -41,11 +33,11 @@ edges_species_met <- data.frame(
                             Source = gutmgene_species$Microbe_Species,
                             Target = gutmgene_species$Metabolite_Name)
 
-# Remove bacteria that do not produce the relevant metabolites 
-edges_species_met <- edges_species_met[edges_species_met$Target %in% relevant_metabolites, ]
-
-# Get bacteria that produce the metabolites
-relevant_species <- unique(edges_species_met$Source)
+# Save information about species and metabolites nodes
+nodes <- rbind(nodes, data.frame(
+                      name = unique(c(edges_species_met$Source, edges_species_met$Target)),
+                      type = c(rep("Species", length(unique(edges_species_met$Source))), rep("Metabolite", length(unique(edges_species_met$Target))))
+                    ))
 ```
 
 ## Connections between species and MDD
@@ -64,11 +56,6 @@ disbiome_df <- disbiome_df %>%
 edges_species_mdd <- data.frame(
                             Source = unique(disbiome_df$species),
                             Target = rep("MDD", length(unique(disbiome_df$species))))
-
-edges_species_mdd <- edges_species_mdd[edges_species_mdd$Source %in% relevant_species, ]
-
-# Remove bacteria that are not associated with MDD
-edges_species_met <- edges_species_met[edges_species_met$Source %in% unique(edges_species_mdd$Source), ]
 
 # Save information about species and MDD nodes
 nodes <- rbind(nodes, data.frame(
@@ -98,21 +85,22 @@ edges_mdd_react <- data.frame(
                         Target = mdd_react$Pathway)
 edges_mdd_pathways <- rbind(edges_mdd_kegg, edges_mdd_react)
 
-relevant_pathways <- unique(edges_mdd_pathways$Target)
+nodes <- rbind(nodes, data.frame(
+                        name = unique(edges_mdd_pathways$Target),
+                        type = rep("Pathway", length(unique(edges_mdd_pathways$Target)))
+              ))
 ```
 
 ## Conections between genes and KEGG
 
 ```{R}
-f3_kegg <- read.table("data/network/f3_kegg.txt", sep = "\t", header = F)
-fos_kegg <- read.table("data/network/fos_kegg.txt", sep = "\t", header = F)
-genes_kegg <- rbind(f3_kegg, fos_kegg)
+pde4b_kegg <- read.table("data/network/target_associations/pde4b_kegg.txt", sep = "\t", header = F)
+rarb_kegg <- read.table("data/network/target_associations/rarb_kegg.txt", sep = "\t", header = F)
+ep300_kegg <- read.table("data/network/target_associations/ep300_kegg.txt", sep = "\t", header = F)
 
 edges_target_kegg <- data.frame(
-                            Source = c(rep("F3", nrow(f3_kegg)), rep("FOS", nrow(fos_kegg))),
-                            Target = c(f3_kegg$V2, fos_kegg$V2))
-
-edges_target_kegg <- edges_target_kegg[edges_target_kegg$Target %in% relevant_pathways, ]
+                            Source = c(rep("PDE4B", nrow(pde4b_kegg)), rep("RARB", nrow(rarb_kegg)), rep("EP300", nrow(ep300_kegg))),
+                            Target = c(pde4b_kegg$V2, rarb_kegg$V2, ep300_kegg$V2))
 
 # Save information about KEGG pathway nodes
 nodes <- rbind(nodes, data.frame(
@@ -124,14 +112,13 @@ nodes <- rbind(nodes, data.frame(
 ## Conections between genes and Reactome
 
 ```{R}
-f3_react <- read.csv("data/network/f3_react.csv", sep = ",", header = TRUE)
-fos_react <- read.csv("data/network/fos_react.csv", sep = ",", header = TRUE)
+pde4b_react <- read.csv("data/network/target_associations/pde4b_react.csv", sep = ",", header = TRUE)
+rarb_react <- read.csv("data/network/target_associations/rarb_react.csv", sep = ",", header = TRUE)
+ep300_react <- read.csv("data/network/target_associations/ep300_react.csv", sep = ",", header = TRUE)
 
 edges_target_react <- data.frame(
-                            Source = c(rep("F3", nrow(f3_react)), rep("FOS", nrow(fos_react))),
-                            Target = c(f3_react$Pathway.name, fos_react$Pathway.name))
-
-edges_target_react <- edges_target_react[edges_target_react$Target %in% relevant_pathways, ]
+                            Source = c(rep("PDE4B", nrow(pde4b_react)), rep("RARB", nrow(rarb_react)), rep("EP300", nrow(ep300_react))),
+                            Target = c(pde4b_react$Pathway.name, rarb_react$Pathway.name, ep300_react$Pathway.name))
 
 # Save information about reactome pathway nodes
 nodes <- rbind(nodes, data.frame(
@@ -140,23 +127,13 @@ nodes <- rbind(nodes, data.frame(
               ))
 ```
 
-```{R}
-# Save information about MDD pathway nodes
-edges_mdd_pathways = edges_mdd_pathways[edges_mdd_pathways$Target %in% c(edges_target_react$Target, edges_target_kegg$Target), ]
-nodes <- rbind(nodes, data.frame(
-                        name = unique(edges_mdd_pathways$Target),
-                        type = rep("Pathway", length(unique(edges_mdd_pathways$Target)))
-              ))
-```
-
-
 ## Get all the edges and node type, clean and save
 
 ```{R}
 edges <- rbind(edges_target_met, edges_target_react, edges_target_kegg, edges_mdd_pathways, edges_species_mdd, edges_species_met)
 edges_clean <- distinct(edges)
-
 nodes_clean <- distinct(nodes)
+
 order <- c("Species", "Pathway", "Metabolite", "Gene", "Disorder")
 nodes_clean <- nodes_clean %>%
   mutate(layer = as.numeric(factor(type, levels = order)))
@@ -168,33 +145,105 @@ write.table(nodes_clean, file = "data/network/cytoscape_nodes.tsv", row.names=FA
 
 ```{R}
 library(jsonlite)
-library(dplyr)
+q <- function(x) sprintf('\"%s\"', x) 
 
-nodes_list <- nodes_clean %>%
-  mutate(id = name) %>%         
-  rowwise() %>%
-  mutate(data = list(list(
-    id = id,
-    type = type,
-    layer = layer
-  ))) %>%
-  pull(data)                     
+create_cyjs <- function(nodes_df, edges_df, output_file = "network_data.cyjs") {
+  
+  # Node ID lookup
+  node_ids <- setNames(as.character((1:nrow(nodes_df)) + 182), nodes_df$name)
+  
+  # Helper: correctly escape quotes for Cytoscape format
+  q <- function(x) sprintf('\"%s\"', x) 
+  
+  # Nodes
+  nodes_list <- lapply(1:nrow(nodes_df), function(i) {
+    quoted_name <- q(nodes_df$name[i])
+    quoted_type <- q(nodes_df$type[i])
+    
+    list(
+      data = list(
+        id = as.character(i + 182),
+        shared_name = quoted_name, # This will now be: "\"RARB\""
+        name = quoted_name,         # This will now be: "\"RARB\""
+        SUID = i + 182,
+        `_layer_` = nodes_df$layer[i],
+        `_type_` = quoted_type,     # This will now be: "\"Gene\""
+        selected = FALSE
+      ),
+      # Keep 'position' as numeric data type
+      position = list( 
+        x = runif(1, -350, 300),
+        y = runif(1, -300, 280)
+      ),
+      selected = FALSE
+    )
+  })
+  
+  # Edges
+  edges_list <- list()
+  edge_count <- 1
+  
+  for(i in 1:nrow(edges_df)) {
+    source_name <- edges_df$Source[i]
+    target_name <- edges_df$Target[i]
+    
+    if(source_name %in% names(node_ids) && target_name %in% names(node_ids)) {
+      
+      quoted_source <- q(source_name)
+      quoted_target <- q(target_name)
+      
+      # The edge shared_name/name must also follow the format,
+      # which includes the already-quoted names.
+      interaction_label <- sprintf('%s (interacts with) %s', 
+                                   quoted_source, quoted_target)
+      
+      edges_list[[edge_count]] <- list(
+        data = list(
+          id = as.character(edge_count + 584),
+          source = node_ids[source_name],
+          target = node_ids[target_name],
+          shared_name = interaction_label,
+          name = interaction_label,
+          interaction = "interacts with",
+          SUID = edge_count + 584,
+          shared_interaction = "interacts with",
+          selected = FALSE
+        ),
+        selected = FALSE
+      )
+      
+      edge_count <- edge_count + 1
+    } else {
+      warning(paste("Edge", i, "skipped:", source_name, "or", target_name, "not found"))
+    }
+  }
+  
+  # Full structure
+  cyjs <- list(
+    format_version = "1.0",
+    generated_by = "R-script",
+    target_cytoscapejs_version = "~2.1",
+    data = list(
+      shared_name = "network_data.tsv",
+      name = "network_data.tsv",
+      SUID = 155,
+      `__Annotations` = list(),
+      selected = TRUE
+    ),
+    elements = list(
+      nodes = nodes_list,
+      edges = edges_list
+    )
+  )
+  
+  # Ensure auto_unbox = TRUE and pretty = TRUE are kept
+  write(toJSON(cyjs, auto_unbox = TRUE, pretty = TRUE), output_file)
+  
+  cat("CYJS file created:", output_file, "\n")
+  cat("Total nodes:", length(nodes_list), "\n")
+  cat("Total edges:", length(edges_list), "\n")
+}
 
-# 2. Criar lista de arestas no formato Cytoscape.js
-edges_list <- edges_clean %>%
-  rowwise() %>%
-  mutate(data = list(list(
-    source = Source,
-    target = Target
-  ))) %>%
-  pull(data)
-
-# 3. Combinar em um objeto "elements"
-cyjs_list <- list(elements = list(
-  nodes = nodes_list,
-  edges = edges_list
-))
-
-# 4. Salvar como JSON
-write_json(cyjs_list, "data/network/network_elements.cyjs", pretty = TRUE, auto_unbox = TRUE)
+# Usage:
+create_cyjs(nodes_clean, edges_clean, "data/network/network_data.cyjs")
 ```
