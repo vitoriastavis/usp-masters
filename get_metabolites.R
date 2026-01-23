@@ -2,11 +2,11 @@ library(readxl)
 
 get_metabolites <- function(analysis_targets) {
   
-  load("data/target_prediction/stpnovo/target_metabolites_stp.RData")
-  stp_mappings <- read.csv("data/target_prediction/stpnovo/stp_mappings.csv")
+  load("data/target_prediction/stp/target_metabolites_stp.RData")
+  stp_mappings <- read.csv("data/target_prediction/stp/stp_mappings.csv")
   target_metabolites_stp <- target_metabolites_stp[names(target_metabolites_stp) %in% analysis_targets]
   
-  sea_result <- read_xlsx("data/target_prediction/sea/sea-combined.xlsx")
+  sea_result <- read.csv("/home/gbiuser/Documents/vitoria/usp-masters/data/target_prediction/sea/sea-results.xls")
   sea_mappings <- read.csv("data/target_prediction/sea/sea_mappings.csv")
   colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
                             "Max_Tc", "Cut_Sum", "Z_Score", "Name", "Description", "Query_Smiles")

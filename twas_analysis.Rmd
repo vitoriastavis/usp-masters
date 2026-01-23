@@ -174,14 +174,13 @@ multi_analysis_genes <- gene_analyses_df %>%
 # Getting the predicted metabolites/ligands for the intersection genes
 
 ```{r}
-gene <- "RARB"
+gene <- "EID2"
 
 cat(gene)
 gene %in% rownames(GSE144136_celltype_filtered$InN) & gene %in% rownames(GSE213982_celltype_filtered$InN)
 gene %in% rownames(GSE144136_celltype_filtered$ExN) & gene %in% rownames(GSE213982_celltype_filtered$ExN)
 gene %in% rownames(GSE144136_celltype_filtered$Oli) & gene %in% rownames(GSE213982_celltype_filtered$Oli)
 gene %in% rownames(GSE144136_celltype_filtered$Ast) & gene %in% rownames(GSE213982_celltype_filtered$Ast)
-gene %in% rownames(GSE144136_celltype_filtered$Miv) & gene %in% rownames(GSE213982_celltype_filtered$Mic)
 gene %in% rownames(GSE144136_celltype_filtered$Mic) & gene %in% rownames(GSE213982_celltype_filtered$Mic)
 gene %in% rownames(GSE144136_celltype_filtered$OPC) & gene %in% rownames(GSE213982_celltype_filtered$OPC)
 gene %in% rownames(GSE144136_celltype_filtered$End) & gene %in% rownames(GSE213982_celltype_filtered$End)

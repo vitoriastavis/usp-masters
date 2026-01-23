@@ -814,43 +814,36 @@ source("get_metabolites.R")
 
 met_name_cid <- read.csv("data/gutmgene/name_cid.csv") 
 
-# load("data/all_analyses_comparison.RData")
-# rnaseq_genes <- gene_analyses_df[!gene_analyses_df$analyses %in% c("twas", "variance"), ]$gene
-rnaseq_genes <- c("FGFR3")
+selected_genes <- c("RARB", "EP300", "PDE4B")
 
-targets_to_metabolites_fgfr3 <- get_metabolites(rnaseq_genes)
-# targets_to_metabolites_fgfr3 <- targets_to_metabolites_fgfr3$FGFR3
-# targets_to_metabolites_fgfr3 <- ifelse(
-#   grepl("^nocid", targets_to_metabolites_fgfr3),
-#   targets_to_metabolites_fgfr3,
-#   paste0("cid", targets_to_metabolites_fgfr3)
-# )
-# smiles_ids <- read.table("data/gutmgene/smiles_ids.txt")
-# smiles_ids_fgfr3 <- smiles_ids[smiles_ids$V2 %in% targets_to_metabolites_fgfr3,]
-# write.table(smiles_ids_fgfr3, file = "data/gutmgene/smiles_ids_fgfr3.txt", row.names = F, col.names = F, quote = F)
+targets_to_metabolites <- get_metabolites(selected_genes)
 
-for (target in names(targets_to_metabolites_fgfr3)){
-  mets <- targets_to_metabolites_fgfr3[[target]]
+for (target in names(targets_to_metabolites)){
+  mets <- targets_to_metabolites[[target]]
   new_mets <- c()
   for (met in mets){
     # cid -> name
     name <- met_name_cid[met_name_cid$CID == met,]$name
     new_mets <- c(new_mets, name)
   }
-  targets_to_metabolites_fgfr3[[target]] <- new_mets
+  targets_to_metabolites[[target]] <- new_mets
 }
 
-metabolites_to_targets_fgfr3 <- list()
-for (gene in names(targets_to_metabolites_fgfr3)) {
+targets_to_metabolites$RARB <- unique(targets_to_metabolites$RARB)
+targets_to_metabolites$EP300 <- unique(targets_to_metabolites$EP300)
+targets_to_metabolites$PDE4B <- unique(targets_to_metabolites$PDE4B)
+
+metabolites_to_targets <- list()
+for (gene in names(targets_to_metabolites)) {
   # print(gene)
-  for (metabolite in targets_to_metabolites_fgfr3[[gene]]) {
+  for (metabolite in targets_to_metabolites[[gene]]) {
     # print(metabolite)
-    metabolites_to_targets_fgfr3[[metabolite]] <- c(metabolites_to_targets_fgfr3[[metabolite]], gene)
+    metabolites_to_targets[[metabolite]] <- c(metabolites_to_targets[[metabolite]], gene)
   }
 }
-metabolites_to_targets_fgfr3 <- lapply(metabolites_to_targets_fgfr3, unique)
+metabolites_to_targets <- lapply(metabolites_to_targets, unique)
 
-save(targets_to_metabolites_fgfr3, metabolites_to_targets_fgfr3, file="data/targets_metabolites_fgfr3.RData")
+save(targets_to_metabolites, metabolites_to_targets, file="data/network/targets_metabolites.RData")
 ```
 
 # Regulatory network analysis
