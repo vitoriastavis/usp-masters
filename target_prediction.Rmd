@@ -227,7 +227,7 @@ gutmgene1 <- gutmgene1[!grepl("Bacteria Latreille et al. 1825", gutmgene1$Gut_Mi
 gutmgene1 <- gutmgene1[!grepl("CEBAS", gutmgene1$Gut_Microbe_Name), ]
 
 # Save data with microbe info
-save(gutmgene1, file = "data/gutmgene/gutmgene1_beforemerging.RData")  
+# save(gutmgene1, file = "data/gutmgene/gutmgene1_beforemerging.RData")  
 ```
 
 ## Build plots of raw data
@@ -235,17 +235,46 @@ save(gutmgene1, file = "data/gutmgene/gutmgene1_beforemerging.RData")
 ### Plot 1 - Distribution of genera among metabolites
 
 ```{r}
+
+gutmgene1$Genus <- sub(" .*", "", gutmgene1$Gut_Microbe_Name)
+gutmgene1$Genus <- gsub("\\[|\\]", "", gutmgene1$Genus)
+gutmgene1$Genus <- gsub("\\.|\\]", "", gutmgene1$Genus)
+
 # Count occurrences of each genus
-genus_counts <- table(gutmgene$Microbe_Genus)
+genus_counts <- table(gutmgene1$Genus)
 
 # Filter to only include genera with frequency > 5
 genera_to_keep <- names(genus_counts[genus_counts >= 5])
-gutmgene_filtered <- gutmgene[gutmgene$Microbe_Genus %in% genera_to_keep, ]
+gutmgene_filtered <- gutmgene1[gutmgene1$Genus %in% genera_to_keep, ]
 
 # Order from most frequent to less frequent
 gutmgene_filtered_count <- gutmgene_filtered %>%
-  count(Microbe_Genus) %>%
-  mutate(Microbe_Genus = reorder(Microbe_Genus, -n))
+  count(Genus) %>%
+  mutate(Genus = reorder(Genus, -n))
+
+esquisse::esquisser(gutmgene_filtered_count)
+
+p_generos <- ggplot(gutmgene_filtered_count) +
+  aes(x = Genus, y = n) +
+  geom_col(fill = "#6FAF9C") +
+  labs(x = "Gênero", y = "Número de Metabólitos Produzidos") +
+  theme_classic() +
+  theme(
+    axis.title.y = element_text(size = 15L),
+    axis.title.x = element_text(size = 14L),
+    axis.text.y = element_text(size = 14L),
+    axis.text.x = element_text(size = 14L,
+    angle = 55L,
+    hjust = 1L,
+    vjust = 1L,
+    face = "italic")
+  )
+
+ggsave(
+  "/home/gbiuser/Documents/vitoria/usp-masters/data/target_prediction/plot_generos2.pdf",
+  plot = p_generos,
+  width = 10
+)
 
 title_portuguese <- "Distribuição dos microorganismos da microbiota intestinal"
 x_axis_portuguese <- "Microorganismo (gênero)"
@@ -253,7 +282,7 @@ y_axis_portuguese <- "Número de metabólitos produzidos"
 
 # Create the plot
 microbe_distribution <- ggplot(gutmgene_filtered_count,
-                               aes(x = Microbe_Genus, y = n)) +
+                               aes(x = Genus, y = n)) +
   geom_bar(stat = "identity", fill = "gray30", width = 0.5) +
   theme_minimal() + 
   ggtitle(title_portuguese) +  

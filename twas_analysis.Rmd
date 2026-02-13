@@ -51,19 +51,17 @@ for (subdir in subdirs) {
     warning(paste("No CSV file found in", subdir))
   }
 }
-
-all_twas <- unname(unlist(all_unique))
 ```
 
 
 ```{r}
-# Lista para guardar os resultados
-intersection_results <- list()
-
 # Ler cada arquivo CSV e fazer interseção com snrnaseq_intersection
 csv_folder <- "./data/target_prediction/intersections"
 csv_files <- list.files(csv_folder, pattern = "\\.csv$", full.names = TRUE)
 
+# Lista para guardar os resultados
+intersection_results <- list()
+intersection_results_outro <- list()
 for (file in csv_files) {
   # Read raw lines first
   raw_lines <- readLines(file, warn = FALSE)
@@ -78,18 +76,43 @@ for (file in csv_files) {
   # Garantir vetor
   vec <- as.character(df$target)
   
-  intersection_results[[key]] <- intersect(vec, all_twas)
-  
   # Interseção com snrnaseq_intersection
-  # for (twas in names(all_unique)){
-  #   genes_twas <- all_unique[[twas]]
-  #   key <- paste0(basename(file), twas)
-  #   inter <- intersect(vec, genes_twas)
-  #   intersection_results[[key]] <- inter
-  # }
+  for (twas in names(all_unique)){
+    genes_twas <- all_unique[[twas]]
+    key <- paste0(basename(file), twas)
+    inter <- intersect(vec, genes_twas)
+    intersection_results[[key]] <- inter
+  }
 }
 
-all_intersects <- unique(unname(unlist(intersection_results)))
+sizes <- lengths(intersection_results)
+df_sizes <- data.frame(N_alvos = sizes)
+
+p_dist_twas <- ggplot(df_sizes, aes(x = N_alvos)) +
+  geom_histogram(binwidth = 1, fill = "#6FAF9C", color = "white") +
+  theme_classic() +
+  labs(
+    x = "Número de alvos",
+    y = "Frequência"
+  ) +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(size = 14L),
+    plot.subtitle = element_text(size = 12L),
+    axis.title.y = element_text(size = 12L),
+    axis.title.x = element_text(size = 12L),
+    axis.text.y = element_text(size = 12L),
+    axis.text.x = element_text(size = 12L),
+    legend.text = element_text(size = 12L),
+    legend.title = element_text(size = 12L)
+    )
+
+# ggsave("dist.png", width = 3, height = 2)
+
+library(patchwork)
+
+p_dist <- (p_dist_twas | p_dist_degs) + plot_annotation(tag_levels = "a")
+ggsave("dist_alvos.png", width = 6, height = 3)
 ```
 
 
@@ -120,6 +143,7 @@ genes_autores <- gene_author %>%
     autores   = paste(sort(unique(author)), collapse = ", ")
   ) 
 
+all_intersects <- unique(unname(unlist(intersection_results)))
 genes_autores_alvos <- genes_autores %>%
   filter(gene %in% all_intersects) %>%
   arrange(desc(n_autores), gene)
@@ -143,11 +167,12 @@ all_sct <- unique(unlist(unname(results_sct)))
 all_214951 <- unique(unlist(unname(results_214951)))
 all_logn <- unique(unlist(unname(results_logn)))
 all_logn_celltype <- unique(unlist(unname(results_logn_celltype)))
+all_twas <- genes_autores_alvos_filtrado$gene
 
 all_results <- list(all_sct, all_sct_celltype, all_logn, all_logn_celltype, all_214951, all_twas)
 
 # Define names for the analyses
-analysis_names <- c("SCT", "SCT-celltype", "logn", "logn-celltype", "214951", "TWAS")
+analysis_names <- c("SCT-pseudobulk", "SCT-celltype", "logn-pseudobulk", "logn-celltype", "214951", "TWAS")
 names(all_results) <- analysis_names
 
 # Create a named list of all genes with their corresponding analysis
