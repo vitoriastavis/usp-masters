@@ -29,7 +29,7 @@ dados_long <- dados_deg %>%
   )
 
 # Abrir no esquisse para criar plots interativos
-esquisse::esquisser(dados_long)
+# esquisse::esquisser(dados_long)
 
 p <- ggplot(dados_long) +
   aes(x = Análise, y = Número_DEGs, fill = DEGs) +
@@ -80,9 +80,9 @@ all_degs_df_long <- data.frame(
   row.names = NULL
 )
 
-esquisse::esquisser(all_degs_df_long)
+# esquisse::esquisser(all_degs_df_long)
 
-p_dist <- ggplot(all_degs_df_long) +
+p_dist_degs <- ggplot(all_degs_df_long) +
   aes(x = N_alvos, y = Contagem) +
   geom_col(fill = "#6FAF9C") +
   theme_classic() +
@@ -106,13 +106,13 @@ p_dist_degs <- ggplot(df_sizes_degs, aes(x = N_alvos)) +
   theme(
     legend.position = "top",
     plot.title = element_text(size = 14L),
-    plot.subtitle = element_text(size = 12L),
-    axis.title.y = element_text(size = 12L),
-    axis.title.x = element_text(size = 12L),
-    axis.text.y = element_text(size = 12L),
-    axis.text.x = element_text(size = 12L),
-    legend.text = element_text(size = 12L),
-    legend.title = element_text(size = 12L)
+    plot.subtitle = element_text(size = 14L),
+    axis.title.y = element_text(size = 14L),
+    axis.title.x = element_text(size = 14L),
+    axis.text.y = element_text(size = 14L),
+    axis.text.x = element_text(size = 14L),
+    legend.text = element_text(size = 14L),
+    legend.title = element_text(size = 14L)
     )
 
 ggsave("dist.png", width = 3, height = 2)

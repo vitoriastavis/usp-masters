@@ -84,7 +84,10 @@ for (file in csv_files) {
     intersection_results[[key]] <- inter
   }
 }
+```
 
+```{r}
+library(ggplot2)
 sizes <- lengths(intersection_results)
 df_sizes <- data.frame(N_alvos = sizes)
 
@@ -97,22 +100,21 @@ p_dist_twas <- ggplot(df_sizes, aes(x = N_alvos)) +
   ) +
   theme(
     legend.position = "top",
-    plot.title = element_text(size = 14L),
-    plot.subtitle = element_text(size = 12L),
-    axis.title.y = element_text(size = 12L),
-    axis.title.x = element_text(size = 12L),
-    axis.text.y = element_text(size = 12L),
-    axis.text.x = element_text(size = 12L),
-    legend.text = element_text(size = 12L),
-    legend.title = element_text(size = 12L)
+    plot.subtitle = element_text(size = 14L),
+    axis.title.y = element_text(size = 14L),
+    axis.title.x = element_text(size = 14L),
+    axis.text.y = element_text(size = 14L),
+    axis.text.x = element_text(size = 14L),
+    legend.text = element_text(size = 14L),
+    legend.title = element_text(size = 14L)
     )
 
 # ggsave("dist.png", width = 3, height = 2)
 
 library(patchwork)
 
-p_dist <- (p_dist_twas | p_dist_degs) + plot_annotation(tag_levels = "a")
-ggsave("dist_alvos.png", width = 6, height = 3)
+p_dist <- (p_dist_degs | p_dist_twas) + plot_annotation(tag_levels = "a")
+ggsave("dist_alvos_2.png", width = 6, height = 3)
 ```
 
 

@@ -430,7 +430,7 @@
             const container = document.getElementById('centrality-results');
             container.innerHTML = ''; // clear previous results
 
-            // 1️⃣ Individual protein results
+            // Individual protein results
             targetProteins.forEach(prot => {
                 const data = findMetabolitesByTargets([prot], false); // OR logic for single protein
                 if (data.metabolites.length > 0) {
@@ -438,7 +438,7 @@
                 }
             });
 
-            // 2️⃣ Metabolites connecting ALL proteins
+            // Metabolites connecting ALL proteins
             if (targetProteins.length > 1) {
                 const dataAll = findMetabolitesByTargets(targetProteins, true); // AND logic
                 if (dataAll.metabolites.length > 0) {
