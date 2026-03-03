@@ -78,6 +78,7 @@ get_cid <- function(name) {
 
 ```{R}
 library(stringr)
+library(dplyr)
 load("~/Documents/vitoria/usp-masters/data/gutmgene/gutmgene1_beforemerging.RData")
 
 gutmgene_species <- gutmgene1 %>%
@@ -90,6 +91,9 @@ gutmgene_species <- gutmgene_species %>%
   mutate(
     Metabolite_CID = get_cid_vec(Metabolite_Name) # Obtains CID for the metabolite name
   )
+
+save(gutmgene_species, file = "data/network/gutmgene_processed.RData")
+
 ```
 ```{R}
 missing_rows <- is.na(gutmgene_species$Metabolite_CID)
