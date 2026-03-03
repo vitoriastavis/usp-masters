@@ -1,0 +1,204 @@
+<html>
+<head>
+    <!-- 1. Cytoscape import is missing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
+    <style>
+        #cy {
+            width: 100%;
+            height: 100vh; /* 2. The canvas needs explicit dimensions */
+        }
+    </style>
+</head>
+<body>
+    <div id="cy"></div>
+    <script>
+        let cy;
+        
+        function initializeCytoscape(data) {
+            console.log("=== Inicializando Cytoscape ===");
+            console.log("Dados recebidos:", data);
+            console.log("Elementos:", data.elements ? data.elements.length : 'N/A');
+            
+            cy = cytoscape({
+                container: document.getElementById('cy'),
+                elements: data.elements,
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'label': function(ele) {
+                                return ele.data('name') ? ele.data('name').replace(/"/g, '') : '';
+                            },
+                            'shape': 'round-rectangle',
+                            'background-color': function(ele) {
+                                var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
+                                
+                                switch(type) {
+                                    case 'disorder': return '#ffbadb'; 
+                                    case 'gene': return '#b4b3e8';    
+                                    case 'pathway': return '#b6e8b3'; 
+                                    case 'species': return '#c7c7c7';
+                                    case 'metabolite': return '#e5baff';       
+                                }
+                            },
+                            'color': '#000000',
+                            'font-size': 14,
+                            'font-weight': 'bold',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'width': function(ele) {
+                                var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
+                                
+                                switch(type) {
+                                    case 'disorder': return 50; 
+                                    case 'gene': return 50;    
+                                    case 'pathway': return 100; 
+                                    case 'species': return 150;
+                                    case 'metabolite': return 50;       
+                                }
+                            },
+                            'height': 20,
+                            'text-wrap': 'wrap',
+                            'text-max-width': 50,
+                            'padding': '1px',
+                            'border-width': 0,
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'curve-style': 'bezier',
+                            'width': 1,
+                            'line-color': '#cfcfcf',
+                            'target-arrow-shape': 'none',
+                            'opacity': 20
+                        }
+                    },
+                    {
+                        selector: '.highlighted',
+                        style: {
+                            'border-width': 1,
+                            'border-color': '#ff0000',
+                            'background-color': '#FFF'
+                        }
+                    },
+                    {
+                        selector: 'edge.highlighted',
+                        style: {
+                            'width': 1,
+                            'line-color': '#ff0000',
+                            'opacity': 10,
+                            'z-index': 10
+                        }
+                    },
+                    {
+                        selector: '.connected',
+                        style: {
+                            'border-width': 50,
+                            'border-color': '#ff0000',
+                            'opacity': 10
+                        }
+                    }
+                ]
+                
+            });
+            
+            cy.on('tap', 'node', function(evt) {
+                const node = evt.target;
+                toggleNodeHighlight(node);
+            });
+
+            // Group nodes by layer
+            const layers = {};
+            cy.nodes().forEach(node => {
+                const layer = node.data('_layer_') || 1;
+                if (!layers[layer]) layers[layer] = [];
+                layers[layer].push(node);
+            });
+
+            const sortedLayers = Object.keys(layers).map(Number).sort((a, b) => a - b);
+            const nodeW = 100;   // node width + padding
+            const BASE_R = 1000;  // tune to your graph size
+
+            // True vesica piscis: two circular arcs meeting at pointed top/bottom vertices
+            // r = radius of each circle. Height = r√3, Width = r
+            function vesicaPoint(t, r) {
+                if (t <= Math.PI) {
+                    // Right arc: circle centered at (-r/2, 0)
+                    const angle = Math.PI / 3 - (2 * Math.PI / 3) * (t / Math.PI);
+                    return {
+                        x: -r / 2 + r * Math.cos(angle),
+                        y:  r * Math.sin(angle)
+                    };
+                } else {
+                    // Left arc: circle centered at (r/2, 0)
+                    const local = (t - Math.PI) / Math.PI;
+                    const angle = -2 * Math.PI / 3 - (2 * Math.PI / 3) * local;
+                    return {
+                        x: r / 2 + r * Math.cos(angle),
+                        y: r * Math.sin(angle)
+                    };
+                }
+            }
+
+            const positions = {};
+            const LAYER_STEP = 1; 
+            sortedLayers.forEach((layerNum, i) => {
+                const nodes = layers[layerNum];
+                const count = nodes.length;
+
+                if (count === 1) {
+                    positions[nodes[0].id()] = { x: 0, y: 0 };
+                    return;
+                }
+
+                const minR = (count * nodeW * 3) / (6 * Math.PI);
+                const r = Math.max(BASE_R + LAYER_STEP * i, minR); 
+
+                nodes.forEach((node, j) => {
+                    const t = (2 * Math.PI * j) / count;
+                    positions[node.id()] = vesicaPoint(t, r);
+                });
+            });
+
+            const layout = cy.layout({
+                name: 'preset',
+                positions: node => positions[node.id()],
+                fit: true,
+                padding: 100,
+                spacingFactor: 0.5
+            });
+
+            layout.run();
+
+        }
+
+        // Load the file and initialize
+        fetch("network_PDE4B.cyjs")
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Arquivo não encontrado.');
+                }
+                return res.json();
+            })
+            .then(data => {
+                data.elements.nodes.forEach(n => {
+                    if (n.data.name) {
+                        n.data.name = n.data.name.replace(/"/g, '');
+                    }
+                    if (n.data.shared_name) {
+                        n.data.shared_name = n.data.shared_name.replace(/"/g, '');
+                    }
+                });
+                initializeCytoscape(data);
+
+            })
+            .catch(error => {
+                console.error('Error loading data:', error);
+                document.getElementById('centrality-results').innerHTML = 
+                    '<div class="centrality-results"><h3>Error</h3><p>Could not load network data. Make sure file exists.</p></div>';
+            });
+    </script>
+ 
+</body>
+</html>

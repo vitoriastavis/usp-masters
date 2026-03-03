@@ -100,7 +100,7 @@ ep300_kegg <- read.table("data/network/target_associations/ep300_kegg.txt", sep 
 
 edges_target_kegg <- data.frame(
                             Source = c(rep("PDE4B", nrow(pde4b_kegg)), rep("RARB", nrow(rarb_kegg)), rep("EP300", nrow(ep300_kegg))),
-                            Target = c(pde4b_kegg$V2, rarb_kegg$V2, ep300_kegg$V2))
+                            Target = c(str_trim(pde4b_kegg$V1), str_trim(rarb_kegg$V1), str_trim(ep300_kegg$V1)))
 
 # Save information about KEGG pathway nodes
 nodes <- rbind(nodes, data.frame(

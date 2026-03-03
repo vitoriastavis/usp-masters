@@ -12,15 +12,11 @@ output: html_document
 libraries <- c("dplyr", "httr2", "jsonlite", "ggplot2", "readxl", "rvest", 
                "readr", "stringr", "tidyr", "scales", "httr", "xml2", "data.table")
 
-
-
-
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 if (!require("biomaRt", quietly = TRUE)){
   BiocManager::install(c('mygene', 'biomaRt'))
 }
-
 
 # Function to install missing libraries
 install_if_missing <- function(lib) {
@@ -1218,11 +1214,9 @@ get_targets_to_metabolites <- function(folder_path) {
 target_metabolites_multitask_chemblid <- get_targets_to_metabolites("data/target_prediction/multitask")
 save(target_metabolites_multitask_chemblid, file="data/target_prediction/multitask/target_metabolites_multitask_chemblid.RData")
 
-
 multitask_chembl_to_uniprot <- read.csv("data/target_prediction/multitask/multitask_chembl_uniprot.csv")
 multitask_mappings <- read.csv("data/target_prediction/multitask/multitask_mappings.csv")
 multitask_mappings <- multitask_mappings[!is.na(multitask_mappings$HGNC_ID),]
-
 
 target_metabolites_multitask <- list()
 for (target in names(target_metabolites_multitask_chemblid)) {
