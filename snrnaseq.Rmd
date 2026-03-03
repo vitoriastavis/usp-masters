@@ -814,7 +814,7 @@ source("get_metabolites.R")
 
 met_name_cid <- read.csv("data/gutmgene/name_cid.csv") 
 
-selected_genes <- c("RARB", "EP300", "PDE4B")
+selected_genes <- c("PDE4B")
 
 targets_to_metabolites <- get_metabolites(selected_genes)
 
@@ -843,7 +843,7 @@ for (gene in names(targets_to_metabolites)) {
 }
 metabolites_to_targets <- lapply(metabolites_to_targets, unique)
 
-save(targets_to_metabolites, metabolites_to_targets, file="data/network/targets_metabolites.RData")
+save(targets_to_metabolites, metabolites_to_targets, file="data/network/targets_metabolites_PDE4B.RData")
 ```
 
 # Regulatory network analysis
@@ -980,43 +980,3 @@ ppcor_network_analysis <- function(expr_matrix, query_genes){
 
 }
 ```
-
-```{R}
-final_genes <- c("F3", "S1PR1", "EDNRB", "TRIL", "NR4A1", "FOS")
-
-gse_path <- "data/snrnaseq/GSE213982/"
-load(paste0(gse_path, "GSE213982_counts.RData"))
-expr_matrix_GSE213982 <- get_expr_matrix(GSE213982, final_genes)
-
-p_final_GSE213982 <- ppcor_network_analysis(expr_matrix_GSE213982, final_genes)
-
-gse_path <- "data/snrnaseq/GSE144136/"
-load(paste0(gse_path, "GSE144136_counts.RData"))
-expr_matrix_GSE144136 <- get_expr_matrix(GSE144136, final_genes)
-
-p_final_GSE144136 <- ppcor_network_analysis(expr_matrix_GSE213982, final_genes)
-```
-
-```{r}
-gse_path <- "data/snrnaseq/GSE144136/"
-load(paste0(gse_path, "GSE144136_counts.RData"))
-genes_f3 <- related_genes_f3$intersect
-expr_matrix_GSE144136 <- get_expr_matrix(GSE144136, genes_f3)
-GSE144136 <- NULL
-gc()
-GSE144136_f3_results <- ppcor_network_analysis(expr_matrix_GSE144136, genes_f3)
-p_GSE144136_f3 <- GSE144136_f3_results[[2]]
-ggsave(paste0(gse_path, "f3_network_GSE144136.jpg"), p_GSE144136_f3)
-
-gse_path <- "data/snrnaseq/GSE213982/"
-load(paste0(gse_path, "GSE213982_counts.RData"))
-genes_f3 <- related_genes_f3$intersect
-expr_matrix_GSE213982 <- get_expr_matrix(GSE213982, genes_f3)
-GSE213982 <- NULL
-gc()
-GSE213982_f3_results <- ppcor_network_analysis(expr_matrix_GSE213982, genes_f3)
-p_GSE213982_f3 <- GSE213982_f3_results[[2]]
-ggsave(paste0(gse_path, "f3_network_GSE213982.jpg"), p_GSE213982_f3)
-```
-
-

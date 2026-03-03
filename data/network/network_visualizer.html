@@ -3,6 +3,7 @@
 <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.1/cytoscape.min.js"></script>
     <style>
+ 
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
@@ -19,7 +20,7 @@
             width: 60%;
             min-width: 600px;
             flex-shrink: 0;
-        }      
+        }       
 
         
         .legend {
@@ -298,36 +299,14 @@
                                 }
                             },
                             'color': '#000000',
-                            'font-size': function(ele) {
-                                var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').trim().toLowerCase() : '';
-
-                                if (type === 'disorder' || type == 'gene') {
-                                    return 8000;
-                                } else {
-                                    return 5000;
-                                }
-                            },
+                            'font-size': 40,
                             'font-weight': 'bold',
                             'text-valign': 'center',
                             'text-halign': 'center',
-                            'width': 50000,
-                            'height': function(ele) {
-                                var text = ele.data('name') ? ele.data('name').replace(/"/g, '') : '';
-                                var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
-                                var words = text.split(/\s+/).filter(w => w.length > 0);
-                                var nWords = words.length;
-
-                                if (type === 'disorder' || type == 'gene') {
-                                    return nWords * 1500;
-                                } else {
-                                    return nWords * 1400;
-                                }                               
-                            },
+                            'width': 250,
+                            'height': 100,
                             'text-wrap': 'wrap',
-                            'text-max-width': function(ele) {
-                                var text = ele.data('name') ? ele.data('name').replace(/"/g, '') : '';
-                                return text.length * 1000;
-                            },
+                            'text-max-width': 50,
                             'padding': '1px',
                             'border-width': 0,
                         }
@@ -336,7 +315,7 @@
                         selector: 'edge',
                         style: {
                             'curve-style': 'bezier',
-                            'width': 50,
+                            'width': 2,
                             'line-color': 'rgba(136, 136, 136, 0.4)',
                             'target-arrow-shape': 'none',
                             'opacity': 10
@@ -345,7 +324,7 @@
                     {
                         selector: '.highlighted',
                         style: {
-                            'border-width': 100,
+                            'border-width': 5,
                             'border-color': '#ff0000',
                             'background-color': '#FFF'
                         }
@@ -353,7 +332,7 @@
                     {
                         selector: 'edge.highlighted',
                         style: {
-                            'width': 100,
+                            'width': 5,
                             'line-color': '#ff0000',
                             'opacity': 10,
                             'z-index': 10
@@ -362,34 +341,85 @@
                     {
                         selector: '.connected',
                         style: {
-                            'border-width': 100,
+                            'border-width': 50,
                             'border-color': '#ff0000',
                             'opacity': 10
                         }
                     }
-                ],
-                layout: {
-                    name: 'concentric',
-                    equidistant: true,
-                    concentric: function(node) { 
-                        return node.data('_layer_') || 1;  
-                    },
-                    levelWidth: function(nodes) {
-                        return 1;
-                    },
-                    spacingFactor: 0.09,
-                    fit: true,
-                    padding: 20,
-                    avoidOverlap: true
-                }
+                ]
+                
             });
             
             cy.on('tap', 'node', function(evt) {
                 const node = evt.target;
                 toggleNodeHighlight(node);
             });
+
+            const layout = cy.layout({
+                name: 'concentric',
+                equidistant: true,
+                concentric: node => node.data('_layer_') || 1,
+                levelWidth: () => 1,
+                spacingFactor: 1.2,
+                avoidOverlap: true,
+                fit: false
+            });
+
+            layout.run();
+
+            layout.on('layoutstop', () => {
+                // Group nodes by layer
+                const layers = {};
+                cy.nodes().forEach(node => {
+                    const layer = node.data('_layer_') || 1;
+                    if (!layers[layer]) layers[layer] = [];
+                    layers[layer].push(node);
+                });
+
+                // Find center of the graph
+                const ext = cy.extent();
+                const cx = (ext.x1 + ext.x2) / 2;
+                const cy_mid = (ext.y1 + ext.y2) / 2;
+
+                // Vesica piscis: height = width * sqrt(3)
+                const VESICA_RATIO = Math.sqrt(3); // ~1.732 (taller than wide)
+
+                const sortedLayers = Object.keys(layers)
+                    .map(Number)
+                    .sort((a, b) => a - b);
+
+                // Base x-radius for the innermost layer — tune this to your graph size
+                const BASE_RX = 400;
+
+                sortedLayers.forEach((layerNum, i) => {
+                    const nodes = layers[layerNum];
+                    const count = nodes.length;
+
+                    // Each outer layer gets a proportionally larger ellipse
+                    const rx = BASE_RX * (i + 1);
+                    const ry = rx * VESICA_RATIO;
+
+                    // Ensure nodes don't overlap: minimum arc spacing based on node size
+                    const nodeW = 250; // match your node width
+                    const minRx = (nodeW * count) / (2 * Math.PI);
+                    const actualRx = Math.max(rx, minRx);
+                    const actualRy = actualRx * VESICA_RATIO;
+
+                    nodes.forEach((node, j) => {
+                        // Start from top (-π/2) and go clockwise
+                        const angle = (2 * Math.PI * j) / count - Math.PI / 2;
+                        node.position({
+                            x: cx + actualRx * Math.cos(angle),
+                            y: cy_mid + actualRy * Math.sin(angle)
+                        });
+                    });
+                });
+
+                cy.fit();
+            });
+
         }
-        
+
         function toggleNodeHighlight(node) {
             if (node.hasClass('highlighted')) {
                 const connectedEdges = node.connectedEdges();
@@ -740,7 +770,7 @@
         }
 
         // Load the file and initialize
-        fetch("cyto.cyjs")
+        fetch("network_PDE4B.cyjs")
             .then(res => {
                 if (!res.ok) {
                     throw new Error('Arquivo não encontrado.');
