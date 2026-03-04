@@ -95,6 +95,7 @@ gutmgene_species <- gutmgene_species %>%
 save(gutmgene_species, file = "data/network/gutmgene_processed.RData")
 
 ```
+
 ```{R}
 missing_rows <- is.na(gutmgene_species$Metabolite_CID)
 unique_missing_names <- unique(gutmgene_species$Metabolite_Name[missing_rows])
@@ -275,13 +276,56 @@ nodes <- rbind(nodes, data.frame(
 edges <- rbind(edges_target_met, edges_target_react, edges_target_kegg, edges_mdd_pathways, edges_species_mdd, edges_species_met)
 edges_clean <- distinct(edges)
 nodes_clean <- distinct(nodes)
+edges_clean <- edges_clean %>%
+  mutate(across(everything(), ~ gsub("MDD", "TDM", .x)))
 
 order <- c("Species", "Pathway", "Metabolite", "Gene", "Disorder")
 nodes_clean <- nodes_clean %>%
   mutate(layer = as.numeric(factor(type, levels = order)))
 nodes_clean$layer[nodes_clean$name == "MDD"] <- 4
+nodes_clean$name[nodes_clean$name == "MDD"] <- "TDM"
+
 
 # Save
 write.table(edges_clean, file = "data/network/cytoscape_edges_PDE4B.tsv", row.names=FALSE, sep="\t")
 write.table(nodes_clean, file = "data/network/cytoscape_nodes_PDE4B.tsv", row.names=FALSE, sep="\t")
+```
+
+
+```{R}
+# Supondo que seus dataframes sejam:
+# nodes: dataframe com colunas name, type, layer
+# edges_clean: dataframe com colunas Source e Target
+
+# 1. Função para reduzir 3/4 dos nodes de certos tipos
+reduce_nodes <- function(df, types_to_reduce, keep_per_type = 10) {
+  df_reduced <- df
+  
+  for (t in types_to_reduce) {
+    nodes_t <- df[df$type == t, ]
+    if (nrow(nodes_t) > keep_per_type) {
+      # Mantém apenas 'keep_per_type' aleatórios
+      keep_nodes <- sample(nodes_t$name, keep_per_type)
+      df_reduced <- df_reduced[!(df_reduced$type == t & !(df_reduced$name %in% keep_nodes)), ]
+    }
+  }
+  
+  return(df_reduced)
+}
+
+# Tipos que queremos reduzir
+types_to_reduce <- c("Metabolite", "Species", "Pathway")
+
+nodes_reduced <- reduce_nodes(nodes_clean, types_to_reduce, keep_per_type = 50)
+
+# 2. Filtrar as arestas mantendo só aquelas cujos nós ainda existem
+edges_reduced <- edges_clean[
+  edges_clean$Source %in% nodes_reduced$name &
+  edges_clean$Target %in% nodes_reduced$name,
+]
+
+# Save
+write.table(edges_reduced, file = "data/network/PDE4B_edges_r.tsv", row.names=FALSE, sep="\t")
+write.table(nodes_reduced, file = "data/network/PDE4B_nodes_r.tsv", row.names=FALSE, sep="\t")
+
 ```
