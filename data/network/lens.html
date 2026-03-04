@@ -48,20 +48,20 @@
                                     case 'disorder': return '#6FAF9C'; 
                                     case 'gene': return '#87CEE0';    
                                     case 'pathway': return '#b6e8b3'; 
-                                    case 'species': return '#c7c7c7';
+                                    case 'species': return '#8e83de';
                                     case 'metabolite': return '#A665B5';       
                                 }
                             },
-                            // 'rotation': '45deg',
+                            //'rotation': '45deg',
                             'font-size': function(ele) {
                                 var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
                                 
                                 switch(type) {
-                                    case 'disorder': return 100; 
-                                    case 'gene': return 100;    
-                                    case 'pathway': return 30; 
-                                    case 'species': return 30;
-                                    case 'metabolite': return 30;       
+                                    case 'disorder': return 300; 
+                                    case 'gene': return 300;    
+                                    case 'pathway': return 80; 
+                                    case 'species': return 80;
+                                    case 'metabolite': return 80;       
                                 }
                             },
                             'font-weight': 'bold',
@@ -71,8 +71,8 @@
                                 var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
                                 
                                 switch(type) {
-                                    case 'disorder': return 100; 
-                                    case 'gene': return 100;    
+                                    case 'disorder': return 800; 
+                                    case 'gene': return 1200;    
                                     case 'pathway': return 80; 
                                     case 'species': return 100;
                                     case 'metabolite': return 45;       
@@ -82,15 +82,15 @@
                                 var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
                                 
                                 switch(type) {
-                                    case 'disorder': return 50; 
-                                    case 'gene': return 50;    
+                                    case 'disorder': return 500;
+                                    case 'gene': return 500;    
                                     case 'pathway': return 20; 
                                     case 'species': return 20;
                                     case 'metabolite': return 20;       
                                 }
                             },
-                            'text-wrap': 'wrap',
-                            'text-max-width': 50,
+                            //'text-wrap': 'wrap',
+                            //'text-max-width': 50,
                             'padding': '1px',
                             'border-width': 0,
                             'opacity': 10,
@@ -111,10 +111,10 @@
                         selector: 'edge',
                         style: {
                             'curve-style': 'bezier',
-                            'width': 1,
-                            'line-color': '#cfcfcf',
+                            'width': 1.5,
+                            'line-color': '#9e9e9e',
                             'target-arrow-shape': 'none',
-                            'opacity': 20
+                            'opacity': 1
                         }
                     }
                 ]
@@ -131,82 +131,91 @@
 
             const sortedLayers = Object.keys(layers).map(Number).sort((a, b) => a - b);
             const nodeWidth = 100;          // Largura aproximada do nó + margem
-            const baseRadius = 2000;        // Raio base (ajuste conforme necessário)
+            const baseRadius = 1000;        // Raio base (ajuste conforme necessário)
             const layerStep = 0.2;           // Incremento de raio por camada
-            const squashFactor = 0.9;        // Fator de compressão (aplicado à largura, agora)
+            const squashFactor = 1.5;        // Fator de compressão (aplicado à largura, agora)
 
             function getDiamondArcPoint(t, radius, roundness = 0.5) {
-                const a = radius;          // largura
-                const b = radius;          // altura
-                const n = roundness;       // controla o "quão losango"
-
                 const cosT = Math.cos(t);
                 const sinT = Math.sin(t);
 
+                // Inflate radius near vertical extremes
+                const inflate = 1 + 0.2 * Math.pow(Math.abs(sinT), 3);
+
+                const a = radius * inflate;
+                const b = radius;
+
                 return {
-                    x: a * Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / n),
-                    y: b * Math.sign(sinT) * Math.pow(Math.abs(sinT), 2 / n)
+                    x: a * Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / roundness),
+                    y: b * Math.sign(sinT) * Math.pow(Math.abs(sinT), 2 / roundness)
                 };
             }
 
             const positions = {};
 
+            const curvatureWeight = (cosT, sinT) => 1 + 4 * Math.pow(Math.abs(cosT * sinT), 0.5);
+
             sortedLayers.forEach((layerNum, index) => {
-                const nodes = layers[layerNum];
-                const count = nodes.length;
+            const nodes = layers[layerNum];
+            const count = nodes.length;
+            if (count === 1) {
+                positions[nodes[0].id()] = { x: 0, y: 0 };
+                return;
+            }
 
-                if (count === 1) {
-                    positions[nodes[0].id()] = { x: 0, y: 0 };
-                    return;
+            // compute radius per your original logic
+            const minRadius = (count * nodeWidth * 3) / (4 * Math.PI);
+            const radius = Math.max(baseRadius + layerStep * index, minRadius) * 0.7;
+
+            // 1) sample the curve
+            const samples = 1000;
+            const points = [];
+            let totalLength = 0;
+
+            for (let i = 0; i <= samples; i++) {
+                const t = (2 * Math.PI * i) / samples;
+                const cosT = Math.cos(t);
+                const sinT = Math.sin(t);
+                const p = getDiamondArcPoint(t, radius, 1);
+
+                // store coords + angle
+                points.push({ t, x: p.x, y: p.y, arcLength: 0 });
+
+                if (i > 0) {
+                const prev = points[i - 1];
+                const dx = p.x - prev.x;
+                const dy = p.y - prev.y;
+                const w = curvatureWeight(cosT, sinT);
+                totalLength += Math.hypot(dx, dy) * w;
+                points[i].arcLength = totalLength;
                 }
+            }
 
-                // Raio mínimo para que os nós caibam ao redor da circunferência aproximada
-                const minRadius = (count * nodeWidth * 3) / (4 * Math.PI);
-                const radius = Math.max(baseRadius + layerStep * index, minRadius) * 0.7;
-                const samples = 1000;
-                const points = [];
-                let totalLength = 0;
-
-                // Amostragem da curva
-                for (let i = 0; i <= samples; i++) {
-                    const t = (2 * Math.PI * i) / samples;
-                    const p = getDiamondArcPoint(t, radius, 1.5);
-                    points.push({ t, x: p.x, y: p.y });
-
-                    if (i > 0) {
-                        const dx = p.x - points[i - 1].x;
-                        const dy = p.y - points[i - 1].y;
-                        totalLength += Math.sqrt(dx * dx + dy * dy);
-                        points[i].arcLength = totalLength;
-                    } else {
-                        points[i].arcLength = 0;
-                    }
+            // 2) assign each node a position by target arc-length
+            nodes.forEach((node, j) => {
+                const target = (totalLength * j) / count;
+                // simple linear scan (you can binary-search since arcLength[] is sorted)
+                let chosen = points[points.length - 1];
+                for (let k = 0; k < points.length; k++) {
+                if (points[k].arcLength >= target) {
+                    chosen = points[k];
+                    break;
                 }
-                nodes.forEach((node, j) => {
-                    const targetLength = (totalLength * j) / count;
-
-                    // Encontrar ponto mais próximo do comprimento desejado
-                    let closest = points[0];
-                    for (let k = 1; k < points.length; k++) {
-                        if (points[k].arcLength >= targetLength) {
-                            closest = points[k];
-                            break;
-                        }
-                    }
-                    node.data('angle', closest.t);
-                    positions[node.id()] = {
-                        x: closest.x * squashFactor,
-                        y: closest.y
-                    };
-                });
+                }
+                positions[node.id()] = {
+                x: chosen.x * squashFactor,
+                y: chosen.y            // or *someYfactor if you like
+                };
+            });
             });
 
             const layout = cy.layout({
                 name: 'preset',
                 positions: node => positions[node.id()],
                 fit: true,
-                padding: 100,
-                spacingFactor: 0.5
+                //padding: 250,
+                //spacingFactor: 0.5,
+                avoidOverlap: true
             });
 
             layout.run();
@@ -230,7 +239,8 @@
                     }
                 });
                 initializeCytoscape(data);
-
+                console.log("Nós:", cy.elements('node').length);
+                console.log("Arestas:", cy.elements('edge').length);
             })
             .catch(error => {
                 console.error('Error loading data:', error);
