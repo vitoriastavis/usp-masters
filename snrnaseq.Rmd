@@ -814,7 +814,7 @@ source("get_metabolites.R")
 
 met_name_cid <- read.csv("data/gutmgene/name_cid.csv") 
 
-selected_genes <- c("PDE4B")
+selected_genes <- c("PDE4B", "PDE4D")
 
 targets_to_metabolites <- get_metabolites(selected_genes)
 

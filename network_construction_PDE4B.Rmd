@@ -115,65 +115,57 @@ nodes <- data.frame(name = unique(c(edges_species_met$Source, edges_species_met$
 ## Conections between targets and metabolites
 
 ```{R}
-load("data/network/targets_metabolites.RData")
+load("data/network/targets_metabolites_PDE4B.RData")
 library(dplyr)
 
-targets_to_metabolites$RARB <- NULL
-targets_to_metabolites$EP300 <- NULL
-
-# 1. Create a clean, unique lookup vector
-# A named vector is the fastest way to map: c("Name" = "ID")
-lookup_vec <- gutmgene_species %>%
-  select(Metabolite_Name, Metabolite_CID) %>%
-  arrange(Metabolite_Name, Metabolite_CID) %>% 
-  distinct(Metabolite_Name, .keep_all = TRUE) %>%
-  { setNames(.$Metabolite_CID, .$Metabolite_Name) }
-
-# 2. Build the edges_target_met dataframe from scratch
-# We use the list names as Source and the unlisted values as Target
 edges_target_met <- data.frame(
-  Source = rep(names(targets_to_metabolites), lengths(targets_to_metabolites)),
-  Target_Name = unlist(targets_to_metabolites),
+  Source = rep("PDE4B", length(targets_to_metabolites$PDE4B)),
+  Target = unlist(targets_to_metabolites$PDE4B),
   stringsAsFactors = FALSE
 )
 
-# 3. Map the Target names to IDs using our lookup vector
-edges_target_met <- edges_target_met %>%
-  mutate(Target = lookup_vec[Target_Name])
-
-missing_matches <- edges_target_met %>% 
-  filter(is.na(Target)) %>% 
-  pull(Target_Name) %>% 
-  unique()
-
-if(length(missing_matches) > 0) {
-  cat("The following targets were not found in gutmgene_species:\n")
-  print(missing_matches)
-} else {
-  cat("All targets successfully mapped to IDs!")
-}
-
-new_IDs <- c()
-for (met in missing_matches){
-  new_id <- get_cid(met)
-  new_IDs <- c(new_IDs, new_id)
-}
-
-patch_df <- data.frame(
-  Target_Name = missing_matches,
-  New_CID = new_IDs,
-  stringsAsFactors = FALSE
-)
+# # 3. Map the Target names to IDs using our lookup vector
+# edges_target_met <- edges_target_met %>%
+#   mutate(Target = lookup_vec[Target_Name])
+# 
+# missing_matches <- edges_target_met %>% 
+#   filter(is.na(Target)) %>% 
+#   pull(Target_Name) %>% 
+#   unique()
+# 
+# if(length(missing_matches) > 0) {
+#   cat("The following targets were not found in gutmgene_species:\n")
+#   print(missing_matches)
+# } else {
+#   cat("All targets successfully mapped to IDs!")
+# }
+# 
+# new_IDs <- c()
+# for (met in missing_matches){
+#   new_id <- get_cid(met)
+#   new_IDs <- c(new_IDs, new_id)
+# }
+# 
+# patch_df <- data.frame(
+#   Target_Name = missing_matches,
+#   New_CID = new_IDs,
+#   stringsAsFactors = FALSE
+# )
 
 # 2. Join the patch to your main table and update the Target column
-edges_target_met <- edges_target_met %>%
-  left_join(patch_df, by = "Target_Name") %>%
-  # If Target is NA, use New_CID; otherwise, keep Target
-  mutate(Target = ifelse(is.na(Target), New_CID, Target)) %>%
-  # Clean up the helper column
-  select(-New_CID)
+# edges_target_met <- edges_target_met %>%
+#   left_join(patch_df, by = "Target_Name") %>%
+#   # If Target is NA, use New_CID; otherwise, keep Target
+#   mutate(Target = ifelse(is.na(Target), New_CID, Target)) %>%
+#   # Clean up the helper column
+#   select(-New_CID)
 
 edges_target_met$Target_Name <- NULL
+
+mets_pde4d <- unique(unlist(targets_to_metabolites$PDE4D))
+
+edges_target_met_noPDE4D <- edges_target_met %>%
+  filter(Target %in% mets_pde4d)
 
 # Save information about gene and metabolite nodes
 nodes <- rbind(nodes, data.frame(
