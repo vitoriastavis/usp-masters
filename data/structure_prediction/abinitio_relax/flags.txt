@@ -1,24 +1,22 @@
 # Input
--in::file::fasta /home/gbiuser/Documents/vitoria/usp-masters/data/structure_prediction/pde4b_ucr1.fasta
--in::file::frag3 /home/gbiuser/Documents/vitoria/usp-masters/data/structure_prediction/fragments/aapde4b03_05.200_v1_3
--in::file::frag9 /home/gbiuser/Documents/vitoria/usp-masters/data/structure_prediction/fragments/aapde4b09_05.200_v1_3
-
-# Output
--out:level 300
+-in:file:s /home/gbiuser/Documents/vitoria/usp-masters/data/structure_prediction/modelo_11.pdb
+-in:file:fullatom
+-renumber_pdb false
 
 # Constraints
 -constraints:cst_file /home/gbiuser/Documents/vitoria/usp-masters/data/structure_prediction/abinitio_relax/constraints_model8.cst
 -constraints:cst_weight 3.0
 
-# Ab initio
--abinitio:relax true
--relax:fast
--abinitio:increase_cycles 2
--abinitio:rg_reweight 0.5
--abinitio:rsd_wt_helix 0.5
--abinitio:rsd_wt_loop 0.5
+# RosettaScripts
+-parser:protocol script.xml
 
 # Performance
 -ex1
 -ex2
 -use_input_sc
+
+# Output
+-out:level 100
+-out:file:silent job.silent
+-out:file:silent_struct_type binary
+-out:pdb false
