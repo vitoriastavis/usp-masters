@@ -1,0 +1,14 @@
+# Input
+-in:file:s /home/gbiuser/Documents/vitoria/usp-masters/data/structure_prediction/modelo_11.pdb
+
+# Remodel
+-parser:protocol remodel.xml
+-remodel:use_pose_relax true
+
+# Performance
+-ex1
+-ex2
+
+# Output
+-out:file:silent_struct_type binary
+-out:pdb false

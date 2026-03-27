@@ -1,0 +1,95 @@
+##############################################################################################################
+#
+# Rosetta crash log. Please submit the contents of this file to http://crash.rosettacommons.org/
+# or use the script Rosetta/main/source/scripts/python/public/report_crashes.py
+#
+
+[START_CRASH_REPORT]
+[ROSETTA_VERSION]: 2025.37+release.df75a9c48e
+[COMMIT_DATE]: 2025-09-10T02:14:08.564791
+[APPLICATION]: UNKNOWN APPLICATION
+[MODE]: Release
+[EXTRAS]: default
+[OS]: GNU/Linux
+[COMPILER]: GCC version "11.4.0"
+[STDLIB]: libstdc++ version 20230528
+[START_OPTIONS]
+NO OPTIONS SPECIFIED
+
+[END_OPTIONS]
+
+[START_BACKTRACE]: RAW_LIBC
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/build/src/release/linux/6.8/64/x86/gcc/11/default/libutility.so(backtrace_string[abi:cxx11](int)+0x5a) [0x72d2c19ab99a]
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/build/src/release/linux/6.8/64/x86/gcc/11/default/libutility.so(utility::excn::Exception::Exception(char const*, int, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)+0xe0) [0x72d2c19e9d20]
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/build/src/release/linux/6.8/64/x86/gcc/11/default/libutility.so(+0x19da42) [0x72d2c199da42]
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/build/src/release/linux/6.8/64/x86/gcc/11/default/libutility.so(utility::options::OptionCollection::load_option_cl(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::list<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)+0x12f) [0x72d2c1af4adf]
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/build/src/release/linux/6.8/64/x86/gcc/11/default/libutility.so(utility::options::OptionCollection::load(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::__cxx11::list<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >&, bool)+0x138) [0x72d2c1af70d8]
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/build/src/release/linux/6.8/64/x86/gcc/11/default/libutility.so(utility::options::OptionCollection::load(int, char* const*, bool)+0x1db) [0x72d2c1af7b0b]
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/build/src/release/linux/6.8/64/x86/gcc/11/default/libcore.6.so(core::init::init_options(int, char**)+0x24) [0x72d2be204b44]
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/build/src/release/linux/6.8/64/x86/gcc/11/default/libcore.6.so(core::init::init(int, char**)+0x2b) [0x72d2be20aabb]
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/bin/fragment_picker.default.linuxgccrelease(+0x9d3c) [0x5cffa684dd3c]
+/usr/lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x72d2c1029d90]
+/usr/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x72d2c1029e40]
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/bin/fragment_picker.default.linuxgccrelease(+0xba65) [0x5cffa684fa65]
+
+[END_BACKTRACE]
+
+[FILE]: src/utility/options/OptionCollection.cc
+[LINE]: 1467
+[START_MESSAGE]
+Option matching -out:file:frag3 not found in command line top-level context
+Did you mean:
+	 -ddg:nfrags
+	 -flexPepDocking:frag5
+	 -frags
+	 -frags:n_frags
+	 -in:file:frag3
+	 -in:file:frag9
+	 -in:file:fragA
+	 -in:file:fragB
+
+
+[END_MESSAGE]
+[END_CRASH_REPORT]
+
+##############################################################################################################
+#
+# Rosetta crash log. Please submit the contents of this file to http://crash.rosettacommons.org/
+# or use the script Rosetta/main/source/scripts/python/public/report_crashes.py
+#
+
+[START_CRASH_REPORT]
+[ROSETTA_VERSION]: 2025.37+release.df75a9c48e
+[COMMIT_DATE]: 2025-09-10T02:14:08.564791
+[APPLICATION]: /home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/bin/fragment_picker.default.linuxgccrelease
+[MODE]: Release
+[EXTRAS]: default
+[OS]: GNU/Linux
+[COMPILER]: GCC version "11.4.0"
+[STDLIB]: libstdc++ version 20230528
+[START_OPTIONS]
+ -in:file:fasta=query.fasta -frags:n_frags=200 -frags:frag_sizes=3 9
+
+[END_OPTIONS]
+
+[START_BACKTRACE]: RAW_LIBC
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/build/src/release/linux/6.8/64/x86/gcc/11/default/libutility.so(utility::save_crash_report(char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, int)+0x38) [0x7d883d9aea38]
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/build/src/release/linux/6.8/64/x86/gcc/11/default/libutility.so(utility::signal_handler(int)+0xe8) [0x7d883d9aeb78]
+/usr/lib/x86_64-linux-gnu/libc.so.6(+0x42520) [0x7d883d042520]
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/build/src/release/linux/6.8/64/x86/gcc/11/default/libprotocols.4.so(protocols::frag_picker::FragmentPicker::pick_candidates()+0x109) [0x7d883ebfd249]
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/build/src/release/linux/6.8/64/x86/gcc/11/default/libprotocols.4.so(protocols::frag_picker::FragmentPicker::bounded_protocol()+0x41) [0x7d883ec21ff1]
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/bin/fragment_picker.default.linuxgccrelease(+0xb56e) [0x6146f7fa456e]
+/usr/lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x7d883d029d90]
+/usr/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x7d883d029e40]
+/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/bin/fragment_picker.default.linuxgccrelease(+0xba65) [0x6146f7fa4a65]
+
+[END_BACKTRACE]
+
+[FILE]: SIGSEGV
+[LINE]: 11
+[START_MESSAGE]
+Segmentation Fault
+
+[END_MESSAGE]
+[END_CRASH_REPORT]
+
