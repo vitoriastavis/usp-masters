@@ -814,7 +814,9 @@ source("get_metabolites.R")
 
 met_name_cid <- read.csv("data/gutmgene/name_cid.csv") 
 
+all_targets <- read.table("data/targets.txt")$V1
 selected_genes <- c("PDE4B", "PDE4D")
+selected_genes <- all_targets
 
 targets_to_metabolites <- get_metabolites(selected_genes)
 
@@ -829,9 +831,7 @@ for (target in names(targets_to_metabolites)){
   targets_to_metabolites[[target]] <- new_mets
 }
 
-targets_to_metabolites$RARB <- unique(targets_to_metabolites$RARB)
-targets_to_metabolites$EP300 <- unique(targets_to_metabolites$EP300)
-targets_to_metabolites$PDE4B <- unique(targets_to_metabolites$PDE4B)
+targets_to_metabolites <- lapply(targets_to_metabolites, unique)
 
 metabolites_to_targets <- list()
 for (gene in names(targets_to_metabolites)) {
@@ -844,6 +844,8 @@ for (gene in names(targets_to_metabolites)) {
 metabolites_to_targets <- lapply(metabolites_to_targets, unique)
 
 save(targets_to_metabolites, metabolites_to_targets, file="data/network/targets_metabolites_PDE4B.RData")
+save(targets_to_metabolites, file="targets_metabolites_all.RData")
+
 ```
 
 # Regulatory network analysis
