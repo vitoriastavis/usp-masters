@@ -1,0 +1,253 @@
+<html>
+<head>
+    <!-- 1. Cytoscape import is missing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
+    <style>
+        #cy {
+            width: 100%;
+            height: 100vh; /* 2. The canvas needs explicit dimensions */
+        }
+    </style>
+</head>
+<body>
+    <div id="cy"></div>
+    <script>
+        let cy;
+        
+        function initializeCytoscape(data) {
+            console.log("=== Inicializando Cytoscape ===");
+            console.log("Dados recebidos:", data);
+            console.log("Elementos:", data.elements ? data.elements.length : 'N/A');
+            
+            cy = cytoscape({
+                container: document.getElementById('cy'),
+                elements: data.elements,
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'label': function(ele) {
+                                return ele.data('name') ? ele.data('name').replace(/"/g, '') : '';
+                            },
+                            'shape': 'round-rectangle',
+                            'background-color': function(ele) {
+                                var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
+                                
+                                switch(type) {
+                                    case 'disorder': return '#FFFFFF'; 
+                                    case 'gene': return '#FFFFFF';    
+                                    case 'pathway': return '#FFFFFF'; 
+                                    case 'species': return '#FFFFFF';
+                                    case 'metabolite': return '#FFFFFF';       
+                                }
+                            },
+                            'color': function(ele) {
+                                var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
+                                
+                                switch(type) {
+                                    case 'disorder': return '#6FAF9C'; 
+                                    case 'gene': return '#87CEE0';    
+                                    case 'pathway': return '#b6e8b3'; 
+                                    case 'species': return '#8e83de';
+                                    case 'metabolite': return '#A665B5';       
+                                }
+                            },
+                            //'rotation': '45deg',
+                            'font-size': function(ele) {
+                                var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
+                                
+                                switch(type) {
+                                    case 'disorder': return 300; 
+                                    case 'gene': return 300;    
+                                    case 'pathway': return 80; 
+                                    case 'species': return 80;
+                                    case 'metabolite': return 80;       
+                                }
+                            },
+                            'font-weight': 'bold',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'width': function(ele) {
+                                var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
+                                
+                                switch(type) {
+                                    case 'disorder': return 800; 
+                                    case 'gene': return 1200;    
+                                    case 'pathway': return 80; 
+                                    case 'species': return 100;
+                                    case 'metabolite': return 45;       
+                                }
+                            },
+                            'height': function(ele) {
+                                var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
+                                
+                                switch(type) {
+                                    case 'disorder': return 500;
+                                    case 'gene': return 500;    
+                                    case 'pathway': return 20; 
+                                    case 'species': return 20;
+                                    case 'metabolite': return 20;       
+                                }
+                            },
+                            //'text-wrap': 'wrap',
+                            //'text-max-width': 50,
+                            'padding': '1px',
+                            'border-width': 0,
+                            'opacity': 10,
+                            'background-opacity': function(ele) {
+                                var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
+                                
+                                switch(type) {
+                                    case 'disorder': return 1; 
+                                    case 'gene': return 1;    
+                                    case 'pathway': return 1; 
+                                    case 'species': return 1;
+                                    case 'metabolite': return 1;       
+                                }
+                            },
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'curve-style': 'bezier',
+                            'width': 1.5,
+                            'line-color': '#9e9e9e',
+                            'target-arrow-shape': 'none',
+                            'opacity': 1
+                        }
+                    }
+                ]
+                
+            });
+            
+            // Agrupar nós por camada
+            const layers = {};
+            cy.nodes().forEach(node => {
+                const layer = node.data('_layer_') || 1;
+                if (!layers[layer]) layers[layer] = [];
+                layers[layer].push(node);
+            });
+
+            const sortedLayers = Object.keys(layers).map(Number).sort((a, b) => a - b);
+            const nodeWidth = 100;          // Largura aproximada do nó + margem
+            const baseRadius = 1000;        // Raio base (ajuste conforme necessário)
+            const layerStep = 0.2;           // Incremento de raio por camada
+            const squashFactor = 1.5;        // Fator de compressão (aplicado à largura, agora)
+
+            function getDiamondArcPoint(t, radius, roundness = 0.5) {
+                const cosT = Math.cos(t);
+                const sinT = Math.sin(t);
+
+                // Inflate radius near vertical extremes
+                const inflate = 1 + 0.2 * Math.pow(Math.abs(sinT), 3);
+
+                const a = radius * inflate;
+                const b = radius;
+
+                return {
+                    x: a * Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / roundness),
+                    y: b * Math.sign(sinT) * Math.pow(Math.abs(sinT), 2 / roundness)
+                };
+            }
+
+            const positions = {};
+
+            const curvatureWeight = (cosT, sinT) => 1 + 4 * Math.pow(Math.abs(cosT * sinT), 0.5);
+
+            sortedLayers.forEach((layerNum, index) => {
+            const nodes = layers[layerNum];
+            const count = nodes.length;
+            if (count === 1) {
+                positions[nodes[0].id()] = { x: 0, y: 0 };
+                return;
+            }
+
+            // compute radius per your original logic
+            const minRadius = (count * nodeWidth * 3) / (4 * Math.PI);
+            const radius = Math.max(baseRadius + layerStep * index, minRadius) * 0.7;
+
+            // 1) sample the curve
+            const samples = 1000;
+            const points = [];
+            let totalLength = 0;
+
+            for (let i = 0; i <= samples; i++) {
+                const t = (2 * Math.PI * i) / samples;
+                const cosT = Math.cos(t);
+                const sinT = Math.sin(t);
+                const p = getDiamondArcPoint(t, radius, 1);
+
+                // store coords + angle
+                points.push({ t, x: p.x, y: p.y, arcLength: 0 });
+
+                if (i > 0) {
+                const prev = points[i - 1];
+                const dx = p.x - prev.x;
+                const dy = p.y - prev.y;
+                const w = curvatureWeight(cosT, sinT);
+                totalLength += Math.hypot(dx, dy) * w;
+                points[i].arcLength = totalLength;
+                }
+            }
+
+            // 2) assign each node a position by target arc-length
+            nodes.forEach((node, j) => {
+                const target = (totalLength * j) / count;
+                // simple linear scan (you can binary-search since arcLength[] is sorted)
+                let chosen = points[points.length - 1];
+                for (let k = 0; k < points.length; k++) {
+                if (points[k].arcLength >= target) {
+                    chosen = points[k];
+                    break;
+                }
+                }
+                positions[node.id()] = {
+                x: chosen.x * squashFactor,
+                y: chosen.y            // or *someYfactor if you like
+                };
+            });
+            });
+
+            const layout = cy.layout({
+                name: 'preset',
+                positions: node => positions[node.id()],
+                fit: true,
+                //padding: 250,
+                //spacingFactor: 0.5,
+                avoidOverlap: true
+            });
+
+            layout.run();
+        }
+
+        // Load the file and initialize
+        fetch("network.cyjs")
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Arquivo não encontrado.');
+                }
+                return res.json();
+            })
+            .then(data => {
+                data.elements.nodes.forEach(n => {
+                    if (n.data.name) {
+                        n.data.name = n.data.name.replace(/"/g, '');
+                    }
+                    if (n.data.shared_name) {
+                        n.data.shared_name = n.data.shared_name.replace(/"/g, '');
+                    }
+                });
+                initializeCytoscape(data);
+                console.log("Nós:", cy.elements('node').length);
+                console.log("Arestas:", cy.elements('edge').length);
+            })
+            .catch(error => {
+                console.error('Error loading data:', error);
+                document.getElementById('centrality-results').innerHTML = 
+                    '<div class="centrality-results"><h3>Error</h3><p>Could not load network data. Make sure file exists.</p></div>';
+            });
+    </script>
+ 
+</body>
+</html>
