@@ -6,97 +6,100 @@ output: html_document
 ## Conections between species and metabolites
 
 ```{R}
-# Try to get CID from compound name
-# If not possible, try to get CID from SID
-# Param - name: compound name (character)
-# Return - compound_cid: CID (integer)
-library(httr2)
-
-get_cid <- function(name) {
-  if (is.na(name) || name == "") return(NA)
-  
-  encoded_name <- URLencode(name, reserved = TRUE)
-  
-  # 1. Try direct Compound Name -> CID
-  url_cid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/", 
-                    encoded_name, "/cids/JSON")
-  
-  response_cid <- tryCatch({
-    req <- request(url_cid) |> req_retry(max_tries = 3) |> req_perform()
-    if (resp_status(req) == 200) {
-      data <- resp_body_json(req)
-      return(data$IdentifierList$CID[[1]])
-    }
-    NA
-  }, error = function(e) NA)
-  
-  if (!is.na(response_cid)) {
-    message(paste0("Found CID for ", name, ": ", response_cid))
-    return(response_cid)
-  }
-
-  Sys.sleep(0.2) # Short pause
-  
-  # 2. Try Substance Name -> SID
-  url_sid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/substance/name/", 
-                    encoded_name, "/sids/JSON")
-  
-  sid <- tryCatch({
-    req <- request(url_sid) |> req_perform()
-    if (resp_status(req) == 200) {
-      data <- resp_body_json(req)
-      return(data$IdentifierList$SID[[1]])
-    }
-    NA
-  }, error = function(e) NA)
-
-  # 3. If SID exists, find the linked CID
-  if (!is.na(sid)) {
-    url_sid_to_cid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/substance/sid/", 
-                             sid, "/cids/JSON")
-    
-    final_cid <- tryCatch({
-      req <- request(url_sid_to_cid) |> req_perform()
-      if (resp_status(req) == 200) {
-        data <- resp_body_json(req)
-        # SIDs can map to multiple CIDs; we take the first
-        return(data$IdentifierList$CID[[1]])
-      }
-      NA
-    }, error = function(e) NA)
-    
-    if (!is.na(final_cid)) {
-      message(paste0("Found CID via SID for ", name, ": ", final_cid))
-      return(final_cid)
-    }
-  }
-  
-  message(paste0("Could not find CID for ", name))
-  return(NA)
-}
+# # Try to get CID from compound name
+# # If not possible, try to get CID from SID
+# # Param - name: compound name (character)
+# # Return - compound_cid: CID (integer)
+# library(httr2)
+# 
+# get_cid <- function(name) {
+#   if (is.na(name) || name == "") return(NA)
+# 
+#   encoded_name <- URLencode(name, reserved = TRUE)
+# 
+#   # 1. Try direct Compound Name -> CID
+#   url_cid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/",
+#                     encoded_name, "/cids/JSON")
+# 
+#   response_cid <- tryCatch({
+#     req <- request(url_cid) |> req_retry(max_tries = 3) |> req_perform()
+#     if (resp_status(req) == 200) {
+#       data <- resp_body_json(req)
+#       return(data$IdentifierList$CID[[1]])
+#     }
+#     NA
+#   }, error = function(e) NA)
+# 
+#   if (!is.na(response_cid)) {
+#     message(paste0("Found CID for ", name, ": ", response_cid))
+#     return(response_cid)
+#   }
+# 
+#   Sys.sleep(0.2) # Short pause
+# 
+#   # 2. Try Substance Name -> SID
+#   url_sid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/substance/name/",
+#                     encoded_name, "/sids/JSON")
+# 
+#   sid <- tryCatch({
+#     req <- request(url_sid) |> req_perform()
+#     if (resp_status(req) == 200) {
+#       data <- resp_body_json(req)
+#       return(data$IdentifierList$SID[[1]])
+#     }
+#     NA
+#   }, error = function(e) NA)
+# 
+#   # 3. If SID exists, find the linked CID
+#   if (!is.na(sid)) {
+#     url_sid_to_cid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/substance/sid/",
+#                              sid, "/cids/JSON")
+# 
+#     final_cid <- tryCatch({
+#       req <- request(url_sid_to_cid) |> req_perform()
+#       if (resp_status(req) == 200) {
+#         data <- resp_body_json(req)
+#         # SIDs can map to multiple CIDs; we take the first
+#         return(data$IdentifierList$CID[[1]])
+#       }
+#       NA
+#     }, error = function(e) NA)
+# 
+#     if (!is.na(final_cid)) {
+#       message(paste0("Found CID via SID for ", name, ": ", final_cid))
+#       return(final_cid)
+#     }
+#   }
+# 
+#   message(paste0("Could not find CID for ", name))
+#   return(NA)
+# }
+```
+```{R}
+# library(stringr)
+# library(dplyr)
+# load("~/Documents/vitoria/usp-masters/data/gutmgene/gutmgene1_beforemerging.RData")
+#
+# gutmgene_species <- gutmgene1 %>%
+#                         mutate(Microbe_Species = word(Gut_Microbe_Name, 1))
+#
+# gutmgene_species$Microbe_Species <- str_remove_all(gutmgene_species$Microbe_Species, "\\[|\\]")
+#
+# get_cid_vec <- Vectorize(get_cid)
+# gutmgene_species <- gutmgene_species %>%
+#   mutate(
+#     Metabolite_CID = get_cid_vec(Metabolite_Name) # Obtains CID for the metabolite name
+#   )
+#
+# save(gutmgene_species, file = "data/network/gutmgene_processed.RData")
+#
 ```
 
+
 ```{R}
-library(stringr)
 library(dplyr)
-load("~/Documents/vitoria/usp-masters/data/gutmgene/gutmgene1_beforemerging.RData")
+load("~/Documents/vitoria/usp-masters/data/network/network_wcpg/gutmgene_processed.RData")
 
-gutmgene_species <- gutmgene1 %>%
-                        mutate(Microbe_Species = word(Gut_Microbe_Name, 1))
-
-gutmgene_species$Microbe_Species <- str_remove_all(gutmgene_species$Microbe_Species, "\\[|\\]")
-
-get_cid_vec <- Vectorize(get_cid)
-gutmgene_species <- gutmgene_species %>%
-  mutate(
-    Metabolite_CID = get_cid_vec(Metabolite_Name) # Obtains CID for the metabolite name
-  )
-
-save(gutmgene_species, file = "data/network/gutmgene_processed.RData")
-
-```
-
-```{R}
 missing_rows <- is.na(gutmgene_species$Metabolite_CID)
 unique_missing_names <- unique(gutmgene_species$Metabolite_Name[missing_rows])
 nocid_lookup <- paste0("nocid", seq_along(unique_missing_names))
@@ -106,7 +109,6 @@ gutmgene_species$Metabolite_CID[missing_rows] <- nocid_lookup[gutmgene_species$M
 edges_species_met <- data.frame(
                             Source = gutmgene_species$Microbe_Species,
                             Target = gutmgene_species$Metabolite_CID)
-
 # Save information about species and metabolites nodes
 
 nodes <- data.frame(name = unique(c(edges_species_met$Source, edges_species_met$Target)),
@@ -115,8 +117,49 @@ nodes <- data.frame(name = unique(c(edges_species_met$Source, edges_species_met$
 ## Conections between targets and metabolites
 
 ```{R}
+all_mets <- read.csv("/home/gbiuser/Documents/vitoria/usp-masters/data/gutmgene/name_cid.csv")
+colnames(all_mets) <- trimws(colnames(all_mets))
+mapping_gutmgene <- all_mets %>%
+  left_join(
+    gutmgene_species %>%
+      select(Metabolite_Name, Metabolite_CID) %>%
+      distinct(Metabolite_Name, .keep_all = TRUE),  # evita duplicatas por nome
+    by = c("name" = "Metabolite_Name")
+  )
+mapping_final <- all_mets %>%
+  left_join(
+    gutmgene_species %>%
+      select(Metabolite_Name, Metabolite_CID) %>%
+      distinct(Metabolite_Name, .keep_all = TRUE),
+    by = c("name" = "Metabolite_Name")
+  ) %>%
+  group_by(name) %>%
+  mutate(CID_fallback = first(CID)) %>%
+  ungroup() %>%
+  mutate(
+    Metabolite_CID_clean = ifelse(grepl("^nocid", Metabolite_CID), NA, Metabolite_CID),
+    CID_fallback_clean   = ifelse(grepl("^nocid", CID_fallback), NA, CID_fallback),
+    CID_final = coalesce(Metabolite_CID_clean, CID_fallback_clean, CID)  # CID original como último recurso
+  ) %>%
+  distinct(name, .keep_all = TRUE)
+
+```
+
+```{R}
 load("targets_metabolites_all.RData")
-library(dplyr)
+
+library(tibble)
+# lookup: CID original → CID_final
+cid_lookup <- mapping_final %>%
+  select(CID, CID_final) %>%
+  distinct() %>%
+  deframe()  # vira um named vector: cid_lookup["5610"] retorna o CID_final
+
+# remapeia a lista
+targets_to_metabolites_mapped <- lapply(targets_to_metabolites, function(cids) {
+  mapped <- cid_lookup[cids]
+  mapped[!is.na(mapped)]  # descarta CIDs que não estão no mapping
+})
 
 edges_target_met <- do.call(rbind, lapply(names(targets_to_metabolites), function(gene) {
   data.frame(
@@ -125,12 +168,17 @@ edges_target_met <- do.call(rbind, lapply(names(targets_to_metabolites), functio
     stringsAsFactors = FALSE
   )
 }))
-
+a <- data.frame(
+  name = unique(c(edges_target_met$Source, edges_target_met$Target)),
+  type = c(rep("Gene", length(unique(edges_target_met$Source))), rep("Metabolite", length(unique(edges_target_met$Target))))
+)
 # Save information about gene and metabolite nodes
 nodes <- rbind(nodes, data.frame(
   name = unique(c(edges_target_met$Source, edges_target_met$Target)),
   type = c(rep("Gene", length(unique(edges_target_met$Source))), rep("Metabolite", length(unique(edges_target_met$Target))))
 ))
+
+
 ```
 
 
@@ -264,11 +312,16 @@ nodes_clean <- nodes_clean %>%
   mutate(layer = as.numeric(factor(type, levels = order)))
 nodes_clean$layer[nodes_clean$name == "MDD"] <- 4
 nodes_clean$name[nodes_clean$name == "MDD"] <- "TDM"
+```
 
 
+
+
+
+```{R}
 # Save
-write.table(edges_clean, file = "data/network/cytoscape_edges_PDE4B.tsv", row.names=FALSE, sep="\t")
-write.table(nodes_clean, file = "data/network/cytoscape_nodes_PDE4B.tsv", row.names=FALSE, sep="\t")
+write.table(edges_clean, file = "data/network/edges.tsv", row.names=FALSE, sep="\t")
+write.table(nodes_clean, file = "data/network/nodes.tsv", row.names=FALSE, sep="\t")
 ```
 
 
