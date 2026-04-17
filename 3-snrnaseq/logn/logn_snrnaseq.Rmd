@@ -1,0 +1,728 @@
+<!-- # --- -->
+title: "Untitled"
+author: "vitoria"
+date: "2025-04-16"
+output: html_document
+---
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+# Pacotes do CRAN necessários
+cran_pkgs <- c(
+  "data.table", "dplyr", "future", "future.apply", "ggplot2", "rlang", "irlba", 
+  "tidyr", "patchwork", "stringi", "fastmatch", "RcppRoll", "scales", "Rcpp", 
+  "devtools",
+  "tidyselect", "vctrs", "lifecycle", "dotCall64", "RcppEigen", "png", "reticulate"
+)
+
+# Pacotes do Bioconductor necessários
+bioc_pkgs <- c(
+  "GenomeInfoDb", "GenomicRanges", "IRanges", "Rsamtools", "S4Vectors", 
+  "SeuratObject", "Biostrings", "glmGamPoi"
+)
+
+# Função pra instalar se faltar
+install_missing <- function(pkgs, installer) {
+  for (pkg in pkgs) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      message(paste("Instalando:", pkg))
+      installer(pkg)
+    } else {
+      message(paste("Já está instalado:", pkg))
+    }
+  }
+}
+
+# Instala os pacotes
+install_missing(cran_pkgs, install.packages)
+install_missing(bioc_pkgs, BiocManager::install)
+
+if (!requireNamespace("remotes", quietly = TRUE))
+    install.packages("remotes")
+remotes::install_github("stuart-lab/signac", ref = "develop")
+
+devtools::install_github("immunogenomics/presto")
+```
+
+```{r message=FALSE, warning=FALSE}
+# Load necessary libraries
+
+# library(GenomeInfoDb)
+# library(ggplot2)
+# library(patchwork)
+library(dplyr)
+library(Seurat)
+library(Matrix)
+library(glmGamPoi)
+# library(variancePartition)
+# library(BiocParallel)
+
+future::plan("sequential")
+Sys.setenv(OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1")
+
+```
+
+# Functions
+
+```{r}
+#' Builds a Seurat object from snRNA-seq data
+#'
+#' @param matrix_file String - Path to a .mtx.gz file
+#' @param genes_file String - Path to file with gene names
+#' @param cells_file String - Path to file with cell names
+#' @param project_name String - Name of your project/dataset
+#' @param min.cells Integer - Minimum number of cells a gene must be detected in to be retained
+#' @param min.features Integer - Minimum number of genes a cell must express to be included
+#' @param nfeatures Integer - Number of top variable features to select.
+#' @return seurat_obj - SeuratObject for downstream analyses
+process_seurat_object <- function(matrix_file, genes_file, cells_file,
+                                  project_name = "SeuratProject",
+                                  min_cells = 3, min_features = 100) {
+  
+  # Load expression matrix
+  expr_matrix <- readMM(matrix_file)
+  
+  # Load gene and cell names
+  genes <- read.csv(genes_file, header = TRUE)
+  cells <- read.csv(cells_file, header = TRUE)
+  
+  # Define row and column names
+  rownames(expr_matrix) <- make.unique(genes$x)
+  colnames(expr_matrix) <- cells$x
+  
+  # Create object
+  seurat_obj <- CreateSeuratObject(counts = expr_matrix, 
+                                   project = project_name, 
+                                   min.cells = min_cells, 
+                                   min.features = min_features)
+  
+  return(seurat_obj)
+}
+
+#' Builds a Seurat object from snRNA-seq data
+#'
+#' @param seurat_obj SeuratObject
+#' @param group_by String - Name of the variable you want to group your data by (condition, treatment, etc)
+#' @param ident_1 String - Name of the first group considering the condition above
+#' @param ident_2 String - Name of the second group considering the condition above
+#' @param method String - Statistical test for differential expression ("wilcox", "t", "bimod", "LR")
+#' @param logfc_threshold Integer - Threshold for FoldChange filtering (e.g. > 2)
+#' @param pval_adj_threshold Float - Threshold for adjusted p value (e.g. <= 0.01) 
+#' @param save Boolean - If you want to save your DEGs as a CSV
+#' @param output_path String - Path to save the CSVs
+#' @param prefix String - Prefix for the CSV filenames
+#' @return list with p-adjusted DEGs and filtered DEGs
+run_DE_analysis <- function(seurat_obj,
+                            group_by = "condition",
+                            ident_1 = "MDD",
+                            ident_2 = "Control",
+                            method = "wilcox",
+                            min_pct = 0.1,
+                            max_cells = 10000,
+                            save = FALSE,
+                            output_path = "",
+                            prefix = "") {
+  
+  # Find DEGs
+  degs <- FindMarkers(seurat_obj,
+                      ident.1 = ident_1,
+                      ident.2 = ident_2,
+                      group.by = group_by,
+                      test.use = method,
+                      min.pct = min_pct,
+                      max.cells.per.ident = max_cells)
+  
+  # Adjust p value
+  degs$p_val_adj <- p.adjust(degs$p_val, method = "fdr")
+
+  # Save if requested
+  if (save){
+    dir.create(output_path, showWarnings = FALSE, recursive = TRUE)
+
+    write.csv(degs,
+              file = file.path(output_path, paste0(prefix, "_results_adj.csv")),
+              row.names = TRUE)
+    save(degs, file=file.path(output_path, paste0(prefix, "_results_adj.RData")))
+  }  
+
+  return(degs)
+}
+```
+
+
+```{r}
+gse_path <- "data/GSE213982/"
+
+# Build the Seurat object
+GSE213982 <- process_seurat_object(
+  matrix_file = paste0(gse_path, "GSE213982_combined_counts_matrix.mtx.gz"),
+  genes_file = paste0(gse_path,  "GSE213982_combined_counts_matrix_genes_rows.csv.gz"),
+  cells_file = paste0(gse_path, "GSE213982_combined_counts_matrix_cells_columns.csv.gz"),
+  project_name = "GSE213982_snRNA"
+)
+
+# Gather meta data
+cell_info <- do.call(rbind, strsplit(colnames(GSE213982), "\\."))
+GSE213982$sample_id <- cell_info[,1]
+GSE213982$barcode <- cell_info[,2]
+GSE213982$cell_type <- cell_info[,3]
+
+GSE213982$cell_subtype <- cell_info[,4]
+GSE213982$cell_subtype <- sub("^([A-Za-z]+)([0-9]+).*", "\\1\\2", GSE213982$cell_subtype)
+
+# Gather groups information
+condition_info <- read.csv(paste0(gse_path, "/groups.csv"))
+GSE213982$condition <- condition_info$Condition[match(GSE213982$sample_id,
+                                                       condition_info$Sample)]
+GSE213982$condition[GSE213982$condition == "Case"] <- "MDD"
+
+# Remove noise, mitochondrial genes, ribosomal genes, and other contamination
+qc_metrics <- GSE213982@meta.data
+feature_cutoffs <- quantile(qc_metrics$nFeature_RNA, probs = c(0.02, 0.98))
+count_cutoffs   <- quantile(qc_metrics$nCount_RNA,   probs = c(0.02, 0.98))
+
+p1 <- VlnPlot(GSE213982, features = "nFeature_RNA", slot = "counts", pt.size = 0) +
+  scale_y_continuous(breaks = pretty(c(0, max(GSE213982$nFeature_RNA)), n = 20))
+p2 <- VlnPlot(GSE213982, features = "nCount_RNA", slot = "counts", pt.size = 0) +
+  scale_y_continuous(breaks = pretty(c(0, max(GSE213982$nCount_RNA)), n = 20))
+p_violin_GSE213982 <- (p1 | p2)  # junta os dois mantendo eixos separados
+
+# Percentual de genes mitocondriais (MT-)
+GSE213982[["percent.mt"]] <- PercentageFeatureSet(GSE213982, pattern = "^MT-")
+# Percentual de genes ribossomais (RPS/RPL)
+GSE213982[["percent.ribo"]] <- PercentageFeatureSet(GSE213982, pattern = "^RPS|^RPL")
+# Percentual de genes de hemoglobina (HB, exceto pseudogenes HBP)
+GSE213982[["percent.hb"]] <- PercentageFeatureSet(GSE213982, pattern = "^HB[^(P)]")
+
+GSE213982 <- subset(
+  GSE213982,
+  subset = nFeature_RNA > feature_cutoffs[1] &
+            nFeature_RNA < feature_cutoffs[2] &
+            nCount_RNA   > count_cutoffs[1] &
+            nCount_RNA   < count_cutoffs[2] &
+            percent.mt < 5 & percent.ribo < 40 & percent.hb < 1
+)
+
+saveRDS(GSE213982, "prenormalization_213.rds")
+
+# Normalization in batches
+GSE213982 <- readRDS("prenormalization_213.rds")
+gc()
+Sys.setenv(OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1")
+future::plan("sequential")
+ids <- unique(GSE213982$sample_id)
+save(ids, file="213_ids.RData")
+
+objs <- lapply(ids, function(id){
+  x <- subset(GSE213982, subset = sample_id == id)
+  x <- SCTransform(x, method="glmGamPoi", vst.flavor="v2",
+                   vars.to.regress=c("percent.mt","nCount_RNA"),
+                   variable.features.n=2000,
+                   return.only.var.genes=FALSE,
+                   conserve.memory=TRUE, verbose=TRUE)
+  saveRDS(x, paste0("sct_", id, ".rds")); rm(x); gc(); NULL
+})
+# Integrate
+list_sct <- lapply(paste0("sct_", ids, ".rds"), readRDS)
+features <- SelectIntegrationFeatures(object.list = list_sct, nfeatures = 2000)
+list_sct <- PrepSCTIntegration(object.list = list_sct, anchor.features = features)
+anchors <- FindIntegrationAnchors(object.list = list_sct, normalization.method="SCT",
+                                  anchor.features=features)
+GSE213982_sct <- IntegrateData(anchorset = anchors, normalization.method="SCT")
+
+DefaultAssay(GSE213982_sct) <- "SCT"
+Idents(GSE213982_sct) <- "condition"
+levels(GSE213982_sct)
+
+save(GSE213982_sct, file=paste0(gse_path, "GSE213982_sct_counts.RData"))
+```
+
+# Analysis without considering cell types
+
+```{r}
+gse_path <- "data/snrnaseq/GSE213982/"
+load(paste0(gse_path, "GSE213982_sct_counts.RData"))
+
+degs_GSE213982 <- run_DE_analysis(GSE213982, save = T,
+                                  output_path = paste0(gse_path, "degs_sct/"),
+                                  prefix = "GSE213982")
+GSE213982 <- NULL
+gc()
+```
+
+
+## GSE144136
+
+```{r}
+gse_path <- "data/snrnaseq/GSE144136/"
+GSE144136 <- process_seurat_object(
+  matrix_file = paste0(gse_path, "GSE144136_GeneBarcodeMatrix_Annotated.mtx.gz"),
+  genes_file = paste0(gse_path, "GSE144136_GeneNames.csv.gz"),
+  cells_file = paste0(gse_path, "GSE144136_CellNames.csv.gz"),
+  project_name = "GSE144136_snRNA"
+)
+
+cell_info <- do.call(rbind, strsplit(colnames(GSE144136), "\\_"))
+GSE144136@meta.data$cell_type <- cell_info[,1]
+GSE144136@meta.data$cell_subtype <- sub("^([A-Za-z/]+)[_\\./]([0-9]+).*", "\\1\\2",
+                                        rownames(GSE144136@meta.data))
+
+GSE144136@meta.data$condition <- ifelse(grepl("Control", rownames(GSE144136@meta.data)), 
+                                    "Control", 
+                                    ifelse(grepl("Suicide", rownames(GSE144136@meta.data)), 
+                                           "MDD", 
+                                           NA))
+
+# Make it the same patter as the other dataset
+## Cell type
+GSE144136@meta.data$cell_type <- dplyr::case_when(
+  GSE144136@meta.data$cell_type == "Astros" ~ "Ast",
+  GSE144136@meta.data$cell_type == "Inhib" ~ "InN",
+  GSE144136@meta.data$cell_type == "Ex" ~ "ExN",
+  GSE144136@meta.data$cell_type == "Oligos" ~ "Oli",
+  GSE144136@meta.data$cell_type == "OPCs" ~ "OPC",
+  grepl("^Micro/Macro", GSE144136@meta.data$cell_type) ~ "Mic",
+  grepl("^Endo", GSE144136@meta.data$cell_type) ~ "End",
+
+  TRUE ~ GSE144136@meta.data$cell_type  
+)
+## Cell subtype
+cell_subtype_info <- stringr::str_match(rownames(GSE144136@meta.data), "^([A-Za-z/]+)[_\\./]([0-9]+)")
+cell_type <- cell_subtype_info[, 2]
+subtype_num <- cell_subtype_info[, 3]
+standardized_type <- dplyr::case_when(
+  cell_type == "Astros" ~ "Ast",
+  cell_type == "Inhib" ~ "InN",
+  cell_type == "Ex" ~ "ExN",
+  cell_type == "Oligos" ~ "Oli",
+  cell_type == "OPCs" ~ "OPC",
+  cell_type == "Endo" ~ "End",
+  cell_type == "Micro/Macro" ~ "Mic",
+  TRUE ~ cell_type
+)
+GSE144136@meta.data$cell_subtype <- paste0(standardized_type, subtype_num)
+
+# Remove noise, mitochondrial genes, ribosomal genes, and other contamination
+qc_metrics <- GSE144136@meta.data
+feature_cutoffs <- quantile(qc_metrics$nFeature_RNA, probs = c(0.05, 0.95))
+count_cutoffs   <- quantile(qc_metrics$nCount_RNA,   probs = c(0.05, 0.95))
+
+p1 <- VlnPlot(GSE144136, features = "nFeature_RNA", slot = "counts", pt.size = 0) +
+  scale_y_continuous(breaks = pretty(c(0, max(GSE144136$nFeature_RNA)), n = 20))
+p2 <- VlnPlot(GSE144136, features = "nCount_RNA", slot = "counts", pt.size = 0) +
+  scale_y_continuous(breaks = pretty(c(0, max(GSE144136$nCount_RNA)), n = 20))
+p_violin_GSE144136 <- (p1 | p2)  # junta os dois mantendo eixos separados
+
+# Percentual de genes mitocondriais (MT-)
+GSE144136[["percent.mt"]] <- PercentageFeatureSet(GSE144136, pattern = "^MT-")
+# Percentual de genes ribossomais (RPS/RPL)
+GSE144136[["percent.ribo"]] <- PercentageFeatureSet(GSE144136, pattern = "^RPS|^RPL")
+# Percentual de genes de hemoglobina (HB, exceto pseudogenes HBP)
+GSE144136[["percent.hb"]] <- PercentageFeatureSet(GSE144136, pattern = "^HB[^(P)]")
+
+GSE144136 <- subset(
+  GSE144136,
+  subset = nFeature_RNA > feature_cutoffs[1] &
+            nFeature_RNA < feature_cutoffs[2] &
+            nCount_RNA   > count_cutoffs[1] &
+            nCount_RNA   < count_cutoffs[2] &
+            percent.mt < 5 & percent.ribo < 40 & percent.hb < 1
+)
+
+saveRDS(GSE144136, "pre_144_real.rds")
+GSE144136 <- readRDS( "pre_144_real.rds")
+
+future::plan("sequential")
+Sys.setenv(OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1")
+
+# Normalization
+GSE144136 <- SCTransform(GSE144136,
+  method="glmGamPoi", vst.flavor="v2",
+  vars.to.regress=c("percent.mt","nCount_RNA"),
+  variable.features.n=2000,
+  return.only.var.genes=TRUE,
+  conserve.memory=TRUE, verbose=TRUE
+)
+
+DefaultAssay(GSE144136) <- "SCT"
+Idents(GSE144136) <- "condition"
+levels(GSE144136)
+
+save(GSE144136, file=paste0(gse_path, "GSE144136_sct_counts.RData"))
+```
+
+
+```{r}
+gse_path <- "data/snrnaseq/GSE144136/"
+load(paste0(gse_path, "GSE144136_counts.RData"))
+
+degs_GSE144136 <- run_DE_analysis(GSE144136, save = T,
+                                  output_path = paste0(gse_path, "degs_sct/"),
+                                  prefix = "/GSE144136")
+GSE144136 <- NULL
+gc()
+```
+
+## Getting the intersection between snRNA-seq and target prediction
+
+
+```{r}
+pval_adj_threshold <- 0.05
+logfc_threshold <- 0.6
+
+gse_path <- "data/snrnaseq/GSE144136/"
+degs_GSE144136_adj <- read.csv(paste0(gse_path, "degs/GSE144136_results_adj.csv"))
+degs_GSE144136_f <- degs_GSE144136_adj %>%
+  filter(p_val_adj <= pval_adj_threshold, abs(avg_log2FC) >= logfc_threshold)
+
+gse_path <- "data/snrnaseq/GSE213982/"
+degs_GSE213982_adj <- read.csv(paste0(gse_path, "degs/GSE213982_results_adj.csv"))
+degs_GSE213982_f <- degs_GSE213982_adj %>%
+  filter(p_val_adj <= pval_adj_threshold, abs(avg_log2FC) >= logfc_threshold)
+
+degs_GSE144136 <- degs_GSE144136_f$X
+degs_GSE213982 <- degs_GSE213982_f$X
+
+snrnaseq_intersection <- intersect(degs_GSE213982_f$X, degs_GSE144136_f$X)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Pasta com os CSVs das interseções
+csv_folder <- "data/target_prediction/intersections"
+
+# Lista fixa para intersectar
+snrnaseq_intersection <- as.character(snrnaseq_intersection)  # garantir vetor de caracteres
+
+# Lista para guardar os resultados
+results_logn <- list()
+
+# Ler cada arquivo CSV e fazer interseção com snrnaseq_intersection
+csv_files <- list.files(csv_folder, pattern = "\\.csv$", full.names = TRUE)
+
+for (file in csv_files) {
+  # Read raw lines first
+  raw_lines <- readLines(file, warn = FALSE)
+
+  # Skip if all lines are either empty or just '""'
+  if (all(trimws(raw_lines) %in% c("", "\"\""))) {
+    message(paste("Skipping file with only '\"\"' or blank lines:", file))
+    next
+  }
+  
+  # Nome base do arquivo para usar como key
+  key <- gsub("^intersection_|\\.csv$", "", basename(file))
+  
+  # Ler CSV
+  # print(file)
+  df <- read.csv(file, stringsAsFactors = FALSE)
+  # print(file)
+  # Garantir vetor
+  vec <- as.character(df$target)
+  
+  # Interseção com snrnaseq_intersection
+  inter <- intersect(vec, snrnaseq_intersection)
+  
+  # Salvar na lista
+  results_logn[[key]] <- inter
+}
+
+save(results_logn, file="data/snrnaseq/results_logn.RData")
+
+# all_union <- unique((c(all_sea, all_stp, all_chembl, all_xfp, all_ecfp)))
+```
+
+# Analysis considering cell types
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+gse_path <- "data/snrnaseq/GSE213982/"
+load(paste0(gse_path, "GSE213982_counts.RData"))
+
+GSE213982_celltype <- list()
+cell_types <- setdiff(unique(GSE213982@meta.data$cell_type), "Mix")
+
+for (ct in cell_types) {
+  seurat_sub <- subset(GSE213982,
+                       subset = cell_type == ct)
+  
+  seurat_sub <- NormalizeData(seurat_sub,
+                              normalization.method = "LogNormalize")
+  Idents(seurat_sub) <- "condition"
+
+  markers <- FindMarkers(seurat_sub, ident.1 = "MDD",
+                         ident.2 = "Control",
+                         test.use = "wilcox")
+  
+  GSE213982_celltype[[ct]] <- markers
+  gc()
+}
+
+save(GSE213982_celltype,
+     file=paste0(gse_path, "type_degs/GSE213982_celltype_notfiltered.RData"))
+
+# filter by p and FC
+GSE213982_celltype_filtered <- list()
+for (ct in cell_types) {
+  markers <- GSE213982_celltype[[ct]]
+  
+  markers_filtered <- markers %>%
+    filter(p_val_adj <= 0.05, abs(avg_log2FC) >= 0.6)
+
+  GSE213982_celltype_filtered[[ct]] <- markers_filtered
+}
+
+save(GSE213982_celltype_filtered,
+     file=paste0(gse_path, "type_degs/GSE213982_celltype.RData"))
+```
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+gse_path <- "data/snrnaseq/GSE144136/"
+load(paste0(gse_path, "/GSE144136_counts.RData"))
+
+GSE144136_celltype <- list()
+cell_types <- setdiff(unique(GSE144136@meta.data$cell_type), "Mix")
+
+for (ct in cell_types) {
+  seurat_sub <- subset(GSE144136, subset = cell_type == ct)
+  seurat_sub <- NormalizeData(seurat_sub, normalization.method = "LogNormalize")
+
+  Idents(seurat_sub) <- "condition"
+
+  markers <- FindMarkers(seurat_sub, ident.1 = "MDD", ident.2 = "Control",
+                         test.use = "wilcox")
+
+  GSE144136_celltype[[ct]] <- markers
+}
+
+save(GSE144136_celltype,
+     file=paste0(gse_path, "type_degs/GSE144136_celltype_notfiltered.RData"))
+
+# filter by p and FC
+GSE144136_celltype_filtered <- list()
+for (ct in cell_types) {
+  markers <- GSE144136_celltype[[ct]]
+  
+  markers_filtered <- markers %>%
+    filter(p_val_adj < 0.05, abs(avg_log2FC) >= 0.6)
+
+  GSE144136_celltype_filtered[[ct]] <- markers_filtered
+}
+
+save(GSE144136_celltype_filtered,
+     file=paste0(gse_path, "type_degs/GSE144136_celltype.RData"))
+```
+
+## Getting the intersection between snRNA-seq and target prediction
+
+```{r message=FALSE, warning=FALSE}
+# Load target_intersection (303 targets)
+load("./data/snrnaseq/GSE144136/type_degs/GSE144136_celltype.RData")
+load("./data/snrnaseq/GSE213982/type_degs/GSE213982_celltype.RData")
+cell_types <- names(GSE213982_celltype_filtered)
+intersection_celltypes <- list()
+for (ct in cell_types) {
+  intersection_celltypes[[ct]] <- intersect(rownames(GSE144136_celltype_filtered[[ct]]),
+                                            rownames(GSE213982_celltype_filtered[[ct]]))
+}
+
+save(intersection_celltypes, file = "data/snrnaseq/intersection_celltypes.RData")
+```
+
+## for the new prediction methods
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Pasta com os CSVs das interseções
+csv_folder <- "data/target_prediction/intersections"
+load("./data/snrnaseq/GSE144136/type_degs/GSE144136_celltype.RData")
+load("./data/snrnaseq/GSE213982/type_degs/GSE213982_celltype.RData")
+
+cell_types <- names(GSE144136_celltype_filtered)
+intersection_celltypes <- list()
+for (ct in cell_types) {
+  intersection_celltypes[[ct]] <- intersect(rownames(GSE144136_celltype_filtered[[ct]]),
+                                            rownames(GSE213982_celltype_filtered[[ct]]))
+}
+
+# Lista para guardar os resultados
+results_logn_celltype <- list()
+
+# Ler cada arquivo CSV e fazer interseção com snrnaseq_intersection
+csv_files <- list.files(csv_folder, pattern = "\\.csv$", full.names = TRUE)
+
+for (file in csv_files){
+  for (ct in cell_types){
+    
+    # Prediction methods + cell type degs
+    key <- paste0(basename(file), "_", ct)
+    
+    # Read prediction methods intersections
+    df <- read.csv(file, stringsAsFactors = FALSE)
+    vec <- as.character(df$target)
+    
+    # Intersect with DEGs
+    inter <- intersect(vec, intersection_celltypes[[ct]])
+    
+    results_logn_celltype[[key]] <- inter
+  }
+}
+
+save(results_logn_celltype, file = "data/snrnaseq/results_logn_celltype.RData")
+
+
+# all_union <- unique((c(all_sea, all_stp, all_chembl, all_xfp, all_ecfp)))
+```
+
+# Analysis considering cell subtypes
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+gse_path <- "data/snrnaseq/GSE213982/"
+load(paste0(gse_path, "GSE213982_counts.RData"))
+
+GSE213982_markers_subcelltype <- list()
+cell_subtypes <- setdiff(unique(GSE213982@meta.data$cell_subtype), "Mix")
+
+for (cst in cell_subtypes) {
+  seurat_sub <- subset(GSE213982,
+                       subset = cell_subtype == cst)
+  
+  seurat_sub <- NormalizeData(seurat_sub,
+                              normalization.method = "LogNormalize")
+  Idents(seurat_sub) <- "condition"
+
+  markers <- FindMarkers(seurat_sub, ident.1 = "MDD",
+                         ident.2 = "Control",
+                         test.use = "wilcox")
+  
+  GSE213982_markers_subcelltype[[cst]] <- markers
+  gc()
+}
+
+# filter by p and FC
+GSE213982_cellsubtype_filt <- list()
+for (cst in names(GSE213982_markers_subcelltype)) {
+  markers <- GSE213982_markers_subcelltype[[cst]]
+  
+  markers_filtered <- markers %>%
+    filter(p_val_adj < 0.05, abs(avg_log2FC) >= 1)
+
+  GSE213982_cellsubtype_filt[[cst]] <- markers_filtered
+}
+
+save(GSE213982_cellsubtype_filt,
+     file=paste0(gse_path, "subtype_degs/GSE213982_subtype.RData"))
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+gse_path <- "data/snrnaseq/GSE144136/"
+load(paste0(gse_path, "GSE144136_counts.RData"))
+
+GSE144136_markers_subcelltype <- list()
+cell_subtypes <- setdiff(unique(GSE144136@meta.data$cell_subtype), "Mix")
+
+for (cst in cell_subtypes) {
+  seurat_sub <- subset(GSE144136,
+                       subset = cell_subtype == cst)
+  
+  if (!all(c("MDD", "Control") %in% unique(seurat_sub$condition))) {
+    message("Skipping ", cst, " due to missing $condition(s)")
+    next
+  }
+  
+  seurat_sub <- NormalizeData(seurat_sub,
+                              normalization.method = "LogNormalize")
+  seurat_sub <- SetIdent(seurat_sub, value = "condition")
+
+  markers <- FindMarkers(seurat_sub, ident.1 = "MDD",
+                         ident.2 = "Control",
+                         test.use = "wilcox")
+  
+  GSE144136_markers_subcelltype[[cst]] <- markers
+  gc()
+}
+
+# filter by p and FC
+GSE144136_cellsubtype_filt <- list()
+for (cst in names(GSE144136_markers_subcelltype)) {
+  markers <- GSE144136_markers_subcelltype[[cst]]
+  
+  markers_filtered <- markers %>%
+    filter(p_val_adj < 0.05, abs(avg_log2FC) >= 1)
+
+  GSE144136_cellsubtype_filt[[cst]] <- markers_filtered
+}
+
+save(GSE144136_cellsubtype_filt,
+     file=paste0(gse_path, "subtype_degs/GSE144136_subtype.RData"))
+```
+
+## Getting the intersection between snRNA-seq and target prediction
+
+```{r message=FALSE, warning=FALSE}
+# Load target_intersection 
+load(file='data/target_prediction/targets_intersection.RData')
+load(file='data/snrnaseq/GSE144136/subtype_degs/GSE144136_subtype.RData')
+
+cell_subtypes <- union(names(GSE144136_cellsubtype_filt), names(GSE213982_cellsubtype_filt))
+
+intersection_cellsubtypes <- list()
+for (cst in cell_subtypes) {CD81
+  if (cst %in% names(GSE213982_cellsubtype_filt) &
+      cst %in% names(GSE144136_cellsubtype_filt)) {
+    intersection_cellsubtypes[[cst]] <- intersect(
+      rownames(GSE144136_cellsubtype_filt[[cst]]),
+      rownames(GSE213982_cellsubtype_filt[[cst]])
+    )
+  }
+}
+
+subtype_intersection <- list()
+for (cst in cell_subtypes) {
+  subtype_intersection[[cst]] <- intersect(targets_intersection,
+                                               intersection_cellsubtypes[[cst]])
+}
+
+save(subtype_intersection, file = "data/snrnaseq/degs_intersections_subtype.RData")
+```
+
+
+# Getting the predicted metabolites/ligands for the intersection genes
+
+```{r}
+source("get_metabolites.R")  
+
+met_name_cid <- read.csv("data/gutmgene/name_cid.csv") 
+
+all_targets <- read.table("data/targets.txt")$V1
+selected_genes <- c("PDE4B", "PDE4D")
+selected_genes <- all_targets
+
+targets_to_metabolites <- get_metabolites(selected_genes)
+
+for (target in names(targets_to_metabolites)){
+  mets <- targets_to_metabolites[[target]]
+  new_mets <- c()
+  for (met in mets){
+    # cid -> name
+    name <- met_name_cid[met_name_cid$CID == met,]$name
+    new_mets <- c(new_mets, name)
+  }
+  targets_to_metabolites[[target]] <- new_mets
+}
+
+targets_to_metabolites <- lapply(targets_to_metabolites, unique)
+
+metabolites_to_targets <- list()
+for (gene in names(targets_to_metabolites)) {
+  # print(gene)
+  for (metabolite in targets_to_metabolites[[gene]]) {
+    # print(metabolite)
+    metabolites_to_targets[[metabolite]] <- c(metabolites_to_targets[[metabolite]], gene)
+  }
+}
+metabolites_to_targets <- lapply(metabolites_to_targets, unique)
+
+save(targets_to_metabolites, metabolites_to_targets, file="data/network/targets_metabolites_PDE4B.RData")
+save(targets_to_metabolites, file="targets_metabolites_all.RData")
+
+```

@@ -124,41 +124,6 @@ edges_target_met <- data.frame(
   stringsAsFactors = FALSE
 )
 
-# # 3. Map the Target names to IDs using our lookup vector
-# edges_target_met <- edges_target_met %>%
-#   mutate(Target = lookup_vec[Target_Name])
-# 
-# missing_matches <- edges_target_met %>% 
-#   filter(is.na(Target)) %>% 
-#   pull(Target_Name) %>% 
-#   unique()
-# 
-# if(length(missing_matches) > 0) {
-#   cat("The following targets were not found in gutmgene_species:\n")
-#   print(missing_matches)
-# } else {
-#   cat("All targets successfully mapped to IDs!")
-# }
-# 
-# new_IDs <- c()
-# for (met in missing_matches){
-#   new_id <- get_cid(met)
-#   new_IDs <- c(new_IDs, new_id)
-# }
-# 
-# patch_df <- data.frame(
-#   Target_Name = missing_matches,
-#   New_CID = new_IDs,
-#   stringsAsFactors = FALSE
-# )
-
-# 2. Join the patch to your main table and update the Target column
-# edges_target_met <- edges_target_met %>%
-#   left_join(patch_df, by = "Target_Name") %>%
-#   # If Target is NA, use New_CID; otherwise, keep Target
-#   mutate(Target = ifelse(is.na(Target), New_CID, Target)) %>%
-#   # Clean up the helper column
-#   select(-New_CID)
 
 edges_target_met$Target_Name <- NULL
 

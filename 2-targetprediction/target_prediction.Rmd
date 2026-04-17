@@ -1,0 +1,951 @@
+---
+title: "target_prediction"
+output: html_document
+---
+
+## Parsing SEA results
+
+After running SEA with smiles_ids.txt, read the results.
+
+```{r}
+# Read SEA dataframe
+sea_result <- read_excel("data/sea/sea_results.xlsx")
+
+colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
+                          "Max_Tc", "Cut_Sum", "Z_Score", "Name", "Description", "Query_Smiles")
+
+# Get only the human targets 
+sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target_ID), ]
+
+# Sort the data frame by Target_ID and then by P_Value (ascending)
+sea_result <- sea_result[order(sea_result$Target_ID, sea_result$P_Value), ]
+# Keep only the first occurrence of each Target_ID (which now has the lowest P_Value)
+sea_result <- sea_result[!duplicated(sea_result$Target_ID), ]
+
+sea_targets <- sea_result$Target_ID
+sea_targets <- gsub("_HUMAN", "", sea_targets)
+cat(length(sea_targets), "targets were predicted with SEA\n")
+
+# write.csv(sea_targets, "data/sea/sea_targets.csv")
+```
+
+## Parsing STP results
+
+```{r}
+# Directory with STP .csv files
+directory <- "data/stp"
+
+# Get the files
+files <- list.files(path = directory, pattern = ".*cid.*\\.csv$", full.names = TRUE)
+
+queries <- c()
+for (file_path in files) {
+  queries <- c(str_remove(basename(file_path), "\\.csv$"), queries)
+}
+
+# Lê o arquivo txt com separador de espaço
+smiles_cids <- read.table("../1-gutmgene/data/smiles_all", sep = " ", header = FALSE)
+# Pega só a segunda coluna como vetor
+all_ids <- smiles_cids[[2]]
+
+# Check if there is any ID missing from STP prediction
+setdiff(all_ids, queries)
+
+# Iterate over the files creating dataframes
+dataframes <- list()
+for (file_path in files) {
+  if (file.info(file_path)$size > 0) {
+    df <- read_csv(file_path, show_col_types = FALSE)
+    dataframes[[length(dataframes) + 1]] <- df
+  } else {
+    cat("No targets predicted:", basename(file_path), "\n")
+  }
+}
+
+# Concatenate dataframes
+stp_result <- bind_rows(dataframes)
+
+# Write final dataframe
+# write_csv(stp_result, file.path(directory, "stp_results.csv"))
+```
+
+```{r}
+# Read STP dataframe
+stp_result <- read.csv("data/stp/stp_results.csv")
+
+# Rename columns to avoid special character issues
+colnames(stp_result) <- c("Name", "Common_name", "Uniprot_ID",
+                          "ChEMBL_ID", "Class",
+                          "Probability", "Known_Actives")
+
+# Remove targets with probability = 0
+stp_result <- stp_result[stp_result$Probability != 0, ]
+
+# # Filter the rows with higher probability
+stp_result <- stp_result[order(stp_result$Common_name, stp_result$Probability), ]
+
+# Get unique targets
+stp_result <- stp_result %>% distinct(Common_name, .keep_all=TRUE)
+stp_targets <- stp_result$Common_name  
+
+cat(length(stp_targets), "targets were predicted with STP\n")
+
+write.csv(stp_targets, "data/stp/stp_targets.csv")
+```
+
+## CHEMBL
+
+```{r}
+library(readr)
+library(dplyr)
+# Directory with STP .csv files
+directory <- "data/multitask"
+
+# Get the files
+files <- list.files(path = directory, pattern = "\\.csv$", full.names = TRUE)
+names <- c()
+for (file_path in files) {
+  names <- c(str_remove(basename(file_path), "\\.csv$"), names)
+}
+
+# Lê o arquivo txt com separador de espaço
+dados <- read.table("../1-gutmgene/data/smiles_all", sep = " ", header = FALSE)
+# Pega só a segunda coluna como vetor
+segunda_coluna <- dados[[2]]
+
+
+# Iterate over the files creating dataframes
+dataframes <- list()
+for (file_path in files) {
+  df <- read_csv(file_path, show_col_types = FALSE)
+  if(dim(df)[1] > 0){
+    dataframes[[length(dataframes) + 1]] <- df
+  } else {
+    cat("No targets predicted:", basename(file_path), "\n")
+  }
+}
+
+# Concatenate dataframes
+multitask_results <- bind_rows(dataframes)
+
+# Write final dataframe
+# write_csv(multitask_results, file.path(directory, "multitask_results.csv"))
+```
+
+```{r}
+# Read STP dataframe
+multitask_result <- read.csv("data/multitask/multitask_results.csv")
+
+# Rename columns to avoid special character issues
+colnames(multitask_result) <- c("Target_ID", "Probability")
+
+# Remove targets with probability = 0
+multitask_result <- multitask_result[multitask_result$Probability != 0, ]
+
+# Filter the rows with higher probability
+multitask_result <- multitask_result[order(multitask_result$Target_ID, multitask_result$Probability), ]
+
+# Get unique targets
+multitask_result <- multitask_result %>% distinct(Target_ID, .keep_all=TRUE)
+multitask_targets <- multitask_result$Target_ID  
+
+cat(length(multitask_targets), "targets were predicted with Multitask CHEMBL\n")
+
+# write.csv(multitask_targets, "data/multitask/multitask_targets.csv")
+# write.table(multitask_targets, file = "data/multitask/multitask_chembl_ids.txt",col.names=FALSE, row.names = FALSE,quote = FALSE)
+```
+
+## PPB2
+
+```{r}
+library(readr)
+library(dplyr)
+# Directory with STP .csv files
+directory <- "data/ppb2"
+
+# Get the files
+files <- list.files(path = directory, pattern = "\\.txt$", full.names = TRUE)
+
+# Iterate over the files creating dataframes
+dataframes_ppb <- list()
+for (file_path in files) {
+  df <- read_tsv(file_path, show_col_types = FALSE)
+  if(dim(df)[1] > 0){
+    dataframes_ppb[[length(dataframes_ppb) + 1]] <- as.data.frame(df)
+  } else {
+    cat("No targets predicted:", basename(file_path), "\n")
+  }
+}
+
+# Concatenate dataframes
+ppb_results <- bind_rows(dataframes_ppb)
+
+# Write final dataframe
+# write_csv(ppb_results, file.path(directory, "ppb_results.csv"))
+```
+
+```{r}
+library(dplyr)
+# Read STP dataframe
+ppb_result <- read.csv("data/ppb2/ppb_results.csv")
+
+# Rename columns to avoid special character issues
+colnames(ppb_result) <- c("Rank", "Target_ID", "Common.name")
+
+# Get unique targets
+ppb_result <- ppb_result %>% distinct(Target_ID, .keep_all=TRUE)
+
+ppb_targets <- ppb_result$Target_ID 
+
+cat(length(ppb_targets), "targets were predicted with PPB2")
+
+# write.csv(ppb_targets, "data/ppb2/ppb_targets.csv")
+# write.table(ppb_targets, file = "data/ppb2/ppb_chembl_ids.txt",
+            # col.names = FALSE, row.names = FALSE, quote = FALSE)
+```
+
+## Mapping
+
+```{r message=FALSE, warning=FALSE}
+library(biomaRt)
+
+biomart_mapping <- function(values, 
+                            filters_to_try = NULL,
+                            mart = NULL,
+                            to_attribute = "hgnc_symbol",
+                            verbose = FALSE) {
+  # Conecta ao Ensembl se não for passado
+  if (is.null(mart)) {
+    mart <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+  }
+
+  # Filtros padrão se não forem especificados
+  if (is.null(filters_to_try)) {
+    filters_to_try <- c(
+      "hgnc_symbol", "chembl", "embl", "entrezgene_id", 
+      "ensembl_gene_id", "external_gene_name", 
+      "hgnc_id", "hpa_id", "hpa_accession", "uniprot_gn_id"
+    )
+  } else{
+    valid_filters <- listFilters(mart)$name
+    filters_to_try <- intersect(filters_to_try, valid_filters)
+  }
+  
+  # filters_to_try <- c("uniprot_gn_id")
+  # cat(filters_to_try)
+
+  # Lista para guardar os resultados como data frames
+  all_results <- list()
+
+  for (filtro in filters_to_try) {
+    if (verbose) cat("Tentando filtro:", filtro, "\n")
+
+    res <- tryCatch({
+      getBM(
+        attributes = c(filtro, to_attribute),
+        filters = filtro,
+        values = values,
+        mart = mart
+      )
+    }, error = function(e) {
+      if (verbose) message("Erro com filtro: ", filtro, " - ", e$message)
+      NULL
+    })
+
+    if (!is.null(res) && nrow(res) > 0) {
+      df <- res
+      colnames(df) <- c("Query", "HGNC_ID")
+      all_results[[filtro]] <- df
+    }
+  }
+
+  # Combina tudo em um único data frame
+  if (length(all_results) == 0) {
+    return(data.frame(Query = character(0), HGNC_ID = character(0)))
+  }
+
+  final_df <- do.call(rbind, all_results)
+  return(final_df)
+}
+
+#######################################################################
+library(data.table)
+
+hgnc_dataset_mapping <- function(targets) {
+  library(data.table)
+
+  # Baixar dataset HGNC
+  hgnc_url <- "https://storage.googleapis.com/public-download-files/hgnc/tsv/tsv/hgnc_complete_set.txt"
+  hgnc_file <- tempfile(fileext = ".tsv")
+  download.file(hgnc_url, hgnc_file, quiet = TRUE)
+
+  # Ler com segurança
+  hgnc <- fread(hgnc_file, sep = "\t", quote = "", fill = TRUE)
+
+  # Garantir colunas necessárias
+  cols <- c("symbol", "alias_symbol", "prev_symbol", "name")
+  for (col in cols) if (!col %in% names(hgnc)) hgnc[[col]] <- NA_character_
+
+  # Função de expansão
+  expand_aliases <- function(symbols, main_symbol) {
+    if (is.na(symbols) || symbols == "") return(NULL)
+    expanded <- unlist(strsplit(symbols, "\\|"))
+    if (length(expanded) == 0) return(NULL)
+    data.table(input = toupper(trimws(expanded)), hgnc_symbol = main_symbol)
+  }
+
+  safe_rbind <- function(lst) {
+    lst <- lst[!sapply(lst, is.null)]
+    if (length(lst) == 0) return(data.table(input = character(), hgnc_symbol = character()))
+    rbindlist(lst, fill = TRUE)
+  }
+
+  # Expandir
+  alias_dt  <- safe_rbind(mapply(expand_aliases, hgnc$alias_symbol, hgnc$symbol, SIMPLIFY = FALSE))
+  prev_dt   <- safe_rbind(mapply(expand_aliases, hgnc$prev_symbol, hgnc$symbol, SIMPLIFY = FALSE))
+  symbol_dt <- data.table(input = toupper(hgnc$symbol), hgnc_symbol = hgnc$symbol)
+  name_dt   <- data.table(input = toupper(hgnc$name), hgnc_symbol = hgnc$symbol)
+
+  expanded <- rbindlist(list(symbol_dt, alias_dt, prev_dt, name_dt), fill = TRUE, use.names = TRUE)
+  expanded <- unique(expanded[!is.na(input)])
+
+  # Mapeamento
+  targets_clean <- toupper(trimws(targets))
+  mapped <- expanded[input %in% targets_clean]
+
+  if (nrow(mapped) == 0) {
+    warning("Nenhum mapeamento encontrado para os targets fornecidos.")
+    return(data.frame(Query = targets, HGNC_ID = NA_character_))
+  }
+
+  result <- unique(data.table(Query = mapped$input, HGNC_ID = mapped$hgnc_symbol))
+  return(as.data.frame(result))
+}
+
+#######################################################################
+  
+library(hgnc)
+library(lubridate)
+library(data.table)
+
+hgnc_mapping <- function(values, 
+                         from_cols = NULL, 
+                         to = "symbol", 
+                         hgnc_dataset = NULL, 
+                         verbose = FALSE) {
+  if (is.null(hgnc_dataset)) {
+    if (verbose) cat("Importando base HGNC...\n")
+    hgnc_dataset <- import_hgnc_dataset()
+  }
+
+  if (is.null(from_cols)) {
+    from_cols <- c("hgnc_id", "symbol", "name", "entrez_id", "ensembl_gene_id", "uniprot_ids")
+  }
+  
+  hgnc_long <- setDT(hgnc_dataset)[
+    , .(uniprot_id = unlist(strsplit(as.character(uniprot_ids), ",\\s*"))),  # force to character
+    by = .(hgnc_id, symbol)
+  ]
+
+
+  # Safe wrapper
+  safe_crosswalk <- function(value, from, to, hgnc_dataset) {
+    tryCatch({
+      crosswalk(value = value, from = from, to = to, hgnc_dataset = hgnc_dataset)
+    }, error = function(e) {
+      if (verbose) message("Erro na coluna ", from, ": ", e$message)
+      NULL
+    })
+  }
+
+  # Lista para guardar resultados (query, id)
+  results_list <- list()
+
+  for (col in from_cols) {
+    if (verbose) cat("Tentando coluna:", col, "\n")
+    
+    if (col == "uniprot_ids") {
+      matched <- hgnc_long[uniprot_id %in% values, .(Query = uniprot_id, HGNC_ID = symbol)]
+      if (nrow(matched) > 0) results_list[[length(results_list) + 1]] <- matched
+    } else {
+      for (val in values) {
+        res <- tryCatch({
+          crosswalk(value = val, from = col, to = to, hgnc_dataset = hgnc_dataset)
+        }, error = function(e) {
+          if (verbose) message("Erro na coluna ", col, ": ", e$message)
+          NULL
+        })
+        if (!is.null(res) && length(res) > 0) {
+          results_list[[length(results_list) + 1]] <- data.frame(Query = val, HGNC_ID = res)
+        }
+      }
+    }
+  }
+
+  # Combina tudo e remove duplicatas
+  if (length(results_list) == 0) {
+    return(data.frame(Query = character(0), HGNC_ID = character(0)))
+  }
+
+  final_df <- unique(do.call(rbind, results_list))
+  return(final_df)
+}
+
+#######################################################################
+library(mygene)
+
+mygene_mapping <- function(targets, filters=NULL) {
+  
+  if(is.null(filters)){
+    filters <- "uniprot,entrezgene,symbol,name,hgnc,refseq,alias"
+  }
+  
+  res <- suppressWarnings(
+    queryMany(targets, scopes = filters,
+              fields = "symbol", species = "human", 
+              return.as = "records")
+  )
+  
+  if (is.null(res) || length(res) == 0) {
+    return(data.frame(Query = character(0), HGNC_ID = character(0), 
+                     stringsAsFactors = FALSE))
+  }
+  
+  # Helper for NULL coalescing
+  `%||%` <- function(x, y) if (is.null(x)) y else x
+  
+  # Process the records format
+  queries <- sapply(res, function(x) x$query %||% NA)
+  symbols <- sapply(res, function(x) x$symbol %||% NA)
+  
+  df <- data.frame(
+    Query = queries,
+    HGNC_ID = symbols,
+    stringsAsFactors = FALSE
+  )
+  
+  # Remove rows without valid HGNC mapping (including notfound entries)
+  df <- df[!is.na(df$HGNC_ID) & df$HGNC_ID != "" & !is.na(df$Query), , drop = FALSE]
+  rownames(df) <- NULL
+  
+  return(df)
+}
+
+#######################################################################
+
+library(httr)
+library(jsonlite)
+library(biomaRt)
+library(UniProt.ws)
+
+# 
+chembl_database_mapping <- function(query_targets){
+  res <- GET("https://www.ebi.ac.uk/chembl/api/data/target.json?target_type=SINGLE%20PROTEIN&limit=1000")
+
+  data <- fromJSON(httr::content(res, "text"), flatten = TRUE)$targets
+
+  df_uniprot <- data.frame(
+    chembl_id = data$target_chembl_id,
+    # pref_name = data$pref_name,
+    uniprot = sapply(data$target_components, function(x) {
+      if (is.data.frame(x) && "accession" %in% names(x)) {
+        x$accession[1]   # take the first accession if multiple
+      } else {
+        NA
+      }
+    })
+  )
+
+  df_uniprot <- df_uniprot[df_uniprot$chembl_id %in% query_targets, ]
+
+  df_biomart <- biomart_mapping(df_uniprot$uniprot, filters_to_try = c("uniprot_gn_id"))
+
+  df_mygene <- mygene_mapping(df_uniprot$uniprot, "uniprot")
+
+  final_df <- rbind(df_biomart, df_mygene)
+
+  return(final_df)
+}
+
+
+#######################################################################
+
+uniprot_api_mapping <- function(targets, chunk_size = 100) {
+  
+  library(httr)
+  
+  # dividir em chunks
+  chunks <- split(targets, ceiling(seq_along(targets) / chunk_size))
+  
+  results_list <- list()
+  
+  for (i in seq_along(chunks)) {
+    
+    chunk <- chunks[[i]]
+    query_string <- paste0("accession:", chunk, collapse = " OR ")
+    
+    res <- GET(
+      "https://rest.uniprot.org/uniprotkb/search",
+      query = list(
+        query = query_string,
+        fields = "accession,gene_names",
+        format = "tsv"
+      )
+    )
+    
+    txt <- httr::content(res, as = "text", encoding = "UTF-8")
+    
+    # evitar erro se vier vazio
+    if (nchar(txt) > 0) {
+      df <- read.delim(text = txt, sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+      df$HGNC_ID <- sub(" .*", "", df$Gene.Names)
+      df$Gene.Names <- NULL
+      df$Source <- "uniprot_api"
+      df$HGNC_ID[df$HGNC_ID == ""] <- NA
+      colnames(df) <- c("Query", "HGNC_ID", "Source")
+    results_list[[i]] <- df
+    }
+    
+    Sys.sleep(0.5)  # evita rate limit
+  }
+  
+  # juntar tudo
+  final_df <- do.call(rbind, results_list)
+  
+  return(final_df)
+}
+
+#######################################################################
+
+map_hgnc_all_methods <- function(targets, verbose = TRUE) {
+  # Run each mapping function with proper error handling
+  results <- list()
+
+  # Biomart
+  if (verbose) cat("Running biomart_mapping...\n")
+  res_biomart <- tryCatch({
+    df <- biomart_mapping(targets)
+    df$Source <- "biomart"
+    df
+  }, error = function(e) {
+    warning("biomart_mapping failed: ", e$message)
+    NULL
+  })
+  if (!is.null(res_biomart)) results[["biomart"]] <- res_biomart
+
+  # HGNC downloaded dataset
+  if (verbose) cat("\nRunning hgnc_dataset_mapping...\n")
+  res_dataset <- tryCatch({
+    df <- hgnc_dataset_mapping(targets)
+    df$Source <- "hgnc_dataset"
+    df
+  }, error = function(e) {
+    warning("hgnc_dataset_mapping failed: ", e$message)
+    NULL
+  })
+  if (!is.null(res_dataset)) results[["hgnc_dataset"]] <- res_dataset
+
+  # hgnc package
+  if (verbose) cat("\nRunning hgnc_package\n")
+  res_hgnc <- tryCatch({
+    df <- hgnc_mapping(targets, verbose)
+    df$Source <- "hgnc_package"
+    df
+  }, error = function(e) {
+    warning("hgnc_package failed: ", e$message)
+    NULL
+  })
+  if (!is.null(res_hgnc)) results[["hgnc_package"]] <- res_hgnc
+
+  # mygene
+  if (verbose) cat("\nRunning mygene_mapping...\n")
+  res_mygene <- tryCatch({
+    df <- mygene_mapping(targets)
+    
+    # Only add Source if df is not empty
+    if (nrow(df) > 0) {
+      # Remove rownames before adding column
+      rownames(df) <- NULL
+      df$Source <- "mygene"
+      df
+    } else {
+      message("No HGNC IDs found for these targets")
+      NULL
+    }
+  }, error = function(e) {
+    warning("mygene_mapping failed: ", e$message)
+    NULL
+  })
+  if (!is.null(res_mygene)) results[["mygene"]] <- res_mygene
+  
+  # CHEMBL
+  if (verbose) cat("\nRunning chembl_database_mapping\n")
+  res_chembl <- tryCatch({
+    df <- as.data.frame(chembl_database_mapping(targets))
+    if (nrow(df) > 0) {
+      # Remove rownames before adding column
+      rownames(df) <- NULL
+      df$Source <- "chembl_database"
+      df
+    }
+  }, error = function(e) {
+    warning("chembl_database_mapping failed: ", e$message)
+    NULL
+  })
+  if (!is.null(res_chembl)) results[["chembl_database"]] <- res_chembl
+  
+  # UniProt
+  if (verbose) cat("\nRunning uniprot_api_mapping\n")
+  res_uniprot <- tryCatch({
+    df <- as.data.frame(uniprot_api_mapping(targets))
+    if (nrow(df) > 0) {
+      # Remove rownames before adding column
+      rownames(df) <- NULL
+      df$Source <- "uniprot_api"
+      df
+    }
+  }, error = function(e) {
+    warning("uniprot_api_mapping failed: ", e$message)
+    NULL
+  })
+  if (!is.null(res_uniprot)) results[["uniprot_api"]] <- res_uniprot
+  
+  
+  if (verbose) cat("\nCombining results...\n")
+  # Combine all results
+  if (length(results) == 0) {
+    return(data.frame(Query = character(0), HGNC_ID = character(0), Source = character(0)))
+  }
+
+  combined <- do.call(rbind, results)
+  return(combined)
+}
+```
+
+
+```{r}
+library(readr)
+
+# SEA
+sea_mappings <- map_hgnc_all_methods(sea_targets)
+all_sea <- unique(sea_mappings$HGNC_ID)
+all_sea <- all_sea[!is.na(all_sea)]
+teste <- unique(union(all_sea, sea_targets))
+write.csv(sea_mappings, "data/sea/sea_mappings.csv", row.names = FALSE)
+write.csv(all_sea, "data/sea/sea_targets_mapped.csv", row.names = FALSE)
+write.csv(teste, "data/sea/teste_union.csv", row.names = FALSE)
+
+# STP
+stp_mappings <- map_hgnc_all_methods(stp_targets)
+all_stp <- unique(stp_mappings$HGNC_ID)
+all_stp <- all_stp[!is.na(all_stp)]
+write.csv(stp_mappings, "data/stp/stp_mappings.csv", row.names = FALSE)
+write.csv(all_stp, "data/stp/stp_targets_mapped.csv", row.names = FALSE)
+teste_stp <- unique(union(all_stp, stp_targets))
+write.csv(teste_stp, "data/stp/teste_union.csv.csv", row.names = FALSE)
+
+# Multitask CHEMBL
+multitask_uniprot_ids <- read.table("data/multitask/multitask_uniprot_ids.txt",
+                                     header = FALSE,
+                                     stringsAsFactors = FALSE) 
+multitask_chembl_ids <- read.table("data/multitask/multitask_chembl_ids.txt", header = FALSE)
+multitask_from_chembl_mapping <- map_hgnc_all_methods(multitask_chembl_ids$V1)
+multitask_from_uniprot_mapping <- map_hgnc_all_methods(multitask_uniprot_ids$V2)
+multitask_mappings <- rbind(multitask_from_uniprot_mapping, multitask_from_chembl_mapping)
+all_multitask <- unique(multitask_mappings$HGNC_ID)
+all_multitask <- all_multitask[!is.na(all_multitask)]
+write.csv(multitask_mappings, "data/multitask/multitask_mappings.csv", row.names = FALSE)
+write.csv(all_multitask, "data/multitask/multitask_targets_mapped.csv", row.names = FALSE)
+
+# PPB2
+# redoing this because the results dont match.
+ppb_uniprot_ids <- read.table("data/ppb2/ppb_uniprot_ids.txt",
+                                     header = FALSE,
+                                     stringsAsFactors = FALSE) 
+ppb_chembl_ids <- read.table("data/ppb2/ppb_chembl_ids.txt", header = FALSE)
+ppb_from_chembl_mapping <- map_hgnc_all_methods(ppb_chembl_ids$V1)
+ppb_from_uniprot_mapping <- map_hgnc_all_methods(ppb_uniprot_ids$V2)
+ppb_mappings <- rbind(ppb_from_uniprot_mapping, ppb_from_chembl_mapping)
+all_ppb <- unique(ppb_mappings$HGNC_ID)
+all_ppb <- all_ppb[!is.na(all_ppb)]
+write.csv(ppb_mappings, "data/ppb2/ppb_mappings.csv", row.names = FALSE)
+write.csv(all_ppb, "data/ppb2/ppb_targets_mapped.csv", row.names = FALSE)
+```
+
+```{r}
+# Getting intersections 
+all_sea <- read_csv("data/sea/sea_targets_mapped.csv", show_col_types = FALSE)$x
+all_stp <- read_csv("data/stp/stp_targets_mapped.csv", show_col_types = FALSE)$x
+all_ppb <- read_csv("data/ppb2/ppb_targets_mapped.csv", show_col_types = FALSE)$x
+all_multitask <- read_csv("data/multitask/multitask_targets_mapped.csv", show_col_types = FALSE)$x
+
+sets <- list(
+  multitask = all_multitask,
+  stp = all_stp,
+  sea = all_sea,
+  ppb = all_ppb
+)
+
+all_predicted_targets <- unique(unname(unlist(sets)))
+
+dir.create("data/intersections", recursive = TRUE, showWarnings = FALSE)
+
+# Generate combinations 
+for (k in 2:length(sets)) {
+  combos <- combn(names(sets), k, simplify = FALSE)
+  for (combo in combos) {
+    inter <- Reduce(intersect, sets[combo])
+    df <- data.frame(target = inter)
+    fname <- paste0("data/intersections/intersection_",
+                    paste(combo, collapse = "_"), ".csv")
+    write.csv(df, fname, row.names = FALSE)
+  }
+}
+```
+
+
+```{r}
+library(readxl)
+sea_teng <- read_excel("data/teng1.xlsx", col_names = TRUE)
+teng_sea <- unique(sea_teng$Name)
+cat(length(unique(sea_teng$Metabolite)), length(unique(sea_teng$`Target ID`)))
+
+stp_teng <- read_excel("data/teng2.xlsx", col_names = TRUE)
+teng_stp <- unique(stp_teng$`Common name`)
+
+length(unique(stp_teng$`pubchem ID`))
+
+cat(length(unique(stp_teng$Metabolite)), length(unique(stp_teng$`Common name`)))
+
+length(unique(c(stp_teng$Metabolite, sea_teng$Metabolite)))
+
+teng_i <- read_excel("data/teng3.xlsx", col_names = TRUE)$Common
+
+
+sea_targets <- read.csv("data/target_prediction/sea/sea_targets.csv")$x
+stp_targets <- read.csv("data/target_prediction/stp/stp_targets.csv")$x
+```
+
+# Getting metabolites for STP and chemblpred
+
+```{r}
+library(readxl)
+get_targets_to_metabolites <- function(folder_path) {
+  # Listar todos os arquivos CSV
+  csv_files <- list.files(path = folder_path, 
+                          pattern = "^(cid|nocid).*\\.csv$", 
+                          full.names = TRUE)
+  
+  # Lista final
+  targets_to_metabolites <- list()
+  
+  for (file_path in csv_files) {
+    file_name <- basename(file_path)
+    
+    # Extrair ID do metabólito (cidXXX ou nome completo se for nocid)
+    if (grepl("^cid", file_name)) {
+      metabolite_id <- sub("cid(.*)\\.csv", "\\1", file_name)
+    } else if (grepl("^nocid", file_name)) {
+      metabolite_id <- sub("\\.csv$", "", file_name)
+    }
+    
+    # Ignorar arquivos vazios
+    if (file.info(file_path)$size == 0) next
+    
+    # Ler dados
+    data <- read.csv(file_path, stringsAsFactors = FALSE)
+    
+    if (nrow(data) == 0 || !"Common.name" %in% names(data)) next
+    
+    for (target in data[["Common.name"]]) {
+      if (!is.character(target) || is.na(target) || target == "") next
+      
+      if (is.null(targets_to_metabolites[[target]])) {
+        targets_to_metabolites[[target]] <- c()
+      }
+      
+      targets_to_metabolites[[target]] <- c(targets_to_metabolites[[target]], metabolite_id)
+    }
+  }
+  
+  return(targets_to_metabolites)
+}
+
+target_metabolites_stp <- get_targets_to_metabolites("data/stp")
+save(target_metabolites_stp, file="data/stp/target_metabolites_stp.RData")
+```
+
+```{r}
+library(readxl)
+get_targets_to_metabolites <- function(folder_path) {
+  # Listar todos os arquivos CSV
+  csv_files <- list.files(path = folder_path, 
+                          pattern = "^(cid|nocid).*\\.csv$", 
+                          full.names = TRUE)
+  
+  # Lista final
+  targets_to_metabolites <- list()
+  
+  for (file_path in csv_files) {
+    file_name <- basename(file_path)
+    
+    # Extrair ID do metabólito (cidXXX ou nome completo se for nocid)
+    if (grepl("^cid", file_name)) {
+      metabolite_id <- sub("cid(.*)\\.csv", "\\1", file_name)
+    } else if (grepl("^nocid", file_name)) {
+      metabolite_id <- sub("\\.csv$", "", file_name)
+    }
+    
+    # print(metabolite_id)
+    
+    # Ignorar arquivos vazios
+    if (file.info(file_path)$size == 0) next
+    
+    # Ler dados
+    prediction_data <- read.csv(file_path, stringsAsFactors = FALSE)
+    # print(paste0(file_path, " ", nrow(prediction_data)))
+    # print(colnames(prediction_data))
+    
+    if (nrow(prediction_data) == 0 || !"Target.ChEMBL.ID" %in% names(prediction_data)){
+      print(paste0(file_name, "  sem data"))
+      next
+    } 
+    
+    for (target in prediction_data[["Target.ChEMBL.ID"]]) {
+      # print(target)
+      if (!is.character(target) || is.na(target) || target == "") next
+      
+      if (is.null(targets_to_metabolites[[target]])) {
+        targets_to_metabolites[[target]] <- c()
+      }
+      
+      targets_to_metabolites[[target]] <- c(targets_to_metabolites[[target]], metabolite_id)
+    }
+  }
+  
+  return(targets_to_metabolites)
+}
+
+target_metabolites_multitask_chemblid <- get_targets_to_metabolites("data/multitask")
+save(target_metabolites_multitask_chemblid, file="data/multitask/target_metabolites_multitask_chemblid.RData")
+
+multitask_chembl_to_uniprot <- read.table("data/multitask/multitask_uniprot_ids.txt",
+                                     header = FALSE,
+                                     stringsAsFactors = FALSE) 
+multitask_mappings <- read.csv("data/multitask/multitask_mappings.csv")
+multitask_mappings <- multitask_mappings[!is.na(multitask_mappings$HGNC_ID),]
+
+target_metabolites_multitask <- list()
+for (target in names(target_metabolites_multitask_chemblid)) {
+  
+  # Get all UniProt IDs for this target
+  uniprot_targets <- multitask_chembl_to_uniprot$V2[
+    multitask_chembl_to_uniprot$V1 == target
+  ]
+  
+  # For each UniProt, get HGNC IDs and store metabolites
+  lapply(uniprot_targets, function(uniprot_id) {
+    
+    hgnc_ids <- multitask_mappings$HGNC_ID[
+      multitask_mappings$Query == uniprot_id
+    ]
+    
+    lapply(hgnc_ids, function(hgnc_id) {
+      target_metabolites_multitask[[hgnc_id]] <<- 
+        target_metabolites_multitask_chemblid[[target]]
+    })
+  })
+}
+
+save(target_metabolites_multitask, file="data/multitask/target_metabolites_multitask.RData")
+```
+
+
+```{r}
+library(readxl)
+get_targets_to_metabolites <- function(folder_path) {
+  # Listar todos os arquivos CSV
+  csv_files <- list.files(path = folder_path, 
+                          pattern = "^(cid|nocid).*\\.txt$", 
+                          full.names = TRUE)
+  
+  # print(csv_files)
+  
+  # Lista final
+  targets_to_metabolites <- list()
+  
+  for (file_path in csv_files) {
+    file_name <- basename(file_path)
+    
+    # Extrair ID do metabólito (cidXXX ou nome completo se for nocid)
+    if (grepl("^cid", file_name)) {
+      metabolite_id <- sub("^cid([0-9]+).*\\.txt$", "\\1", file_name)
+    } else if (grepl("^nocid", file_name)) {
+      metabolite_id <- sub("^(nocid[0-9]+).*\\.txt$", "\\1", file_name)
+    }
+
+    # Ignorar arquivos vazios
+    if (file.info(file_path)$size == 0) next
+    
+    # Ler dados
+    prediction_data <- read.csv(file_path, stringsAsFactors = FALSE, sep="\t")
+    # print(paste0(file_path, " ", nrow(prediction_data)))
+    # print(colnames(prediction_data))
+    
+    if (nrow(prediction_data) == 0 || !"ChEMBL.ID" %in% names(prediction_data)){
+      print(paste0(file_name, "  sem data"))
+      next
+    } 
+    
+    for (target in prediction_data[["ChEMBL.ID"]]) {
+      # print(target)
+      if (!is.character(target) || is.na(target) || target == "") next
+      
+      if (is.null(targets_to_metabolites[[target]])) {
+        targets_to_metabolites[[target]] <- c()
+      }
+      
+      if (!(metabolite_id %in%targets_to_metabolites[[target]])){
+        targets_to_metabolites[[target]] <- c(targets_to_metabolites[[target]], metabolite_id)
+      }
+      
+    }
+  }
+  
+  return(targets_to_metabolites)
+}
+
+target_metabolites_ppb_chemblid <- get_targets_to_metabolites("data/ppb2")
+names(target_metabolites_ppb_chemblid) <- trimws(names(target_metabolites_ppb_chemblid))
+# save(target_metabolites_multitask_chemblid, file="data/target_prediction/multitask/target_metabolites_multitask_chemblid.RData")
+
+ppb_chembl_to_uniprot <- read.table("data/ppb2/ppb_uniprot_ids.txt",
+                                     header = FALSE,
+                                     stringsAsFactors = FALSE) 
+ppb_mappings <- read.csv("data/ppb2/ppb_mappings.csv")
+ppb_mappings <- ppb_mappings[!is.na(ppb_mappings$HGNC_ID),]
+
+target_metabolites_ppb <- list()
+for (target in names(target_metabolites_ppb_chemblid)) {
+  
+  # Get all UniProt IDs for this target
+  uniprot_targets <- ppb_chembl_to_uniprot$V2[
+    ppb_chembl_to_uniprot$V1 == target
+  ]
+  
+  # For each UniProt, get HGNC IDs and store metabolites
+  lapply(uniprot_targets, function(uniprot_id) {
+    
+    hgnc_ids <- ppb_mappings$HGNC_ID[
+      ppb_mappings$Query == uniprot_id
+    ]
+    
+    lapply(hgnc_ids, function(hgnc_id) {
+      target_metabolites_ppb[[hgnc_id]] <<- 
+        target_metabolites_ppb_chemblid[[target]]
+    })
+  })
+}
+
+save(target_metabolites_ppb, file="data/ppb2/target_metabolites_ppb.RData")
+```

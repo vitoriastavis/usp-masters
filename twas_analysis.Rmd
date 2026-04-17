@@ -145,6 +145,10 @@ genes_autores <- gene_author %>%
     autores   = paste(sort(unique(author)), collapse = ", ")
   ) 
 
+genes_autores_filtrado <- genes_autores %>%
+  filter(n_autores > 1) %>%
+  arrange(desc(n_autores), gene)
+
 all_intersects <- unique(unname(unlist(intersection_results)))
 genes_autores_alvos <- genes_autores %>%
   filter(gene %in% all_intersects) %>%
@@ -154,10 +158,11 @@ genes_autores_alvos_filtrado <- genes_autores_alvos %>%
   filter(n_autores > 1)
 ```
 
+
+
 # Comparing with previous analyses
 
 ```{r}
-
 load("./sct/degs_sct_celltype/results_sct_celltype.RData")
 load("./sct/degs_sct_novo/results_sct.RData")
 load("./rnaseq/deg_outputs/results_214951.RData")
@@ -201,15 +206,76 @@ multi_analysis_genes <- gene_analyses_df %>%
 # Getting the predicted metabolites/ligands for the intersection genes
 
 ```{r}
-gene <- "EID2"
+load("~/Documents/vitoria/usp-masters/sct/degs_sct_novo/degs_f.RData")
+load("~/Documents/vitoria/usp-masters/sct/degs_sct_celltype/GSE213982_celltype_f.RData")
+load("~/Documents/vitoria/usp-masters/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
 
-cat(gene)
-gene %in% rownames(GSE144136_celltype_filtered$InN) & gene %in% rownames(GSE213982_celltype_filtered$InN)
-gene %in% rownames(GSE144136_celltype_filtered$ExN) & gene %in% rownames(GSE213982_celltype_filtered$ExN)
-gene %in% rownames(GSE144136_celltype_filtered$Oli) & gene %in% rownames(GSE213982_celltype_filtered$Oli)
-gene %in% rownames(GSE144136_celltype_filtered$Ast) & gene %in% rownames(GSE213982_celltype_filtered$Ast)
-gene %in% rownames(GSE144136_celltype_filtered$Mic) & gene %in% rownames(GSE213982_celltype_filtered$Mic)
-gene %in% rownames(GSE144136_celltype_filtered$OPC) & gene %in% rownames(GSE213982_celltype_filtered$OPC)
-gene %in% rownames(GSE144136_celltype_filtered$End) & gene %in% rownames(GSE213982_celltype_filtered$End)
+rownames(degs_GSE144136_f) <- degs_GSE144136_f$X
+all_targets <- read.table("data/targets.txt")$V1
 
+for (gene in all_targets){
+  cat("\t",gene, "\n")
+  if (gene %in% rownames(GSE144136_celltype_filtered$InN) & gene %in% rownames(GSE213982_celltype_filtered$InN)){
+    cat("inn ",GSE144136_celltype_filtered$InN[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$ExN) & gene %in% rownames(GSE213982_celltype_filtered$ExN)){
+    cat("exn ",GSE144136_celltype_filtered$ExN[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$Oli) & gene %in% rownames(GSE213982_celltype_filtered$Oli)){
+    cat("oli ",GSE144136_celltype_filtered$Oli[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$Ast) & gene %in% rownames(GSE213982_celltype_filtered$Ast)){
+    cat("ast ",GSE144136_celltype_filtered$Ast[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$Mic) & gene %in% rownames(GSE144136_celltype_filtered$Mic)){
+    cat("mic ",GSE144136_celltype_filtered$Mic[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$OPC) & gene %in% rownames(GSE213982_celltype_filtered$OPC)){
+    cat("opc ",GSE144136_celltype_filtered$OPC[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$End) & gene %in% rownames(GSE213982_celltype_filtered$End)){
+    cat("end ",GSE144136_celltype_filtered$End[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% degs_GSE144136_f$X & gene %in% degs_GSE213982_f$X){
+    cat("geral ",degs_GSE144136_f[gene, "avg_log2FC"], '\n')
+  }
+}
+```
+```{r}
+setwd("~/Documents/vitoria/usp-masters/data/snrnaseq")
+degs14 <- read_csv("~/Documents/vitoria/usp-masters/data/snrnaseq/GSE144136/degs/GSE144136_results_filtered.csv")$...1
+degs21 <- read_csv("~/Documents/vitoria/usp-masters/data/snrnaseq/GSE213982/degs/GSE213982_results_filtered.csv")$...1
+
+degs14_celltype <- unique(unlist(unname(sapply(GSE144136_celltype_filtered, function(df) rownames(df)))))
+degs21_celltype <- unique(unlist(unname(sapply(GSE213982_celltype_filtered, function(df) rownames(df)))))
+
+aaa <- Reduce(union, c(degs14, degs21, degs21_celltype, degs21_celltype))
+```
+
+```{r}
+# Ler cada arquivo CSV e fazer interseção com snrnaseq_intersection
+csv_folder <- "~/Documents/vitoria/usp-masters/data/target_prediction/intersections"
+csv_files <- list.files(csv_folder, pattern = "\\.csv$", full.names = TRUE)
+
+# Lista para guardar os resultados
+intersection_results <- list()
+for (file in csv_files) {
+  # Read raw lines first
+  raw_lines <- readLines(file, warn = FALSE)
+
+  # Nome base do arquivo para usar como key
+  key <- gsub("^intersection_|\\.csv$", "", basename(file))
+  
+  # Ler CSV
+  # print(file)
+  df <- read.csv(file, stringsAsFactors = FALSE)
+  # print(file)
+  # Garantir vetor
+  vec <- as.character(df$target)
+  
+  # Interseção com snrnaseq_intersection
+
+  inter <- intersect(vec, aaa)
+  intersection_results[[key]] <- inter
+}
 ```
