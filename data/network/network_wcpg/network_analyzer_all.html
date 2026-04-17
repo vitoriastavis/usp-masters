@@ -14,33 +14,7 @@
             gap: 20px;
             width: 100%;
             min-height: 600px;
-        }
-        
-        .network-section {
-            width: 60%;
-            min-width: 600px;
-            flex-shrink: 0;
-        }       
-
-        
-        .legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .legend-color {
-            width: 15px;
-            height: 15px;
-            border-radius: 3px;
-        }
+        }      
 
         .centrality-section {
             width: 40%;
@@ -91,15 +65,6 @@
         .centrality-value {
             color: #666;
             font-size: 14px;
-        }
-        
-        .instructions {
-            background: #e8f4fd;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            font-size: 12px;
-            color: #333;
         }
         
         .input-section {
@@ -194,32 +159,7 @@
     <h2>Graph visualizer</h2>
 
     <div class="container">
-        <div class="network-section">
-            <div class="legend">
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: #c7c7c7;"></div>
-                    <span>Species</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: #b4b3e8;"></div>
-                    <span>Gene</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: #e5baff;"></div>
-                    <span>Metabolite</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: #ffbadb;"></div>
-                    <span>MDD</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: #b6e8b3;"></div>
-                    <span>Pathway</span>
-                </div>
-            </div>
-            
-            <div id="cy" style="width: 100%; height: 600px; border: 1px solid #ccc; min-width: 500px;"></div>
-        </div>
+       
         
         <div class="centrality-section">
             <!-- Input Section -->
@@ -264,169 +204,22 @@
         function initializeCytoscape(data) {
             console.log("=== Inicializando Cytoscape ===");
             console.log("Dados recebidos:", data);
-            console.log("Elementos:", data.elements ? data.elements.length : 'N/A');
-            
+
+            // Combina nodes e edges num array flat, formato que o Cytoscape aceita
+            const elements = [
+                ...(data.elements.nodes || []),
+                ...(data.elements.edges || [])
+            ];
+            console.log("Elementos:", elements.length);
+
             cy = cytoscape({
-                container: document.getElementById('cy'),
-                elements: data.elements,
-                style: [
-                    {
-                        selector: 'node',
-                        style: {
-                            'label': function(ele) {
-                                return ele.data('name') ? ele.data('name').replace(/"/g, '') : '';
-                            },
-                            'shape': 'round-rectangle',
-                            'background-color': function(ele) {
-                                var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
-                                
-                                switch(type) {
-                                    case 'disorder': return '#ffbadb'; 
-                                    case 'gene': return '#b4b3e8';    
-                                    case 'pathway': return '#b6e8b3'; 
-                                    case 'species': return '#c7c7c7';
-                                    case 'metabolite': return '#e5baff';       
-                                }
-                            },
-                            'color': '#000000',
-                            'font-size': 40,
-                            'font-weight': 'bold',
-                            'text-valign': 'center',
-                            'text-halign': 'center',
-                            'width': 250,
-                            'height': 100,
-                            'text-wrap': 'wrap',
-                            'text-max-width': 50,
-                            'padding': '1px',
-                            'border-width': 0,
-                        }
-                    },
-                    {
-                        selector: 'edge',
-                        style: {
-                            'curve-style': 'bezier',
-                            'width': 2,
-                            'line-color': 'rgba(136, 136, 136, 0.4)',
-                            'target-arrow-shape': 'none',
-                            'opacity': 10
-                        }
-                    },
-                    {
-                        selector: '.highlighted',
-                        style: {
-                            'border-width': 5,
-                            'border-color': '#ff0000',
-                            'background-color': '#FFF'
-                        }
-                    },
-                    {
-                        selector: 'edge.highlighted',
-                        style: {
-                            'width': 5,
-                            'line-color': '#ff0000',
-                            'opacity': 10,
-                            'z-index': 10
-                        }
-                    },
-                    {
-                        selector: '.connected',
-                        style: {
-                            'border-width': 50,
-                            'border-color': '#ff0000',
-                            'opacity': 10
-                        }
-                    }
-                ]
-                
-            });
-            
-            cy.on('tap', 'node', function(evt) {
-                const node = evt.target;
-                toggleNodeHighlight(node);
+                headless: true,   // ← sem DOM, sem container
+                elements: elements
             });
 
-            const layout = cy.layout({
-                name: 'concentric',
-                equidistant: true,
-                concentric: node => node.data('_layer_') || 1,
-                levelWidth: () => 1,
-                spacingFactor: 1.2,
-                avoidOverlap: true,
-                fit: false
-            });
-
-            layout.run();
-
-            layout.on('layoutstop', () => {
-                // Group nodes by layer
-                const layers = {};
-                cy.nodes().forEach(node => {
-                    const layer = node.data('_layer_') || 1;
-                    if (!layers[layer]) layers[layer] = [];
-                    layers[layer].push(node);
-                });
-
-                // Find center of the graph
-                const ext = cy.extent();
-                const cx = (ext.x1 + ext.x2) / 2;
-                const cy_mid = (ext.y1 + ext.y2) / 2;
-
-                // Vesica piscis: height = width * sqrt(3)
-                const VESICA_RATIO = Math.sqrt(3); // ~1.732 (taller than wide)
-
-                const sortedLayers = Object.keys(layers)
-                    .map(Number)
-                    .sort((a, b) => a - b);
-
-                // Base x-radius for the innermost layer — tune this to your graph size
-                const BASE_RX = 400;
-
-                sortedLayers.forEach((layerNum, i) => {
-                    const nodes = layers[layerNum];
-                    const count = nodes.length;
-
-                    // Each outer layer gets a proportionally larger ellipse
-                    const rx = BASE_RX * (i + 1);
-                    const ry = rx * VESICA_RATIO;
-
-                    // Ensure nodes don't overlap: minimum arc spacing based on node size
-                    const nodeW = 250; // match your node width
-                    const minRx = (nodeW * count) / (2 * Math.PI);
-                    const actualRx = Math.max(rx, minRx);
-                    const actualRy = actualRx * VESICA_RATIO;
-
-                    nodes.forEach((node, j) => {
-                        // Start from top (-π/2) and go clockwise
-                        const angle = (2 * Math.PI * j) / count - Math.PI / 2;
-                        node.position({
-                            x: cx + actualRx * Math.cos(angle),
-                            y: cy_mid + actualRy * Math.sin(angle)
-                        });
-                    });
-                });
-
-                cy.fit();
-            });
-
-        }
-
-        function toggleNodeHighlight(node) {
-            if (node.hasClass('highlighted')) {
-                const connectedEdges = node.connectedEdges();
-                const connectedNodes = connectedEdges.connectedNodes().difference(node);
-                
-                node.removeClass('highlighted');
-                connectedEdges.removeClass('highlighted');
-                connectedNodes.removeClass('connected');
-            } else {
-                const connectedEdges = node.connectedEdges();
-                const connectedNodes = connectedEdges.connectedNodes().difference(node);
-                
-                node.addClass('highlighted');
-                connectedEdges.addClass('highlighted');
-                connectedNodes.addClass('connected');
-            }
-        
+            console.log("Cytoscape inicializado com", cy.nodes().length, "nós e", cy.edges().length, "arestas");
+            const uniqueTypes = [...new Set(cy.nodes().map(n => n.data('type')))];
+            console.log('Tipos encontrados:', uniqueTypes);
         }
 
         function clearResults() {
@@ -438,14 +231,14 @@
             const percentile = parseInt(document.getElementById('percentile-threshold').value);
 
             cy.nodes().forEach(node => {
-                ['name', 'shared_name', '_type_'].forEach(field => {
+                ['name', 'shared_name', 'type'].forEach(field => {
                     if (node.data(field)) {
                         node.data(field, node.data(field).replace(/^"|"$/g, ''));
                     }
                 });
             });
 
-            const allMetabolites = cy.nodes().filter(n => n.data('_type_') === 'Metabolite');
+            const allMetabolites = cy.nodes().filter(n => n.data('type') === 'Metabolite');
             console.log('Total metabolites found:', allMetabolites.length);
 
             const data = {
@@ -509,8 +302,6 @@
             const topBetweenness = [...betweennessCentrality].sort((a, b) => b.value - a.value).slice(0, 5);
             const topCloseness = [...closenessCentrality].sort((a, b) => b.value - a.value).slice(0, 5);
 
-            //displayCentralityResults(topDegree, topBetweenness, topCloseness);
-
             function percentile(arr, p) {
                 const sorted = [...arr].sort((a, b) => a - b);
                 const idx = (p / 100) * (sorted.length - 1);
@@ -530,7 +321,7 @@
             const cloThr = percentile(cloVals, Q);
             
             // Find MDD node by name
-            const mddNode = cy.nodes('[name="TDM"]');
+            const mddNode = cy.nodes('[name="MDD"]');
 
             if (mddNode.length > 0) {
                 console.log('Found MDD node');
@@ -556,7 +347,7 @@
                 const connectedTargets = node
                     .connectedEdges()
                     .connectedNodes()
-                    .filter(n => n.data('_type_') === 'Gene') // ajusta o _type_ se necessário
+                    .filter(n => n.data('type') === 'Gene') // ajusta o _type_ se necessário
                     .map(n => n.data('name'))
                     .filter(Boolean);
 
@@ -592,65 +383,8 @@
             `;
 
             container.insertAdjacentHTML('beforeend', htmlQ);
-            addHighlightFunctionality();
         }
-        
-        function displayCentralityResults(degree, betweenness, closeness) {
-            const resultsDiv = document.getElementById('centrality-results');
-            
-            let html = '';
-            
-            html += '<div class="centrality-results">';
-            html += '<h3>Top 5 - Degree Centrality</h3>';
-            html += '<ul class="centrality-list">';
-            degree.forEach((item, index) => {
-                html += `<li><span class="metabolite-name">${index + 1}. ${item.name}</span><span class="centrality-value">${item.value}</span></li>`;
-            });
-            html += '</ul></div>';
-            
-            html += '<div class="centrality-results">';
-            html += '<h3>Top 5 - Betweenness Centrality</h3>';
-            html += '<ul class="centrality-list">';
-            betweenness.forEach((item, index) => {
-                html += `<li><span class="metabolite-name">${index + 1}. ${item.name}</span><span class="centrality-value">${item.value.toFixed(6)}</span></li>`;
-            });
-            html += '</ul></div>';
-            
-            html += '<div class="centrality-results">';
-            html += '<h3>Top 5 - Closeness Centrality</h3>';
-            html += '<ul class="centrality-list">';
-            closeness.forEach((item, index) => {
-                html += `<li><span class="metabolite-name">${index + 1}. ${item.name}</span><span class="centrality-value">${item.value.toFixed(6)}</span></li>`;
-            });
-            html += '</ul></div>';
-            
-            resultsDiv.innerHTML = html;
-            
-            addHighlightFunctionality();
-        }
-        
-        function addHighlightFunctionality() {
-            const metaboliteItems = document.querySelectorAll('.metabolite-name');
-            
-            metaboliteItems.forEach(item => {
-                item.style.cursor = 'pointer';
-                item.addEventListener('click', function() {
-                    const metaboliteName = this.textContent.split('—')[0].trim();
-                    highlightMetaboliteFromList(metaboliteName);
-                });
-            });
-        }
-        
-        function highlightMetaboliteFromList(metaboliteName) {
-            const targetNode = cy.nodes().filter(function(node) {
-                const nodeName = node.data('name') ? node.data('name').replace(/"/g, '') : node.id();
-                return nodeName === metaboliteName;
-            });
-            
-            if (targetNode.length > 0) {
-                toggleNodeHighlight(targetNode[0]);
-            }
-        }
+                
 
         // Load the file and initialize
         fetch("network.cyjs")
@@ -662,11 +396,13 @@
             })
             .then(data => {
                 data.elements.nodes.forEach(n => {
-                    if (n.data.name) {
-                        n.data.name = n.data.name.replace(/"/g, '');
-                    }
-                    if (n.data.shared_name) {
-                        n.data.shared_name = n.data.shared_name.replace(/"/g, '');
+                    // limpa aspas
+                    if (n.data.name) n.data.name = n.data.name.replace(/"/g, '');
+                    if (n.data.shared_name) n.data.shared_name = n.data.shared_name.replace(/"/g, '');
+
+                    // preenche type vazio
+                    if (!n.data.type || n.data.type.trim() === '') {
+                        n.data.type = 'Pathway';
                     }
                 });
                 initializeCytoscape(data);

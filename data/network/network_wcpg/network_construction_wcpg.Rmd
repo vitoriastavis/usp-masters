@@ -6,179 +6,46 @@ output: html_document
 ## Conections between species and metabolites
 
 ```{R}
-# # Try to get CID from compound name
-# # If not possible, try to get CID from SID
-# # Param - name: compound name (character)
-# # Return - compound_cid: CID (integer)
-# library(httr2)
-# 
-# get_cid <- function(name) {
-#   if (is.na(name) || name == "") return(NA)
-# 
-#   encoded_name <- URLencode(name, reserved = TRUE)
-# 
-#   # 1. Try direct Compound Name -> CID
-#   url_cid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/",
-#                     encoded_name, "/cids/JSON")
-# 
-#   response_cid <- tryCatch({
-#     req <- request(url_cid) |> req_retry(max_tries = 3) |> req_perform()
-#     if (resp_status(req) == 200) {
-#       data <- resp_body_json(req)
-#       return(data$IdentifierList$CID[[1]])
-#     }
-#     NA
-#   }, error = function(e) NA)
-# 
-#   if (!is.na(response_cid)) {
-#     message(paste0("Found CID for ", name, ": ", response_cid))
-#     return(response_cid)
-#   }
-# 
-#   Sys.sleep(0.2) # Short pause
-# 
-#   # 2. Try Substance Name -> SID
-#   url_sid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/substance/name/",
-#                     encoded_name, "/sids/JSON")
-# 
-#   sid <- tryCatch({
-#     req <- request(url_sid) |> req_perform()
-#     if (resp_status(req) == 200) {
-#       data <- resp_body_json(req)
-#       return(data$IdentifierList$SID[[1]])
-#     }
-#     NA
-#   }, error = function(e) NA)
-# 
-#   # 3. If SID exists, find the linked CID
-#   if (!is.na(sid)) {
-#     url_sid_to_cid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/substance/sid/",
-#                              sid, "/cids/JSON")
-# 
-#     final_cid <- tryCatch({
-#       req <- request(url_sid_to_cid) |> req_perform()
-#       if (resp_status(req) == 200) {
-#         data <- resp_body_json(req)
-#         # SIDs can map to multiple CIDs; we take the first
-#         return(data$IdentifierList$CID[[1]])
-#       }
-#       NA
-#     }, error = function(e) NA)
-# 
-#     if (!is.na(final_cid)) {
-#       message(paste0("Found CID via SID for ", name, ": ", final_cid))
-#       return(final_cid)
-#     }
-#   }
-# 
-#   message(paste0("Could not find CID for ", name))
-#   return(NA)
-# }
-```
-```{R}
-# library(stringr)
-# library(dplyr)
-# load("~/Documents/vitoria/usp-masters/data/gutmgene/gutmgene1_beforemerging.RData")
-#
-# gutmgene_species <- gutmgene1 %>%
-#                         mutate(Microbe_Species = word(Gut_Microbe_Name, 1))
-#
-# gutmgene_species$Microbe_Species <- str_remove_all(gutmgene_species$Microbe_Species, "\\[|\\]")
-#
-# get_cid_vec <- Vectorize(get_cid)
-# gutmgene_species <- gutmgene_species %>%
-#   mutate(
-#     Metabolite_CID = get_cid_vec(Metabolite_Name) # Obtains CID for the metabolite name
-#   )
-#
-# save(gutmgene_species, file = "data/network/gutmgene_processed.RData")
-#
-```
-
-
-```{R}
 library(dplyr)
-load("~/Documents/vitoria/usp-masters/data/network/network_wcpg/gutmgene_processed.RData")
 
-missing_rows <- is.na(gutmgene_species$Metabolite_CID)
-unique_missing_names <- unique(gutmgene_species$Metabolite_Name[missing_rows])
-nocid_lookup <- paste0("nocid", seq_along(unique_missing_names))
-names(nocid_lookup) <- unique_missing_names
-gutmgene_species$Metabolite_CID[missing_rows] <- nocid_lookup[gutmgene_species$Metabolite_Name[missing_rows]]
+df_name_cid <- read.csv("/home/gbiuser/Documents/vitoria/usp-masters/1-gutmgene/data/all_name_cid.csv")
+
+load("/home/gbiuser/Documents/vitoria/usp-masters/1-gutmgene/data/gutmgenem_processed.RData")
+
+# Get the row indices where CID is NA
+na_rows <- is.na(gutmgene_m$Metabolite_CID)
+
+# Look up the CID from the other dataframe using the metabolite name
+gutmgene_m$Metabolite_CID[na_rows] <- 
+  df_name_cid$CID[match(gutmgene_m$Metabolite_Name[na_rows], df_name_cid$name)]
 
 edges_species_met <- data.frame(
-                            Source = gutmgene_species$Microbe_Species,
-                            Target = gutmgene_species$Metabolite_CID)
+                            Source = gutmgene_m$Microbe_Species,
+                            Target = gutmgene_m$Metabolite_CID)
 # Save information about species and metabolites nodes
 
 nodes <- data.frame(name = unique(c(edges_species_met$Source, edges_species_met$Target)),
                       type = c(rep("Species", length(unique(edges_species_met$Source))), rep("Metabolite", length(unique(edges_species_met$Target)))))
 ```
+
 ## Conections between targets and metabolites
-
-```{R}
-all_mets <- read.csv("/home/gbiuser/Documents/vitoria/usp-masters/data/gutmgene/name_cid.csv")
-colnames(all_mets) <- trimws(colnames(all_mets))
-mapping_gutmgene <- all_mets %>%
-  left_join(
-    gutmgene_species %>%
-      select(Metabolite_Name, Metabolite_CID) %>%
-      distinct(Metabolite_Name, .keep_all = TRUE),  # evita duplicatas por nome
-    by = c("name" = "Metabolite_Name")
-  )
-mapping_final <- all_mets %>%
-  left_join(
-    gutmgene_species %>%
-      select(Metabolite_Name, Metabolite_CID) %>%
-      distinct(Metabolite_Name, .keep_all = TRUE),
-    by = c("name" = "Metabolite_Name")
-  ) %>%
-  group_by(name) %>%
-  mutate(CID_fallback = first(CID)) %>%
-  ungroup() %>%
-  mutate(
-    Metabolite_CID_clean = ifelse(grepl("^nocid", Metabolite_CID), NA, Metabolite_CID),
-    CID_fallback_clean   = ifelse(grepl("^nocid", CID_fallback), NA, CID_fallback),
-    CID_final = coalesce(Metabolite_CID_clean, CID_fallback_clean, CID)  # CID original como último recurso
-  ) %>%
-  distinct(name, .keep_all = TRUE)
-
-```
 
 ```{R}
 load("targets_metabolites_all.RData")
 
-library(tibble)
-# lookup: CID original → CID_final
-cid_lookup <- mapping_final %>%
-  select(CID, CID_final) %>%
-  distinct() %>%
-  deframe()  # vira um named vector: cid_lookup["5610"] retorna o CID_final
-
-# remapeia a lista
-targets_to_metabolites_mapped <- lapply(targets_to_metabolites, function(cids) {
-  mapped <- cid_lookup[cids]
-  mapped[!is.na(mapped)]  # descarta CIDs que não estão no mapping
-})
-
-edges_target_met <- do.call(rbind, lapply(names(targets_to_metabolites), function(gene) {
+edges_target_met <- do.call(rbind, lapply(names(targets_to_metabolites_all), function(gene) {
   data.frame(
-    Source = rep(gene, length(unique(targets_to_metabolites[[gene]]))),
-    Target = unique(targets_to_metabolites[[gene]]),
+    Source = rep(gene, length(unique(targets_to_metabolites_all[[gene]]))),
+    Target = unique(targets_to_metabolites_all[[gene]]),
     stringsAsFactors = FALSE
   )
 }))
-a <- data.frame(
-  name = unique(c(edges_target_met$Source, edges_target_met$Target)),
-  type = c(rep("Gene", length(unique(edges_target_met$Source))), rep("Metabolite", length(unique(edges_target_met$Target))))
-)
+
 # Save information about gene and metabolite nodes
 nodes <- rbind(nodes, data.frame(
   name = unique(c(edges_target_met$Source, edges_target_met$Target)),
   type = c(rep("Gene", length(unique(edges_target_met$Source))), rep("Metabolite", length(unique(edges_target_met$Target))))
 ))
-
-
 ```
 
 
@@ -302,63 +169,28 @@ nodes <- rbind(
 
 ```{R}
 edges <- rbind(edges_target_met, edges_target_react, edges_target_kegg, edges_mdd_pathways, edges_species_mdd, edges_species_met)
-edges_clean <- distinct(edges)
-nodes_clean <- distinct(nodes)
-edges_clean <- edges_clean %>%
-  mutate(across(everything(), ~ gsub("MDD", "TDM", .x)))
 
-order <- c("Species", "Pathway", "Metabolite", "Gene", "Disorder")
-nodes_clean <- nodes_clean %>%
-  mutate(layer = as.numeric(factor(type, levels = order)))
-nodes_clean$layer[nodes_clean$name == "MDD"] <- 4
-nodes_clean$name[nodes_clean$name == "MDD"] <- "TDM"
+edges_clean <- edges %>%
+  # mutate(across(everything(), ~ gsub("MDD", "TDM", .x))) %>%
+  mutate(
+    Source = sub("\\.$", "", Source),
+    Target = sub("\\.$", "", Target)
+  ) %>%
+  distinct(Source, Target, .keep_all = TRUE)
+
+order <- c("Pathway", "Gene", "Species", "Disorder", "Metabolite")
+nodes_clean <- nodes %>%
+  mutate(layer = as.numeric(factor(type, levels = order))) %>%
+  mutate(name = sub("\\.$", "", name)) %>%  
+  distinct(name, .keep_all = TRUE)          
+
+# nodes_clean$layer[nodes_clean$name == "MDD"] <- 5
+# nodes_clean$name[nodes_clean$name == "MDD"] <- "TDM"
 ```
-
-
-
-
 
 ```{R}
 # Save
-write.table(edges_clean, file = "data/network/edges.tsv", row.names=FALSE, sep="\t")
-write.table(nodes_clean, file = "data/network/nodes.tsv", row.names=FALSE, sep="\t")
+write.table(edges_clean, file = "./edges.tsv", row.names=FALSE, sep="\t", quote = FALSE)
+write.table(nodes_clean, file = "./nodes.tsv", row.names=FALSE, sep="\t", quote = FALSE)
 ```
 
-
-<!-- ```{R} -->
-<!-- # Supondo que seus dataframes sejam: -->
-<!-- # nodes: dataframe com colunas name, type, layer -->
-<!-- # edges_clean: dataframe com colunas Source e Target -->
-
-<!-- # 1. Função para reduzir 3/4 dos nodes de certos tipos -->
-<!-- reduce_nodes <- function(df, types_to_reduce, keep_per_type = 10) { -->
-<!--   df_reduced <- df -->
-
-<!--   for (t in types_to_reduce) { -->
-<!--     nodes_t <- df[df$type == t, ] -->
-<!--     if (nrow(nodes_t) > keep_per_type) { -->
-<!--       # Mantém apenas 'keep_per_type' aleatórios -->
-<!--       keep_nodes <- sample(nodes_t$name, keep_per_type) -->
-<!--       df_reduced <- df_reduced[!(df_reduced$type == t & !(df_reduced$name %in% keep_nodes)), ] -->
-<!--     } -->
-<!--   } -->
-
-<!--   return(df_reduced) -->
-<!-- } -->
-
-<!-- # Tipos que queremos reduzir -->
-<!-- types_to_reduce <- c("Metabolite", "Species", "Pathway") -->
-
-<!-- nodes_reduced <- reduce_nodes(nodes_clean, types_to_reduce, keep_per_type = 50) -->
-
-<!-- # 2. Filtrar as arestas mantendo só aquelas cujos nós ainda existem -->
-<!-- edges_reduced <- edges_clean[ -->
-<!--   edges_clean$Source %in% nodes_reduced$name & -->
-<!--   edges_clean$Target %in% nodes_reduced$name, -->
-<!-- ] -->
-
-<!-- # Save -->
-<!-- write.table(edges_reduced, file = "data/network/PDE4B_edges_r.tsv", row.names=FALSE, sep="\t") -->
-<!-- write.table(nodes_reduced, file = "data/network/PDE4B_nodes_r.tsv", row.names=FALSE, sep="\t") -->
-
-<!-- ``` -->
