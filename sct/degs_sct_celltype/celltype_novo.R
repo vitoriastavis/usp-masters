@@ -3,9 +3,13 @@ library(dplyr)
 library(Seurat)
 library(Matrix)
 
-load("degs_sct_celltype/GSE213982_2_99_2000_celltype.RData")
-load("degs_sct_celltype/GSE144136_1_99_2500_celltype.RData")
-load("degs_sct_celltype/celltypes.RData")
+load("sct/degs_sct_celltype/GSE213982_2_99_2000_celltype.RData")
+load("sct/degs_sct_celltype/GSE144136_1_99_2500_celltype.RData")
+load("sct/degs_sct_celltype/celltypes.RData")
+
+
+pval_adj_threshold <- 0.05
+logfc_threshold <- 0.6
 
 # filter by p and FC
 GSE213982_celltype_filtered <- list()
@@ -13,7 +17,7 @@ for (ct in cell_types) {
   markers <- GSE213982_celltype[[ct]]
   
   markers_filtered <- markers %>%
-    filter(p_val_adj <= 0.05, abs(avg_log2FC) >= 0.6)
+    filter(p_val_adj <= pval_adj_threshold, abs(avg_log2FC) >= logfc_threshold)
   
   GSE213982_celltype_filtered[[ct]] <- markers_filtered
 }
@@ -27,7 +31,7 @@ for (ct in cell_types) {
   markers <- GSE144136_celltype[[ct]]
   
   markers_filtered <- markers %>%
-    filter(p_val_adj < 0.05, abs(avg_log2FC) >= 0.6)
+    filter(p_val_adj <= pval_adj_threshold, abs(avg_log2FC) >= logfc_threshold)
   
   GSE144136_celltype_filtered[[ct]] <- markers_filtered
 }
@@ -45,7 +49,7 @@ for (ct in cell_types) {
 }
 
 # Pasta com os CSVs das interseções
-csv_folder <- "../data/target_prediction/intersections"
+csv_folder <- "./2-targetprediction/data/intersections"
 csv_files <- list.files(csv_folder, pattern = "\\.csv$", full.names = TRUE)
 
 # Lista para guardar os resultados

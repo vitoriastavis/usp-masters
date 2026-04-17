@@ -1,0 +1,436 @@
+---
+title: "vitoria-project"
+author: "vitoria"
+date: "2025-04-02"
+output: html_document
+---
+
+# Load libraries
+
+```{r message=FALSE, warning=FALSE}
+# List of libraries to install
+libraries <- c("dplyr", "httr2", "jsonlite", "ggplot2", "readxl", "rvest", 
+               "readr", "stringr", "tidyr", "scales", "httr", "xml2", "data.table")
+
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+if (!require("biomaRt", quietly = TRUE)){
+  BiocManager::install(c('mygene', 'biomaRt'))
+}
+
+# Function to install missing libraries
+install_if_missing <- function(lib) {
+  if (!require(lib, character.only = TRUE)) {
+    install.packages(lib, dependencies = TRUE)
+    library(lib, character.only = TRUE)
+  }
+}
+
+# Apply the function to all libraries
+sapply(libraries, install_if_missing)
+```
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+library(httr2)
+library(jsonlite)
+library(ggplot2)
+library(readxl)
+# library(rvest)
+library(readr)
+library(stringr)
+library(tidyr)
+library(scales)
+library(httr)
+library(xml2)
+library(biomaRt)
+library(openxlsx)
+library(mygene)
+library(data.table)
+
+```
+
+# gutmGene processing
+
+## Functions 
+```{R}
+# Try to get CID from compound name
+# If not possible, try to get CID from SID
+# Param - name: compound name (character)
+# Return - compound_cid: CID (integer)
+library(httr2)
+
+get_cid <- function(name) {
+  if (is.na(name) || name == "") return(NA)
+
+  encoded_name <- URLencode(name, reserved = TRUE)
+
+  # 1. Try direct Compound Name -> CID
+  url_cid <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/",
+                    encoded_name, "/cids/JSON")
+
+  response_cid <- tryCatch({
+    req <- request(url_cid) |> req_retry(max_tries = 3) |> req_perform()
+    if (resp_status(req) == 200) {
+      data <- resp_body_json(req)
+      return(data$IdentifierList$CID[[1]])
+    }
+    NA
+  }, error = function(e) NA)
+
+  if (!is.na(response_cid)) {
+    message(paste0("Found CID for ", name, ": ", response_cid))
+    return(response_cid)
+  }
+
+  message(paste0("Could not find CID for ", name))
+  return(NA)
+}
+```
+
+```{r message=FALSE, warning=FALSE}
+get_smiles_from_cid <- function(compound_id) {
+  tryCatch({
+    if (is.na(compound_id) || compound_id == "") return(NA)
+
+    # URL com /property
+    url_property <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/", compound_id, "/property/CanonicalSMILES/JSON")
+    req_prop <- request(url_property)
+
+    # Verifica se a URL responde 200 OK
+    status_check <- tryCatch({
+      req_prop_head <- req_prop |> req_method("HEAD")
+      resp_head <- req_perform(req_prop_head)
+      resp_status(resp_head)
+    }, error = function(e) return(NA))
+
+    if (!is.na(status_check) && status_check == 200) {
+      # Faz a requisição completa
+      resp <- req_perform(req_prop)
+      json <- resp_body_json(resp)
+      smiles <- json$PropertyTable$Properties[[1]]$CanonicalSMILES
+      if (!is.null(smiles)) return(smiles)
+    }
+    
+    print("nao achei no property, vou no XML")
+
+    # Se a URL não existir ou não retornar smiles → busca no XML
+    url_xml <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/", compound_id, "/record/XML")
+    req_xml <- request(url_xml)
+    resp_xml <- req_perform(req_xml)
+    xml <- read_xml(resp_body_string(resp_xml))
+
+    node <- xml_find_first(
+      xml,
+      "//PC-InfoData[
+         PC-InfoData_urn/PC-Urn/PC-Urn_label='SMILES' and
+         PC-InfoData_urn/PC-Urn/PC-Urn_name='Absolute'
+       ]/PC-InfoData_value/PC-InfoData_value_sval"
+    )
+    
+    print(xml_text(node))
+
+    if (!is.na(node)) return(xml_text(node))
+
+    return(NA)
+  }, error = function(e) {
+    message("Erro com CID: ", compound_id)
+    return(NA)
+  })
+}
+
+
+```
+
+## Read and preprocess the data from gutMGene
+
+```{r}
+# Read the CSV file from gutMGene
+gutmgene_m <- read.csv("data/gutmgene_microbal_met.csv", stringsAsFactors = FALSE)
+gutmgene_h <- read.csv("data/gutmgene_host_gene.csv", stringsAsFactors = FALSE)
+
+# Rename columns to avoid special character issues
+colnames(gutmgene_m) <- c("Host_Species", "Gut_Microbe_ID", "Rank",
+                        "Metabolite_ID", "Evidence_Type", "Evidence_Amount")
+colnames(gutmgene_h) <- c("Host_Species", "Metabolite_ID", "Gene_ID",
+                        "Alteration", "Evidence_Type", "Evidence_Amount")
+
+# Extract the metabolite name from the "Metabolite_ID" column
+# and microbe name from "Gut_Microbe_ID"
+gutmgene_m <- gutmgene_m %>%
+  mutate(
+    Metabolite_Name = str_remove(Metabolite_ID, "\\([^()]*\\)$"), # Removes last set of parentheses and content
+    Metabolite_Name = str_trim(Metabolite_Name), # Trims whitespace
+    Gut_Microbe_Name = str_extract(Gut_Microbe_ID, "^[^(]+"), # Extracts text before '('
+    Gut_Microbe_ID = as.integer(str_extract(Gut_Microbe_ID, "(?<=\\().*(?=\\))")), # Extracts numbers inside '()'
+    Microbe_Species = word(Gut_Microbe_Name, 1)
+  )
+gutmgene_m$Microbe_Species <- str_remove_all(gutmgene_m$Microbe_Species, "\\[|\\]")
+
+gutmgene_h <- gutmgene_h %>% 
+  mutate(
+    Metabolite_Name = str_remove(Metabolite_ID, "\\([^()]*\\)$"), # Removes last set of parentheses and content
+    Metabolite_Name = str_trim(Metabolite_Name), # Trims whitespace
+    Target_Name = str_remove(Gene_ID, "\\([^()]*\\)$"),
+    Target_Name = str_trim(Target_Name)) # Trims whitespace
+
+# Remove a possibly incorrect microorganism (it's actually an insect)
+gutmgene_m <- gutmgene_m[!grepl("Bacteria Latreille et al. 1825", gutmgene_m$Gut_Microbe_Name), ]
+# Remove not identified species
+gutmgene_m <- gutmgene_m[!grepl("CEBAS", gutmgene_m$Gut_Microbe_Name), ]
+
+gutmgene_m$Metabolite_CID <- str_match(
+  gutmgene_m$Metabolite_ID,
+  "\\((\\d+)(?:,\\s*CHEBI[^)]*)?\\)\\s*$"
+)[, 2]
+
+gutmgene_h$Metabolite_CID <- str_match(
+  gutmgene_h$Metabolite_ID,
+  "\\((\\d+)(?:,\\s*CHEBI[^)]*)?\\)\\s*$"
+)[, 2]
+
+# Save data 
+save(gutmgene_m, file = "data/gutmgenem_processed.RData")
+save(gutmgene_h, file = "data/gutmgeneh_processed.RData")
+```
+
+## Build plots of raw data
+
+### Plot 1 - Distribution of genera among metabolites
+
+```{r}
+
+gutmgene1$Genus <- sub(" .*", "", gutmgene1$Gut_Microbe_Name)
+gutmgene1$Genus <- gsub("\\[|\\]", "", gutmgene1$Genus)
+gutmgene1$Genus <- gsub("\\.|\\]", "", gutmgene1$Genus)
+
+# Count occurrences of each genus
+genus_counts <- table(gutmgene1$Genus)
+
+# Filter to only include genera with frequency > 5
+genera_to_keep <- names(genus_counts[genus_counts >= 5])
+gutmgene_filtered <- gutmgene1[gutmgene1$Genus %in% genera_to_keep, ]
+
+# Order from most frequent to less frequent
+gutmgene_filtered_count <- gutmgene_filtered %>%
+  count(Genus) %>%
+  mutate(Genus = reorder(Genus, -n))
+
+esquisse::esquisser(gutmgene_filtered_count)
+
+p_generos <- ggplot(gutmgene_filtered_count) +
+  aes(x = Genus, y = n) +
+  geom_col(fill = "#6FAF9C") +
+  labs(x = "Gênero", y = "Número de Metabólitos Produzidos") +
+  theme_classic() +
+  theme(
+    axis.title.y = element_text(size = 15L),
+    axis.title.x = element_text(size = 14L),
+    axis.text.y = element_text(size = 14L),
+    axis.text.x = element_text(size = 14L,
+    angle = 55L,
+    hjust = 1L,
+    vjust = 1L,
+    face = "italic")
+  )
+
+ggsave(
+  "/home/gbiuser/Documents/vitoria/usp-masters/data/target_prediction/plot_generos2.pdf",
+  plot = p_generos,
+  width = 10
+)
+
+title_portuguese <- "Distribuição dos microorganismos da microbiota intestinal"
+x_axis_portuguese <- "Microorganismo (gênero)"
+y_axis_portuguese <- "Número de metabólitos produzidos"
+
+# Create the plot
+microbe_distribution <- ggplot(gutmgene_filtered_count,
+                               aes(x = Genus, y = n)) +
+  geom_bar(stat = "identity", fill = "gray30", width = 0.5) +
+  theme_minimal() + 
+  ggtitle(title_portuguese) +  
+  theme(
+    plot.title = element_text(size = 18, hjust = 0.5),  
+    axis.title.y = element_text(size = 16),
+    axis.title.x = element_text(size = 16),
+    axis.text.y = element_text(size = 16),
+    axis.text.x = element_text(size = 16, angle = 60, hjust = 1),
+    panel.grid = element_blank(),  # Remove grid lines
+    axis.line.x = element_line(color = "black", linewidth = 0.5),  # Only X-axis line
+    axis.line.y = element_line(color = "black", linewidth = 0.5),  # Only Y-axis line
+    axis.ticks = element_line(color = "black", linewidth = 1)      # Ensure ticks are visible
+  ) +
+  labs(x = x_axis_portuguese, 
+       y = y_axis_portuguese) +
+  scale_y_continuous(breaks = seq(0,max(gutmgene_filtered_count$n),
+                                  by = 5))
+# Create a directory for plots if it doesn't exist
+if (!dir.exists("plots")) {
+  dir.create("plots")
+}
+
+# Save plot as PNG
+png("plots/gutmgene/microbe_distribution.png", width = 800, height = 500)
+print(microbe_distribution)
+dev.off()
+```
+
+## Clean the data
+
+```{r}
+library(purrr)
+library(stringr)
+
+# Concatenate dataframes
+common_cols <- intersect(names(gutmgene_m), names(gutmgene_h))
+gutmgene_bind <- dplyr::bind_rows(
+  dplyr::select(gutmgene_m, all_of(common_cols)),
+  dplyr::select(gutmgene_h, all_of(common_cols))
+)
+
+# Remove NAs
+if (nrow(gutmgene_bind %>% filter(is.na(Metabolite_CID))) != 0) {
+  gutmgene_na <- gutmgene_bind %>% filter(is.na(Metabolite_CID))
+  gutmgene_clean <- gutmgene_bind %>% filter(!is.na(Metabolite_CID))
+  cat("Removed", nrow(gutmgene_na), "Metabolite_CID NAs\n")
+} else {
+  gutmgene_clean <- gutmgene_bind
+  gutmgene_na <- data.frame()
+  cat("No Metabolite_CID NAs found\n")
+}
+
+# Remove duplicates
+gutmgene_nodup <- gutmgene_clean %>%
+  distinct(Metabolite_CID, .keep_all=TRUE)
+cat("N metabolites without duplicates:", length(gutmgene_nodup$Metabolite_CID), "\n")
+
+gutmgene_na_nodup <- gutmgene_na %>%
+  distinct(Metabolite_Name, .keep_all=TRUE)
+
+# Save processed dataframe
+save(gutmgene_bind, file = "data/gutmgene_bind.RData")  # No duplicated metabolites
+save(gutmgene_nodup, file = "data/gutmgene_nodup.RData")  # No duplicated metabolites
+save(gutmgene_na, file = "data/gutmgene_na.RData")        # Only the NAs
+save(gutmgene_na_nodup, file = "data/gutmgene_na_nodup.RData")        # Only the NAs no dup
+```
+
+## Get SMILES
+
+```{r}
+library(httr)
+library(jsonlite)
+
+get_smiles_from_pubchem <- function(compound_id) {
+  library(httr)
+  library(jsonlite)
+
+  url <- paste0("https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/", compound_id, "/JSON")
+  res <- try(GET(url), silent = TRUE)
+
+  if (inherits(res, "try-error") || status_code(res) != 200) {
+    return(NA)
+  }
+
+  parsed <- try(fromJSON(content(res, as = "text", encoding = "UTF-8"), simplifyVector = FALSE), silent = TRUE)
+  if (inherits(parsed, "try-error") || is.null(parsed$Record$Section)) {
+    return(NA)
+  }
+
+  find_smiles <- function(sections) {
+    for (sec in sections) {
+      if (is.list(sec) && !is.null(sec$TOCHeading) && sec$TOCHeading == "SMILES") {
+        for (info in sec$Information) {
+          val <- info$Value$StringWithMarkup[[1]]$String
+          if (!is.null(val)) return(val)
+        }
+      }
+      if (is.list(sec) && !is.null(sec$Section)) {
+        found <- find_smiles(sec$Section)
+        if (!is.null(found)) return(found)
+      }
+    }
+    return(NULL)
+  }
+
+  smiles <- find_smiles(parsed$Record$Section)
+  return(ifelse(is.null(smiles), NA, smiles))
+}
+```
+
+```{r}
+all_cid <- unname(gutmgene_nodup$Metabolite_CID)
+
+smiles <- sapply(all_cid, get_smiles_from_pubchem)
+
+# Create dataframe to store SMILES and CIDs for target prediction
+df_smiles_ids <- data.frame(SMILES=smiles,
+                         pubchem_ids=all_cid,
+                         stringsAsFactors=FALSE)
+
+# Save the dataframe as text file
+write.table(df_smiles_ids, file="data/smiles_withcid.txt",
+            row.names=FALSE, col.names=FALSE,
+            quote=FALSE, sep=" ")
+save(df_smiles_ids, file = "data/smiles_withcid.RData") 
+
+# Create dataframe to store names and CIDs of the metabolites 
+# that are not on PubChem to find the SMILES by the name
+load("~/Documents/vitoria/usp-masters/1-gutmgene/data/gutmgene_na_nodup.RData")
+
+df_names_nocid <- data.frame(name=gutmgene_na_nodup$Metabolite_Name,
+                         CID=paste0("no", 1:length(gutmgene_na_nodup$Metabolite_Name)),
+                         stringsAsFactors=FALSE)
+
+# Save the dataframe as text file
+write.table(df_names_nocid, file="data/names_nocid.txt",
+            row.names=FALSE, col.names=FALSE,
+            quote=FALSE, sep=" ")
+save(df_names_nocid, file = "data/names_nocid.RData") 
+
+```
+
+Then go to get_smiles.ipynb to get more smiles.
+
+## Name com cid para rede
+
+```{R}
+# Load gutMGene
+load("~/Documents/vitoria/usp-masters/1-gutmgene/data/gutmgene_nodup.RData")
+df_name_cid <- data.frame(name=gutmgene_nodup$Metabolite_Name,
+                         CID=gutmgene_nodup$Metabolite_CID,
+                         stringsAsFactors=FALSE)
+
+# Gather CID or no CID for all smiles and filter from the original gutMGene
+smiles_all <- readLines("data/smiles_all")
+# Process each line to extract Name and CID
+data_s <- lapply(smiles_all, function(line) {
+  parts <- strsplit(line, " ")[[1]]
+  cid <- tail(parts, 1)
+  name <- paste(head(parts, -1), collapse = " ")
+  return(c(name = name, CID = cid))
+})
+df_smiles_all <- as.data.frame(do.call(rbind, data_s), stringsAsFactors = FALSE)
+
+
+# IDs that are in the SMILESS but are not in the original gutMGene (SMILES found in other ways)
+cids_missing <- df_smiles_all[!(df_smiles_all$CID %in% df_name_cid$CID), "CID"]
+
+load("~/Documents/vitoria/usp-masters/1-gutmgene/data/names_nocid.RData")
+df_names_nocid[df_names_nocid$CID == "no1",]$CID <- "10661294"
+df_names_nocid[df_names_nocid$CID == "no2",]$CID <- "71352575"
+df_names_nocid[df_names_nocid$CID == "no10",]$CID <- "10802382"
+df_names_nocid[df_names_nocid$CID == "no16",]$CID <- "153520426"
+df_names_nocid[df_names_nocid$CID == "no23",]$CID <- "9795113"
+df_names_nocid[df_names_nocid$CID == "no11",]$CID <- "5282155"
+df_names_nocid[df_names_nocid$CID == "no9",]$CID <- "384870"
+df_names_nocid[df_names_nocid$CID == "no18",]$CID <- "129858541"
+df_names_nocid[df_names_nocid$CID == "no14",]$CID <- "45093080"
+df_names_nocid[df_names_nocid$CID == "no22",]$CID <- "5327011"
+
+# Concatenate name and CIDs from both
+df_all_name_cid <- rbind(df_name_cid, df_names_nocid)
+save(df_all_name_cid, file = "data/all_name_cid.RData") 
+
+write.csv(df_all_name_cid, "data/all_name_cid.csv", row.names = FALSE)
+```
+
