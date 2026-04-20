@@ -515,22 +515,6 @@ save(GSE144136_celltype_filtered,
 
 ## Getting the intersection between snRNA-seq and target prediction
 
-```{r message=FALSE, warning=FALSE}
-# Load target_intersection (303 targets)
-load("./data/snrnaseq/GSE144136/type_degs/GSE144136_celltype.RData")
-load("./data/snrnaseq/GSE213982/type_degs/GSE213982_celltype.RData")
-cell_types <- names(GSE213982_celltype_filtered)
-intersection_celltypes <- list()
-for (ct in cell_types) {
-  intersection_celltypes[[ct]] <- intersect(rownames(GSE144136_celltype_filtered[[ct]]),
-                                            rownames(GSE213982_celltype_filtered[[ct]]))
-}
-
-save(intersection_celltypes, file = "data/snrnaseq/intersection_celltypes.RData")
-```
-
-## for the new prediction methods
-
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 # Pasta com os CSVs das interseções
 csv_folder <- "data/target_prediction/intersections"
