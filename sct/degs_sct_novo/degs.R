@@ -1,7 +1,4 @@
 library(dplyr)
-library(Seurat)
-library(Matrix)
-library(glmGamPoi)
 
 degs_GSE144136_expr <- read.csv("degs_sct_novo/GSE144136_1_99_2500_results_adj.csv")
 degs_GSE144136 <- degs_GSE144136_expr$X

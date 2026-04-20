@@ -206,9 +206,13 @@ multi_analysis_genes <- gene_analyses_df %>%
 # Getting the predicted metabolites/ligands for the intersection genes
 
 ```{r}
+<<<<<<< Updated upstream
 load("~/Documents/vitoria/usp-masters/sct/degs_sct_novo/degs_f.RData")
 load("~/Documents/vitoria/usp-masters/sct/degs_sct_celltype/GSE213982_celltype_f.RData")
 load("~/Documents/vitoria/usp-masters/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
+=======
+gene <- "GAPDH"
+>>>>>>> Stashed changes
 
 rownames(degs_GSE144136_f) <- degs_GSE144136_f$X
 all_targets <- read.table("data/targets.txt")$V1

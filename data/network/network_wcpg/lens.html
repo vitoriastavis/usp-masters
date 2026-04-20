@@ -57,8 +57,8 @@
                                 var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
                                 
                                 switch(type) {
-                                    case 'disorder': return 300; 
-                                    case 'gene': return 300;    
+                                    case 'disorder': return 80; 
+                                    case 'gene': return 80;    
                                     case 'pathway': return 80; 
                                     case 'species': return 80;
                                     case 'metabolite': return 80;       
@@ -71,24 +71,14 @@
                                 var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
                                 
                                 switch(type) {
-                                    case 'disorder': return 800; 
-                                    case 'gene': return 1200;    
-                                    case 'pathway': return 80; 
-                                    case 'species': return 100;
-                                    case 'metabolite': return 45;       
+                                    case 'disorder': return 200; 
+                                    case 'gene': return 300;    
+                                    case 'pathway': return 400; 
+                                    case 'species': return 600;
+                                    case 'metabolite': return 400;       
                                 }
                             },
-                            'height': function(ele) {
-                                var type = ele.data('_type_') ? ele.data('_type_').replace(/"/g, '').toLowerCase() : '';
-                                
-                                switch(type) {
-                                    case 'disorder': return 500;
-                                    case 'gene': return 500;    
-                                    case 'pathway': return 20; 
-                                    case 'species': return 20;
-                                    case 'metabolite': return 20;       
-                                }
-                            },
+                            'height': 100,
                             //'text-wrap': 'wrap',
                             //'text-max-width': 50,
                             'padding': '1px',
@@ -111,10 +101,10 @@
                         selector: 'edge',
                         style: {
                             'curve-style': 'bezier',
-                            'width': 1.5,
-                            'line-color': '#9e9e9e',
+                            'width': 3,
+                            'line-color': '#000000',
                             'target-arrow-shape': 'none',
-                            'opacity': 1
+                            'opacity': 0.3
                         }
                     }
                 ]

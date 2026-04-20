@@ -1,7 +1,5 @@
 # Load necessary libraries
 library(dplyr)
-library(Seurat)
-library(Matrix)
 
 load("sct/degs_sct_celltype/GSE213982_2_99_2000_celltype.RData")
 load("sct/degs_sct_celltype/GSE144136_1_99_2500_celltype.RData")
