@@ -1,0 +1,30 @@
+# Input
+-in::file::fasta /home/gbiuser/Documents/vitoria/usp-masters/6-preparation/protein/again/pde4b_lr2.fasta
+-in::file::frag3 /home/gbiuser/Documents/vitoria/usp-masters/6-preparation/protein/again/abinitiolr2/fragments/aalr2aa03_05.200_v1_3
+-in::file::frag9 /home/gbiuser/Documents/vitoria/usp-masters/6-preparation/protein/again/abinitiolr2/fragments/aalr2aa09_05.200_v1_3
+-constraints:cst_file /home/gbiuser/Documents/vitoria/usp-masters/6-preparation/protein/again/abinitiolr2/constraints.cst
+
+# Ab initio
+-nstruct 200
+-abinitio:relax true
+-relax:thorough
+-relax:jump_move true
+-relax:bb_move true
+-relax:chi_move true
+-abinitio:increase_cycles 5
+-abinitio:rg_reweight 0.3
+-abinitio:rsd_wt_helix 0.7
+-abinitio:rsd_wt_loop 0.7
+-abinitio:use_filters true
+-score:weights ref2015
+
+# Performance
+-ex1
+-ex2
+-mute all
+-unmute protocols.abinitio
+-unmute core.scoring
+
+# Output
+-out:file:silent output.silent
+-out:file:silent_struct_type binary
