@@ -2,7 +2,7 @@
 ;	File 'mdout.mdp' was generated
 ;	By user: gbiuser (1000)
 ;	On host: gbi017039525
-;	At date: Thu Apr 30 15:50:20 2026
+;	At date: Fri May  1 12:47:12 2026
 ;
 ;	Created by:
 ;	                     :-) GROMACS - gmx grompp, 2025.4 (-:
@@ -11,21 +11,21 @@
 ;	Data prefix:  /usr/local/gromacs
 ;	Working dir:  /home/gbiuser/Documents/vitoria/usp-masters/6-preparation/protein/top_models/gmx_04
 ;	Command line:
-;	  gmx grompp -f inputs/md.mdp -c npt.gro -t npt.cpt -p topol_metals.top -o md.tpr
+;	  gmx grompp -f inputs/nvt.mdp -c em.gro -r em.gro -p topol_metals.top -o nvt.tpr
 
 ; VARIOUS PREPROCESSING OPTIONS
 ; Preprocessor information: use cpp syntax.
 ; e.g.: -I/home/joe/doe -I/home/mary/roe
 include                  = 
 ; e.g.: -DPOSRES -DFLEXIBLE (note these variable names are case sensitive)
-define                   = 
+define                   = -DPOSRES
 
 ; RUN CONTROL PARAMETERS
 integrator               = md
 ; Start time and timestep in ps
 tinit                    = 0
 dt                       = 0.002
-nsteps                   = 2500000
+nsteps                   = 50000
 ; For exact run continuation or redoing part of a run
 init-step                = 0
 ; Part index is updated automatically on checkpointing (keeps files separate)
@@ -67,9 +67,9 @@ nstxout                  = 0
 nstvout                  = 0
 nstfout                  = 0
 ; Output frequency for energies to log file and energy file
-nstlog                   = 1000
+nstlog                   = 100
 nstcalcenergy            = 100
-nstenergy                = 1000
+nstenergy                = 100
 ; Output frequency and precision for .xtc file
 nstxout-compressed       = 5000
 compressed-x-precision   = 1000
@@ -84,7 +84,7 @@ energygrps               =
 ; cut-off scheme (Verlet: particle based cut-offs)
 cutoff-scheme            = Verlet
 ; nblist update frequency
-nstlist                  = 20
+nstlist                  = 10
 ; Periodic boundary conditions: xyz, no, xy
 pbc                      = xyz
 periodic-molecules       = no
@@ -144,16 +144,16 @@ print-nose-hoover-chain-variables = no
 ; Groups to couple separately
 tc-grps                  = Protein Water_and_ions
 ; Time constant (ps) and reference temperature (K)
-tau-t                    = 0.1  0.1
-ref-t                    = 310  310
+tau-t                    = 0.1     0.1
+ref-t                    = 310     310
 ; pressure coupling     
-pcoupl                   = Parrinello-Rahman
-pcoupltype               = isotropic
+pcoupl                   = no
+pcoupltype               = Isotropic
 nstpcouple               = -1
 ; Time constant (ps), compressibility (1/bar) and reference P (bar)
-tau-p                    = 2.0
-compressibility          = 4.5e-5
-ref-p                    = 1.0
+tau-p                    = 5
+compressibility          = 
+ref-p                    = 
 ; Scaling of reference coordinates, No, All or COM
 refcoord-scaling         = No
 
@@ -173,9 +173,9 @@ annealing-time           =
 annealing-temp           = 
 
 ; GENERATE VELOCITIES FOR STARTUP RUN
-gen_vel                  = no
-gen-temp                 = 300
-gen-seed                 = 2011420406
+gen_vel                  = yes
+gen_temp                 = 310
+gen_seed                 = 2113922967
 
 ; OPTIONS FOR BONDS    
 constraints              = h-bonds
