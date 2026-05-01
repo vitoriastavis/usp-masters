@@ -1,0 +1,30 @@
+nohup: ignoring input
+                      :-) GROMACS - gmx mdrun, 2025.4 (-:
+
+Executable:   /home/gbiuser/Downloads/gromacs-2025.4/build/bin/gmx
+Data prefix:  /usr/local/gromacs
+Working dir:  /home/gbiuser/Documents/vitoria/usp-masters/6-preparation/protein/top_models/gmx_04
+Command line:
+  gmx mdrun -deffnm md
+
+
+Back Off! I just backed up md.log to ./#md.log.1#
+Reading file md.tpr, VERSION 2025.4 (single precision)
+Changing nstlist from 20 to 50, rlist from 1.029 to 1.108
+
+Using 1 MPI thread
+Using 12 OpenMP threads 
+
+starting mdrun 'Protein in water'
+2500000 steps,   5000.0 ps.
+
+Writing final coordinates.
+
+               Core t (s)   Wall t (s)        (%)
+       Time:   699627.569    58302.298     1200.0
+                         16h11:42
+                 (ns/day)    (hour/ns)
+Performance:        7.410        3.239
+
+GROMACS reminds you: "Why is the Earth moving 'round the sun? Floating in the vacuum with no purpose, not a one" (Fleet Foxes)
+
