@@ -56,34 +56,20 @@ for (subdir in subdirs) {
 
 ```{r}
 # Ler cada arquivo CSV e fazer interseção com snrnaseq_intersection
-csv_folder <- "../2-targetprediction/data/intersections"
-csv_files <- list.files(csv_folder, pattern = "\\.csv$", full.names = TRUE)
+all_sea <- read_csv("../2-targetprediction/data/sea/sea_targets_mapped.csv", show_col_types = FALSE)$x
+all_stp <- read_csv("../2-targetprediction/data/stp/stp_targets_mapped.csv", show_col_types = FALSE)$x
+all_ppb <- read_csv("../2-targetprediction/data/ppb2/ppb_targets_mapped.csv", show_col_types = FALSE)$x
+all_multitask <- read_csv("../2-targetprediction/data/multitask/multitask_targets_mapped.csv", show_col_types = FALSE)$x
 
-# Lista para guardar os resultados
-intersection_results <- list()
-intersection_results_outro <- list()
-for (file in csv_files) {
-  # Read raw lines first
-  raw_lines <- readLines(file, warn = FALSE)
+common_targets <- Reduce(intersect, list(all_stp, all_sea, all_multitask, all_ppb))
 
-  # Nome base do arquivo para usar como key
-  key <- gsub("^intersection_|\\.csv$", "", basename(file))
-  
-  # Ler CSV
-  # print(file)
-  df <- read.csv(file, stringsAsFactors = FALSE)
-  # print(file)
-  # Garantir vetor
-  vec <- as.character(df$target)
-  
-  # Interseção com snrnaseq_intersection
-  for (twas in names(all_unique)){
-    genes_twas <- all_unique[[twas]]
-    key <- paste0(basename(file), twas)
-    inter <- intersect(vec, genes_twas)
-    intersection_results[[key]] <- inter
-  }
-}
+all_targets <- unique(c(all_sea, all_stp, all_ppb, all_multitask))
+all_twas <- unique(unname(unlist(all_unique)))
+
+intersection <- intersect(all_twas, all_targets)
+
+write.table(intersection, "targets_bsb.csv", append = FALSE, sep = ",",
+            row.names = FALSE, col.names = FALSE)
 ```
 
 ```{r}
