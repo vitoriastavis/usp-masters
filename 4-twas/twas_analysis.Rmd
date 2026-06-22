@@ -56,7 +56,7 @@ for (subdir in subdirs) {
 
 ```{r}
 # Ler cada arquivo CSV e fazer interseção com snrnaseq_intersection
-csv_folder <- "/home/gbiuser/Documents/vitoria/usp-masters/2-targetprediction/data/intersections"
+csv_folder <- "../2-targetprediction/data/intersections"
 csv_files <- list.files(csv_folder, pattern = "\\.csv$", full.names = TRUE)
 
 # Lista para guardar os resultados
@@ -113,7 +113,7 @@ p_dist_twas <- ggplot(df_sizes, aes(x = N_alvos)) +
 
 library(patchwork)
 
-p_dist <- (p_dist_degs | p_dist_twas) + plot_annotation(tag_levels = "a")
+# p_dist <- (p_dist_degs | p_dist_twas) + plot_annotation(tag_levels = "a")
 ggsave("dist_alvos_2.png", width = 6, height = 3)
 ```
 
@@ -209,7 +209,6 @@ load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_cellty
 load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
 
 gene <- "GAPDH"
-
 
 rownames(degs_GSE144136_f) <- degs_GSE144136_f$X
 all_targets <- read.table("data/targets.txt")$V1

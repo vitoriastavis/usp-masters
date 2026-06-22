@@ -1,0 +1,511 @@
+---
+title: "Biological data mining"
+output: pdf_document
+date: "2025-04-17"
+author: "Vitória Stavis de Araujo"
+---
+
+```{r include=FALSE}
+# run this part if it hasn't been run before:
+# BiocManager::install(c('miRNAmeConverter', 'openxlsx', 'multiMiR', 'clusterProfiler', 'org.Hs.eg.db', 'DOSE', 'devtools', 'pathview', 'AnnotationHub', 'meshes', 'enrichplot', 'ggplot2', 'createKEGGdb', 'readxl', 'ggrepel', 'ReactomePA', 'ggraph', 'stringr'))
+
+library(openxlsx)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(DOSE)
+library("pathview")
+library(AnnotationHub)
+library(meshes)
+library(enrichplot)
+library("ggplot2")
+library(readxl)
+library(ggrepel)
+library(ReactomePA)
+library(ggraph)
+library(stringr)
+library(devtools)
+library(roxygen2)
+library(gridExtra)
+library(grid)
+library(png)
+library(gginnards)
+
+# run this part if it hasn't been run before:
+# install.packages("remotes")
+# remotes::install_github("YuLab-SMU/createKEGGdb")
+library(createKEGGdb)
+# species <-c("hsa")
+# createKEGGdb::create_kegg_db(species)
+# install.packages("data/KEGG.db_1.0.tar.gz", repos=NULL,type="source")
+library(KEGG.db)
+```
+
+# Functions
+```{r}
+# Converts symbols to Entrez ids 
+# Param - gene_symbols: vector of gene symbols (character)
+# Param - input: type of identification of the input ids (character)
+# Param - output: type of identification of the output ids (character)
+# Return - gene_ids: vector of ids (character)
+convert_ids <- function(gene_symbols, input, output){
+  
+  # get Entrez ids from symbols
+  suppressMessages({
+   gene_ids <- mapIds(org.Hs.eg.db, gene_symbols, output, input)
+  })
+  
+  gene_ids <- unname(unlist(gene_ids, use.names = FALSE))
+  
+  # remove NAs
+  gene_ids <- gene_ids[!sapply(gene_ids, is.na)]
+  
+  return(gene_ids)
+}
+```
+
+```{r cache=TRUE}
+# Performs ORA based on the given ontology
+# Param - gene_ids: vector of HGNC symbols (character)
+# Param - ontology: indicates MF (molecular function), 
+#            BP (biological process) or CC (cellular component) (character)
+# Param - p_value: threshold for p value (numeric)
+# Param - q_value: threshold for q value (numeric)
+# Param - minGSSize: minimum number of genes, sets 
+#           with fewer genes are excluded (numeric)
+# Param - maxGSSize: maximum number of genes, sets 
+#           with fewer genes are excluded (numeric)
+# Return - e_go: object (enrichResult)
+enrichment_go <- function(gene_ids, ontology,
+                          p_value, q_value,
+                          minGSSize = 10,
+                          maxGSSize = 500){
+  # runs enrichment 
+  e_go <- enrichGO(gene = gene_ids,
+                    OrgDb = org.Hs.eg.db,
+                    ont = ontology,
+                    pAdjustMethod = "BH",
+                    pvalueCutoff = p_value,
+                    qvalueCutoff = q_value,
+                    readable = T,
+                    minGSSize = minGSSize,
+                    maxGSSize = maxGSSize)
+  
+  return(e_go)
+}
+```
+
+```{r}
+# Run all of the enrichments
+# Param - gene_ids: vector of HGNC symbols (character)
+# Param - p_value: threshold for p value (double)
+# Param - q_value: threshold for q value (double)
+# Param - minGSSize: minimum number of genes, sets 
+#           with fewer genes are excluded (numeric)
+# Param - maxGSSize: maximum number of genes, sets 
+#           with fewer genes are excluded (numeric)
+# Return - enrichments: enrichResult objects (list)
+run_enrichment <- function(gene_ids, p_value,
+                           q_value = 0.05,
+                           minGSSize = 10,
+                           maxGSSize = 500){
+  
+  # GO - Molecular Function
+  mf <- enrichment_go(gene_ids, "MF",
+                      p_value, q_value,
+                      minGSSize, maxGSSize)
+  cat('Done: MF ')
+
+  # GO - Cellular Component
+  cc <- enrichment_go(gene_ids, "CC",
+                      p_value, q_value,
+                      minGSSize, maxGSSize)
+  cat('CC ')
+
+  # GO - Biological Process
+  bp <- enrichment_go(gene_ids, "BP",
+                      p_value, q_value,
+                      minGSSize, maxGSSize)
+
+  cat('BP ')
+
+  # KEGG
+  kegg <- enrichKEGG(gene_ids,
+                        organism = 'hsa',
+                        pAdjustMethod = "BH",
+                        pvalueCutoff = p_value,
+                        qvalueCutoff = q_value,
+                        use_internal_data = T,
+                        minGSSize = minGSSize,
+                        maxGSSize = maxGSSize)
+  cat('KEGG ')
+
+  # # Disease-Gene Network
+  dgn <- enrichDGN(gene_ids,
+                   pAdjustMethod = "BH",
+                   pvalueCutoff = p_value,
+                   qvalueCutoff = q_value,
+                   readable = T,
+                   minGSSize = minGSSize,
+                   maxGSSize = maxGSSize)
+  cat('DGN ')
+
+  # Reactome
+  react <- enrichPathway(gene = gene_ids,
+                          pAdjustMethod = "BH",
+                          pvalueCutoff = p_value,
+                          qvalueCutoff = q_value,
+                          readable = T,
+                          minGSSize = minGSSize,
+                          maxGSSize = maxGSSize)
+  cat('REACTOME ')
+
+  enrichments <- list(MF = mf, BP = bp, CC = cc, KEGG = kegg,
+                      REACTOME = react, DGN = dgn)
+  
+  return(enrichments)
+}
+```
+
+
+```{r}
+# Finds categories that include key terms
+# Param - key_terms: vector of chosen key terms (character)
+# Param - categories: vector of enriched categories (character)
+# Return - filtered_list: vector of categories of interest (character)
+compare_categories <- function(key_terms, categories) {
+  filtered_list <- c()
+
+  for (term in key_terms) {
+    # split the term into first letter and the rest
+    first <- substr(term, 1, 1)
+    rest <- substr(term, 2, nchar(term))
+
+    # create patterns with lowercase and uppercase first letter
+    pattern1 <- paste0("\\b", tolower(first), rest, "\\b")
+    pattern2 <- paste0("\\b", toupper(first), rest, "\\b")
+
+    for (cat in categories) {
+      # check for matches with either pattern, and avoid duplicates
+      if (((grepl(pattern1, cat) || grepl(pattern2, cat)) && !(cat %in% filtered_list))) {
+        filtered_list <- c(filtered_list, cat)
+      }
+    }
+  }
+
+  return(filtered_list)
+}
+```
+
+```{r}
+# Filters categories according to p-value, amount, and optional key terms
+# Param - enrichment: object (enrichResult)
+# Param - p_value: p-value threshold for filtering (numeric)
+# Param - n_categories: maximum number of categories to keep (numeric)
+# Param - key_terms: vector of key terms to filter categories (character, optional)
+# Return - new_categories: vector of categories of interest (character)
+filter_categories <- function(enrichment, p_value,
+                              n_categories = 50, remove_terms = NULL){
+
+  # get enrichment results and filter by p.adjust
+  result <- enrichment@result
+  result_filtered <- result[result$p.adjust <= p_value, ]
+  result_filtered <- result_filtered[order(result_filtered$p.adjust), ]
+  categories <- result_filtered$Description 
+
+  if (is.null(remove_terms)){
+    # filter by number of categories
+    new_categories <- head(categories, n_categories)
+  } else {
+    categories <- categories[!tolower(categories) %in% tolower(remove_terms)]
+
+    new_categories <- head(categories, n_categories)
+    
+  }
+  
+  # error handling
+  if (length(new_categories) == 0){
+    cat("No terms enriched after filtering.\n")
+    return(NULL)
+  }
+  
+  return(new_categories)
+}
+```
+
+```{r cache=TRUE}
+# Creates a barplot from enrichment results
+# Param - enrichment: object (enrichResult)
+# Param - title: base plot title (string)
+# Param - subtitle: base plot subtitle (string)
+# Param - geneset: set used in the enrichment (e.g., MF, BP, DGN) (string)
+# Param - categories: enriched categories to include (numeric or character)
+# Return - bar_plot: object (ggplot)
+create_barplot <- function(enrichment, geneset, categories){
+  
+  cores <- c("#6FAF9C", "#A665B5")
+  tryCatch({
+  
+    # creates barplot
+    suppressMessages({
+      bar_plot <- barplot(enrichment, showCategory = categories)
+      bar_plot$layers[[1]]$aes_params$width <- 0.9
+      bar_plot <- bar_plot +
+                     xlab("Número de genes") +
+                     ylab("Categorias enriquecidas") + 
+                    theme_classic() +
+                     theme(
+                      plot.margin = margin(t = 5, r = 5, b = 5, l = 5),
+                      
+                      # axes
+                      axis.text.y = element_text(size = 26, lineheight = 1),
+                      axis.title.y = element_text(size = 28,
+                                                  margin = margin(r = 30)),
+                      axis.text.x = element_text(size = 26), 
+                      axis.title.x = element_text(size = 28,
+                                                  margin = margin(t = 20)),
+                      # legend
+                      legend.title = element_text(size = 26,
+                                                  margin = margin(b = 20)),
+                      legend.text = element_text(size = 22),
+                      legend.spacing = unit(50, "pt"),
+                      legend.margin = margin(l = 20, r = 20)) +
+                     guides(fill = guide_colorbar(reverse = TRUE)) +
+                     scale_y_discrete(expand = c(0, 0),
+                                      labels = function(x) str_wrap(x,
+                                                                    width = 30)) +
+                     labs(fill = "Valor de p ajustado") + 
+                     scale_fill_gradientn(colors = cores) +
+                     scale_x_continuous(breaks = function(x) seq(0, ceiling(max(x)), by = 1))
+      
+          
+      return(bar_plot)
+    })
+  },
+  error = function(w){
+    message('barplot: there were no enriched terms')
+    print(w)
+    return(NULL)
+  })
+}
+```
+
+```{r cache=TRUE}
+library(viridisLite)
+
+# Creates a graph from enrichment results
+# Param - enrichment: enrichResult object
+# Param - title: base plot title (string)
+# Param - subtitle: base plot subtitle (string)
+# Param - geneset: set used in the enrichment (e.g., MF, BP, DGN) (string)
+# Param - categories: enriched categories to include (numeric or character)
+# Return - graph: object (ggplot)
+create_graph <- function(enrichment, geneset, remove_terms){ 
+ 
+
+  colors <- createPalette(20, c("#ff0000", "#0000ff"))
+
+  df <- e@result 
+  df <- df[!tolower(df$Description) %in% tolower(remove_terms), ]      
+
+  df_filtered <- df |>
+              dplyr::arrange(p.adjust) |>
+              head(20)
+  # 
+  readable <- setReadable(e, 'org.Hs.eg.db', 'ENTREZID')
+  
+  readable@result <- readable@result[
+    match(df_filtered$ID, readable@result$ID),
+  ]
+  
+  readable@result$Description <- stringr::str_wrap(readable@result$Description,
+                                                   width = 30)
+  
+  readable@result$geneID[is.na(readable@result$geneID)] <- ""
+  
+  readable@result$Description <- sapply(readable@result$Description, function(x) {
+    if (is.na(x)) return(x)
+    
+    x_low <- tolower(x)
+    
+    if (grepl("^camp", x_low)) {
+      paste0("cAMP", substr(x, 5, nchar(x)))        
+    } else {
+      paste0(toupper(substr(x, 1, 1)), substr(x, 2, nchar(x)))  
+    }
+  })
+  
+  graph <- cnetplot(readable, showCategory = nrow(readable@result),
+                    size_item = 4, color_item = "gray80", size_category = 1,
+                    node_label = "item", size_edge = 1,
+                    color_edge = 'gray50', layout = "fr"
+                    )
+
+    graph <- delete_layers(graph, "GeomTextRepel")
+    graph$layers[[1]]$mapping$size <- NULL
+    graph$layers[[which(sapply(graph$layers, function(x) inherits(x$geom, "GeomSegment")))]]$aes_params$alpha <- 0.2
+    # 
+    graph <- graph +
+              theme(
+                 plot.margin = margin(t = 4, r = 4, b = 4, l = 4),
+         
+                 # legend
+                 
+                 legend.title = element_text("Categoria",color="white"),
+                 legend.text = element_text(size = 28),
+                 legend.key.height = unit(1, "cm"),
+                 legend.position = "top",
+                 legend.box = "horizontal",
+                 legend.spacing.y = unit(5, "cm"),
+                 legend.key.width = unit(2, "cm"), 
+                 legend.justification = "center",
+                 legend.margin = margin(t = 20, r = 50),
+
+                 panel.background = element_rect(fill = "white", color = NA),
+                 plot.background = element_rect(fill = "white", color = NA)
+              ) +
+
+              guides(size = "none") +         # remove size
+              guides(color = guide_legend(nrow = 5,
+                                          byrow = TRUE)) +  # line break in legend
+
+              # change size and color of the category dots
+              geom_point(
+                data = subset(graph$data, .isCategory == TRUE),
+                aes(x = x, y = y, color = name),
+                size = 20,
+                alpha = 0.8
+              ) +
+              scale_color_manual(values = pal) +
+              # gene labels
+              geom_text_repel(
+                data = subset(graph$data, .isCategory == FALSE),
+                aes(x = x, y = y, label = name),
+                size = 12,
+                box.padding = 1,    
+                point.padding = 1.5, 
+                force = 5,
+                segment.size = 0.9,
+                # nudge_x = 1,
+                # nudge_y = 1,
+                segment.color = 'gray70',
+                max.overlaps = Inf
+              ) 
+
+    return(graph)
+}
+```
+
+```{r cache=TRUE}
+# Saves barplot and graph to specified directory
+# Param - barplot: object (ggplot)
+# Param - graph: object (ggplot)
+# Param - geneset: type of enrichment (string)
+# Param - path: directory path to save the files (string)
+# Param - barplot_h: height of the barplot (numeric)
+# Param - barplot_w: width of the barplot (numeric)
+# Return - none
+save_files <- function(graph, geneset, path,
+                       graph_h = 14, graph_w = 18){  
+  
+  # creates directory if necessary
+  if (!file.exists(path)) {
+    dir.create(path)
+  } 
+ 
+  base_filename <- paste0(path, geneset)
+
+  if (is.null(graph)){
+    warning(paste0("the plots are empty for ", geneset))
+    return()
+  } else{
+    ggsave(paste0(base_filename, "_graph", ".jpg"),
+          plot = graph, width = graph_w, height = graph_h, units = "in")
+  }
+}
+```
+
+# Initial parameters
+
+```{r message=FALSE, warning=FALSE}
+# load the data 
+all_targets <- read.table("targets_bsb.csv")$V1
+n_gene_ids <- length(all_targets)
+
+# p threshold
+p_value <- 0.001
+
+# or use number of categories
+n_categories <- 20
+
+# directory to save the plots
+output_path <- 'plots/'
+```
+
+# Run analysis
+
+```{r message=FALSE, warning=FALSE}
+# if we're comparing many genes together
+cat("---- Starting analysis ----\n")
+cat("-- Processing ids\n")
+gene_ids <- convert_ids(all_targets, 'SYMBOL', 'ENTREZID')
+
+cat("-- Running enrichments: ")
+enrichments <- run_enrichment(gene_ids, p_value, minGSSize = 10)
+```
+
+## Process 
+
+```{r message=FALSE, warning=FALSE}
+n_categories <- 20
+
+remove_terms <- c("Histone H2AXY142 kinase activity",
+                  "Protein serine kinase activity",
+                  "Histone H3Y41 kinase activity",
+                  "Platelet-derived growth factor alpha-receptor activity",
+                  "Platelet-derived growth factor beta-receptor activity",
+                  "Constitutive Signaling by Aberrant PI3K in Cancer",
+                  "Positive regulation of kinase activity",
+                  "Positive regulation of protein kinase activity",
+                  "Positive regulation of phosphorus metabolic process",
+                  "Positive regulation of protein kinase activity",
+                  "Positive regulation of protein phosphorylation",
+                  "Positive regulation of phosphate metabolic process"
+)
+
+for (geneset in names(enrichments)){
+ 
+  cat(paste0("-- Creating pictures for ", geneset, "\n"))
+
+  # get the enrichment
+  e <- enrichments[[geneset]]
+  # e@result$Description <- stringr::str_to_sentence(e@result$Description)
+  
+  # filter  categories
+  categories <- filter_categories(e, p_value, n_categories, remove_terms)
+
+  # print(categories)
+  # categories <- categories[!tolower(categories) %in% tolower(remove_terms)]
+  # print("barplot \n")
+  # creating barplot
+  # bar_plot <- barplot()
+
+  # creating graph
+  graph <- create_graph(e,
+                        geneset,
+                        remove_terms) 
+
+  save_files(graph, geneset, output_path, graph_h = 40, graph_w = 40)
+  #
+  # if (geneset %in% c('REACTOME')) {
+  #   save_files(bar_plot, graph, geneset, output_path, 12, 16, graph_w = 14, graph_h = 16)
+  # } else if (geneset %in% c('KEGG')) {
+  #   save_files(bar_plot, graph, geneset, output_path, 5, 16, graph_w = 10, graph_h = 12)
+  # } else if (geneset %in% c('DGN')) {
+  #   save_files(bar_plot, graph, geneset, output_path, 10)
+  # } else if (geneset %in% c('MF')) {
+  #   save_files(bar_plot, graph, geneset, output_path, 14, graph_h = 22, graph_w=20)
+  # } else{
+  #   save_files(bar_plot, graph, geneset, output_path, 12, graph_h = 22,  graph_w=20)
+  # }
+} 
+```
