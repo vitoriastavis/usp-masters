@@ -1,9 +1,9 @@
 # Load necessary libraries
 library(dplyr)
 
-load("sct/degs_sct_celltype/GSE213982_2_99_2000_celltype.RData")
-load("sct/degs_sct_celltype/GSE144136_1_99_2500_celltype.RData")
-load("sct/degs_sct_celltype/celltypes.RData")
+load("degs_sct_celltype/GSE213982_2_99_2000_celltype.RData")
+load("degs_sct_celltype/GSE144136_1_99_2500_celltype.RData")
+load("degs_sct_celltype/celltypes.RData")
 
 
 pval_adj_threshold <- 0.05
@@ -45,6 +45,14 @@ for (ct in cell_types) {
   intersection_celltypes[[ct]] <- intersect(rownames(GSE144136_celltype_filtered[[ct]]),
                                             rownames(GSE213982_celltype_filtered[[ct]]))
 }
+
+all_degs_f_celltype_intersect <- unique(unname(unlist(intersection_celltypes)))
+
+
+all_degs_f_celltype <- unique(
+  c(unname(unlist(lapply(GSE144136_celltype_filtered, rownames))),
+    unname(unlist(lapply(GSE213982_celltype_filtered, rownames))))
+)
 
 # Pasta com os CSVs das interseções
 csv_folder <- "./2-targetprediction/data/intersections"
