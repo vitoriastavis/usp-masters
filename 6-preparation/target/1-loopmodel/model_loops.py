@@ -1,4 +1,5 @@
 from modeller import *
+from modeller.automodel import *
 
 env = Environ()
 env.io.atom_files_directory = ['/home/gbiuser/Documents/vitoria/usp-masters/6-preparation/target/1-loopmodel']
