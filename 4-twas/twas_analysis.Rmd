@@ -19,6 +19,7 @@ all_analyses <- list()
 
 # List all subdirectories inside the main directory
 subdirs <- list.dirs(twas_path, recursive = FALSE)
+subdirs <- subdirs[subdirs != "./bsb2026"]
 
 # Loop through each subdirectory
 for (subdir in subdirs) {
@@ -61,7 +62,6 @@ csv_files <- list.files(csv_folder, pattern = "\\.csv$", full.names = TRUE)
 
 # Lista para guardar os resultados
 intersection_results <- list()
-intersection_results_outro <- list()
 for (file in csv_files) {
   # Read raw lines first
   raw_lines <- readLines(file, warn = FALSE)
@@ -149,6 +149,7 @@ genes_autores_filtrado <- genes_autores %>%
   filter(n_autores > 1) %>%
   arrange(desc(n_autores), gene)
 
+# intersecao alvos
 all_intersects <- unique(unname(unlist(intersection_results)))
 genes_autores_alvos <- genes_autores %>%
   filter(gene %in% all_intersects) %>%
@@ -158,7 +159,72 @@ genes_autores_alvos_filtrado <- genes_autores_alvos %>%
   filter(n_autores > 1)
 ```
 
+```{r}
+# pegando o mais liberal, sem intersecao
+library(readr)
+all_sea <- read_csv("../2-targetprediction/data/sea/sea_targets_mapped.csv", show_col_types = FALSE)$x
+all_stp <- read_csv("../2-targetprediction/data/stp/stp_targets_mapped.csv", show_col_types = FALSE)$x
+all_ppb <- read_csv("../2-targetprediction/data/ppb2/ppb_targets_mapped.csv", show_col_types = FALSE)$x
+all_multitask <- read_csv("../2-targetprediction/data/multitask/multitask_targets_mapped.csv", show_col_types = FALSE)$x
+all_targets <- unique(c(all_sea, all_stp, all_ppb, all_multitask))
 
+all_twas <- unique(unname(unlist(all_unique)))
+
+load("~/usp/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE213982_celltype_f.RData")
+load("~/usp/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
+degs_celltype_14 <-  unique(unname(unlist(lapply(GSE144136_celltype_filtered, rownames))) )
+degs_celltype_21 <-  unique(unname(unlist(lapply(GSE213982_celltype_filtered, rownames))) )
+
+load("~/usp/usp-masters/3-snrnaseq/sct/degs_sct_novo/GSE213982_2_99_2000_results_adj.RData")
+degs_GSE213982 <- rownames(degs)
+load("~/usp/usp-masters/3-snrnaseq/sct/degs_sct_novo/GSE144136_1_99_2500_results_adj.RData")
+degs_GSE144136 <- rownames(degs)
+all_degs <- Reduce(union, list(degs_GSE144136, degs_GSE213982, degs_celltype_14, degs_celltype_21))
+
+targets_nofilter <- Reduce(intersect, list(
+  (all_targets),
+  (all_twas),
+  (all_degs)
+))
+```
+
+```{r}
+# intersecao targets
+targets_2plus <- names(which(table(unlist(all_list)) >= 2))
+
+targets_filtertargets <- Reduce(intersect, list(
+  (targets_2plus),
+  (all_twas),
+  (all_degs)
+))
+```
+
+```{r}
+# intersecao targets e twas
+targets_2plus <- names(which(table(unlist(all_list)) >= 2))
+twas_2plus <- unique(genes_autores_filtrado$gene)
+
+targets_filtertargetstwas <- Reduce(intersect, list(
+  (targets_2plus),
+  (twas_2plus),
+  (all_degs)
+))
+```
+
+
+```{r}
+targets_2plus <- names(which(table(unlist(all_list)) >= 2))
+twas_2plus <- unique(genes_autores_filtrado$gene)
+
+degs_2plus <- union(intersect(degs_GSE213982, degs_GSE144136), intersect(degs_celltype_14, degs_celltype_21))
+
+targets_filtertargetstwas <- Reduce(intersect, list(
+  (targets_2plus),
+  (twas_2plus),
+  (degs_2plus)
+))
+
+```
 
 # Comparing with previous analyses
 
