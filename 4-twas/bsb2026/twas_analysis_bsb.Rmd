@@ -56,10 +56,10 @@ for (subdir in subdirs) {
 
 ```{r}
 # Ler cada arquivo CSV e fazer interseção com snrnaseq_intersection
-all_sea <- read_csv("../2-targetprediction/data/sea/sea_targets_mapped.csv", show_col_types = FALSE)$x
-all_stp <- read_csv("../2-targetprediction/data/stp/stp_targets_mapped.csv", show_col_types = FALSE)$x
-all_ppb <- read_csv("../2-targetprediction/data/ppb2/ppb_targets_mapped.csv", show_col_types = FALSE)$x
-all_multitask <- read_csv("../2-targetprediction/data/multitask/multitask_targets_mapped.csv", show_col_types = FALSE)$x
+all_sea <- read_csv("../../2-targetprediction/data/sea/sea_targets_mapped.csv", show_col_types = FALSE)$x
+all_stp <- read_csv("../../2-targetprediction/data/stp/stp_targets_mapped.csv", show_col_types = FALSE)$x
+all_ppb <- read_csv("../../2-targetprediction/data/ppb2/ppb_targets_mapped.csv", show_col_types = FALSE)$x
+all_multitask <- read_csv("../../2-targetprediction/data/multitask/multitask_targets_mapped.csv", show_col_types = FALSE)$x
 
 common_targets <- Reduce(intersect, list(all_stp, all_sea, all_multitask, all_ppb))
 
