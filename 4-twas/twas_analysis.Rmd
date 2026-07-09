@@ -175,7 +175,7 @@ load("../3-snrnaseq/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
 degs_celltype_14 <-  unique(unname(unlist(lapply(GSE144136_celltype_filtered, rownames))) )
 degs_celltype_21 <-  unique(unname(unlist(lapply(GSE213982_celltype_filtered, rownames))) )
 
-load("~/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_novo/degs_f.RData")
+load("~/usp/usp-masters/3-snrnaseq/sct/degs_sct_novo/degs_f.RData")
 degs_GSE213982 <- degs_GSE213982_f$X
 degs_GSE144136 <- degs_GSE144136_f$X
 all_degs <- Reduce(union, list(degs_GSE144136, degs_GSE213982, degs_celltype_14, degs_celltype_21))
@@ -248,7 +248,7 @@ degs_targets <- intersect(degs_2plus, targets_2plus)
 
 # 51
 final <- union(twas_targets, degs_targets)
-write.table(final, "bsb2026/targets_both.csv", row.names = FALSE, col.names = FALSE)
+# write.table(final, "bsb2026/targets_both.csv", row.names = FALSE, col.names = FALSE)
 ```
 
 ```{r}
@@ -309,16 +309,19 @@ multi_analysis_genes <- gene_analyses_df %>%
 # Getting the predicted metabolites/ligands for the intersection genes
 
 ```{r}
-load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_novo/degs_f.RData")
-load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE213982_celltype_f.RData")
-load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
+# load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_novo/degs_f.RData")
+# load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE213982_celltype_f.RData")
+# load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
+# 
+# gene <- "GAPDH"
+# 
+# rownames(degs_GSE144136_f) <- degs_GSE144136_f$X
+# all_targets <- read.table("data/targets.txt")$V1
 
-gene <- "GAPDH"
+all_targets <- c()
 
-rownames(degs_GSE144136_f) <- degs_GSE144136_f$X
-all_targets <- read.table("data/targets.txt")$V1
-
-for (gene in all_targets){
+for (gene in targets_filtertargetstwas){
+  cat (gene %in% all_degs & gene %in% all_twas)
   cat("\t",gene, "\n")
   if (gene %in% rownames(GSE144136_celltype_filtered$InN) & gene %in% rownames(GSE213982_celltype_filtered$InN)){
     cat("inn ",GSE144136_celltype_filtered$InN[gene, "avg_log2FC"], '\n')
@@ -343,6 +346,62 @@ for (gene in all_targets){
   }
   if (gene %in% degs_GSE144136_f$X & gene %in% degs_GSE213982_f$X){
     cat("geral ",degs_GSE144136_f[gene, "avg_log2FC"], '\n')
+  }
+}
+
+```
+
+```{R}
+for (gene in targets_filtertargetstwas){
+  cat (gene %in% all_degs & gene %in% all_twas)
+  cat("\t",gene, "\n")
+  if (gene %in% rownames(GSE144136_celltype_filtered$InN)){
+    cat("inn 14",GSE144136_celltype_filtered$InN[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE213982_celltype_filtered$InN)){
+    cat("inn 21 ",GSE213982_celltype_filtered$InN[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$ExN)){
+    cat("exn 14",GSE144136_celltype_filtered$ExN[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE213982_celltype_filtered$ExN)){
+    cat("exn 21",GSE213982_celltype_filtered$ExN[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$Oli)){
+    cat("oli 14",GSE144136_celltype_filtered$Oli[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE213982_celltype_filtered$Oli)){
+    cat("oli 21",GSE213982_celltype_filtered$Oli[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$Ast)){
+    cat("ast 14",GSE144136_celltype_filtered$Ast[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE213982_celltype_filtered$Ast)){
+    cat("ast 21",GSE213982_celltype_filtered$Ast[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE213982_celltype_filtered$Mic)){
+    cat("mic 21",GSE213982_celltype_filtered$Mic[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$Mic)){
+    cat("mic 14",GSE144136_celltype_filtered$Mic[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE213982_celltype_filtered$OPC)){
+    cat("opc 21",GSE213982_celltype_filtered$OPC[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$OPC)){
+    cat("opc 14",GSE144136_celltype_filtered$OPC[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$End)){
+    cat("end 14",GSE144136_celltype_filtered$End[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE213982_celltype_filtered$End)){
+    cat("end 21",GSE213982_celltype_filtered$End[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% degs_GSE144136_f$X){
+    cat("geral ",degs_GSE144136_f[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% degs_GSE213982_f$X){
+    cat("geral ",degs_GSE213982_f[gene, "avg_log2FC"], '\n')
   }
 }
 ```
