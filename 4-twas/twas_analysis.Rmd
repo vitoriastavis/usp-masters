@@ -150,13 +150,13 @@ genes_autores_filtrado <- genes_autores %>%
   arrange(desc(n_autores), gene)
 
 # intersecao alvos
-all_intersects <- unique(unname(unlist(intersection_results)))
-genes_autores_alvos <- genes_autores %>%
-  filter(gene %in% all_intersects) %>%
-  arrange(desc(n_autores), gene)
-
-genes_autores_alvos_filtrado <- genes_autores_alvos %>%
-  filter(n_autores > 1)
+# all_intersects <- unique(unname(unlist(intersection_results)))
+# genes_autores_alvos <- genes_autores %>%
+#   filter(gene %in% all_intersects) %>%
+#   arrange(desc(n_autores), gene)
+# 
+# genes_autores_alvos_filtrado <- genes_autores_alvos %>%
+#   filter(n_autores > 1)
 ```
 
 ```{r}
@@ -170,15 +170,14 @@ all_targets <- unique(c(all_sea, all_stp, all_ppb, all_multitask))
 
 all_twas <- unique(unname(unlist(all_unique)))
 
-load("~/usp/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE213982_celltype_f.RData")
-load("~/usp/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
+load("../3-snrnaseq/sct/degs_sct_celltype/GSE213982_celltype_f.RData")
+load("../3-snrnaseq/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
 degs_celltype_14 <-  unique(unname(unlist(lapply(GSE144136_celltype_filtered, rownames))) )
 degs_celltype_21 <-  unique(unname(unlist(lapply(GSE213982_celltype_filtered, rownames))) )
 
-load("~/usp/usp-masters/3-snrnaseq/sct/degs_sct_novo/GSE213982_2_99_2000_results_adj.RData")
-degs_GSE213982 <- rownames(degs)
-load("~/usp/usp-masters/3-snrnaseq/sct/degs_sct_novo/GSE144136_1_99_2500_results_adj.RData")
-degs_GSE144136 <- rownames(degs)
+load("~/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_novo/degs_f.RData")
+degs_GSE213982 <- degs_GSE213982_f$X
+degs_GSE144136 <- degs_GSE144136_f$X
 all_degs <- Reduce(union, list(degs_GSE144136, degs_GSE213982, degs_celltype_14, degs_celltype_21))
 
 targets_nofilter <- Reduce(intersect, list(
@@ -186,10 +185,13 @@ targets_nofilter <- Reduce(intersect, list(
   (all_twas),
   (all_degs)
 ))
+
+length(targets_nofilter)
 ```
 
 ```{r}
 # intersecao targets
+all_list <- list(toupper(all_sea), toupper(all_stp), toupper(all_ppb), toupper(all_multitask))
 targets_2plus <- names(which(table(unlist(all_list)) >= 2))
 
 targets_filtertargets <- Reduce(intersect, list(
@@ -197,6 +199,8 @@ targets_filtertargets <- Reduce(intersect, list(
   (all_twas),
   (all_degs)
 ))
+
+length(targets_filtertargets)
 ```
 
 ```{r}
@@ -209,21 +213,56 @@ targets_filtertargetstwas <- Reduce(intersect, list(
   (twas_2plus),
   (all_degs)
 ))
+
+length(targets_filtertargetstwas)
+
+# write.table(targets_filtertargetstwas, "bsb2026/targets_inter.csv", row.names = FALSE, col.names = FALSE)
 ```
 
 
 ```{r}
+# intersecao targets e twas e degs -> nao deu nada
 targets_2plus <- names(which(table(unlist(all_list)) >= 2))
 twas_2plus <- unique(genes_autores_filtrado$gene)
 
 degs_2plus <- union(intersect(degs_GSE213982, degs_GSE144136), intersect(degs_celltype_14, degs_celltype_21))
 
-targets_filtertargetstwas <- Reduce(intersect, list(
+targets_filtertargetstwasdegs <- Reduce(intersect, list(
   (targets_2plus),
   (twas_2plus),
   (degs_2plus)
 ))
 
+length(targets_filtertargetstwasdegs)
+```
+
+
+```{r}
+# intersecao targets e twas e degs
+
+# 28 (16)
+twas_targets <- intersect(targets_2plus, twas_2plus)
+
+# 23 (19)
+degs_targets <- intersect(degs_2plus, targets_2plus)
+
+# 51
+final <- union(twas_targets, degs_targets)
+write.table(final, "bsb2026/targets_both.csv", row.names = FALSE, col.names = FALSE)
+```
+
+```{r}
+# library(readr)
+# all_sea <- read_csv("../2-targetprediction/data/sea/sea_targets_mapped.csv", show_col_types = FALSE)$x
+# all_stp <- read_csv("../2-targetprediction/data/stp/stp_targets_mapped.csv", show_col_types = FALSE)$x
+# all_ppb <- read_csv("../2-targetprediction/data/ppb2/ppb_targets_mapped.csv", show_col_types = FALSE)$x
+# all_multitask <- read_csv("../2-targetprediction/data/multitask/multitask_targets_mapped.csv", show_col_types = FALSE)$x
+# targets_2plus <- names(which(table(unlist(all_list)) >= 2))
+# 
+# degs_2plus <- union(intersect(degs_GSE213982, degs_GSE144136), intersect(degs_celltype_14, degs_celltype_21))
+# degs_targets <- intersect(degs_2plus, targets_2plus)
+
+# 4 a mais, tudo bem
 ```
 
 # Comparing with previous analyses
