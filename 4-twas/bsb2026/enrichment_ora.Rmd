@@ -576,7 +576,7 @@ for (geneset in names(enrichments)){
     
       graph <- create_graph2(e, remove_terms)
   
-      save_files(graph, geneset, output_path, graph_h = 10, graph_w = 30)
+      save_files(graph, geneset, output_path, graph_h = 13, graph_w = 30)
   
     }, error = function(e) {
       message("Pulando ", geneset, ": ", conditionMessage(e))
@@ -584,19 +584,6 @@ for (geneset in names(enrichments)){
       options(warn = 0)
     })  
     
-  
-  
-  #
-  # if (geneset %in% c('REACTOME')) {
-  #   save_files(bar_plot, graph, geneset, output_path, 12, 16, graph_w = 14, graph_h = 16)
-  # } else if (geneset %in% c('KEGG')) {
-  #   save_files(bar_plot, graph, geneset, output_path, 5, 16, graph_w = 10, graph_h = 12)
-  # } else if (geneset %in% c('DGN')) {
-  #   save_files(bar_plot, graph, geneset, output_path, 10)
-  # } else if (geneset %in% c('MF')) {
-  #   save_files(bar_plot, graph, geneset, output_path, 14, graph_h = 22, graph_w=20)
-  # } else{
-  #   save_files(bar_plot, graph, geneset, output_path, 12, graph_h = 22,  graph_w=20)
-  # }
+
 } 
 ```
