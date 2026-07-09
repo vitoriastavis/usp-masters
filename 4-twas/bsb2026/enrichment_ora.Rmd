@@ -7,7 +7,7 @@ author: "Vitória Stavis de Araujo"
 
 ```{r include=FALSE}
 # run this part if it hasn't been run before:
-# BiocManager::install(c('miRNAmeConverter', 'openxlsx', 'multiMiR', 'clusterProfiler', 'org.Hs.eg.db', 'DOSE', 'devtools', 'pathview', 'AnnotationHub', 'meshes', 'enrichplot', 'ggplot2', 'createKEGGdb', 'readxl', 'ggrepel', 'ReactomePA', 'ggraph', 'stringr'))
+# BiocManager::install(c('miRNAmeConverter', 'openxlsx', 'clusterProfiler', 'org.Hs.eg.db', 'DOSE', 'devtools', 'pathview', 'AnnotationHub', 'meshes', 'enrichplot', 'ggplot2', 'createKEGGdb', 'readxl', 'ggrepel', 'ReactomePA', 'ggraph', 'stringr'))
 
 library(openxlsx)
 library(clusterProfiler)
@@ -23,20 +23,22 @@ library(ggrepel)
 library(ReactomePA)
 library(ggraph)
 library(stringr)
-library(devtools)
-library(roxygen2)
-library(gridExtra)
-library(grid)
-library(png)
+library(Polychrome)
 library(gginnards)
+# library("devtools")
+# library(roxygen2)
+# library(gridExtra)
+# library(grid)
+# library(png)
+# library(gginnards)
 
 # run this part if it hasn't been run before:
 # install.packages("remotes")
 # remotes::install_github("YuLab-SMU/createKEGGdb")
-library(createKEGGdb)
+# library(createKEGGdb)
 # species <-c("hsa")
 # createKEGGdb::create_kegg_db(species)
-# install.packages("data/KEGG.db_1.0.tar.gz", repos=NULL,type="source")
+# install.packages("KEGG.db_1.0.tar.gz", repos=NULL,type="source")
 library(KEGG.db)
 ```
 
@@ -290,7 +292,7 @@ create_barplot <- function(enrichment, geneset, categories){
 ```
 
 ```{r cache=TRUE}
-library(viridisLite)
+
 
 # Creates a graph from enrichment results
 # Param - enrichment: enrichResult object
@@ -299,99 +301,97 @@ library(viridisLite)
 # Param - geneset: set used in the enrichment (e.g., MF, BP, DGN) (string)
 # Param - categories: enriched categories to include (numeric or character)
 # Return - graph: object (ggplot)
-create_graph <- function(enrichment, geneset, remove_terms){ 
- 
-
-  colors <- createPalette(20, c("#ff0000", "#0000ff"))
-
-  df <- e@result 
-  df <- df[!tolower(df$Description) %in% tolower(remove_terms), ]      
-
-  df_filtered <- df |>
-              dplyr::arrange(p.adjust) |>
-              head(20)
+create_graph <- function(enrichment, remove_terms){ 
+  # colors <- createPalette(n_categories, c("#ff0000", "#0000ff"))
   # 
+  # df <- e@result
+  # df <- df[!tolower(df$Description) %in% tolower(remove_terms), ]
+  # 
+  # df_filtered <- df |>
+  #             dplyr::arrange(p.adjust) |>
+  #             head(n_categories)
+  # #
+  # readable <- setReadable(e, 'org.Hs.eg.db', 'ENTREZID')
+  # 
+  # readable@result <- readable@result[
+  #   match(df_filtered$ID, readable@result$ID),
+  # ]
+  # 
+  # readable@result$Description <- stringr::str_wrap(readable@result$Description,
+  #                                                  width = 30)
+  # 
+  # readable@result$geneID[is.na(readable@result$geneID)] <- ""
+  # 
+  # readable@result$Description <- sapply(readable@result$Description, function(x) {
+  #   if (is.na(x)) return(x)
+  # 
+  #   x_low <- tolower(x)
+  # 
+  #   if (grepl("^camp", x_low)) {
+  #     paste0("cAMP", substr(x, 5, nchar(x)))
+  #   } else {
+  #     paste0(toupper(substr(x, 1, 1)), substr(x, 2, nchar(x)))
+  #   }
+  # })
   readable <- setReadable(e, 'org.Hs.eg.db', 'ENTREZID')
-  
-  readable@result <- readable@result[
-    match(df_filtered$ID, readable@result$ID),
-  ]
-  
-  readable@result$Description <- stringr::str_wrap(readable@result$Description,
-                                                   width = 30)
-  
-  readable@result$geneID[is.na(readable@result$geneID)] <- ""
-  
-  readable@result$Description <- sapply(readable@result$Description, function(x) {
-    if (is.na(x)) return(x)
-    
-    x_low <- tolower(x)
-    
-    if (grepl("^camp", x_low)) {
-      paste0("cAMP", substr(x, 5, nchar(x)))        
-    } else {
-      paste0(toupper(substr(x, 1, 1)), substr(x, 2, nchar(x)))  
-    }
-  })
-  
-  graph <- cnetplot(readable, showCategory = nrow(readable@result),
-                    size_item = 4, color_item = "gray80", size_category = 1,
-                    node_label = "item", size_edge = 1,
-                    color_edge = 'gray50', layout = "fr"
-                    )
+  graph <- cnetplot(readable, showCategory = 15)
+  # graph <- cnetplot(readable, showCategory = 15,
+  #                   size_item = 4, color_item = "gray80", size_category = 1,
+  #                   node_label = "item", size_edge = 1,
+  #                   color_edge = 'gray50', layout = "fr"
+  #                   )
 
-    graph <- delete_layers(graph, "GeomTextRepel")
-    graph$layers[[1]]$mapping$size <- NULL
-    graph$layers[[which(sapply(graph$layers, function(x) inherits(x$geom, "GeomSegment")))]]$aes_params$alpha <- 0.2
-    # 
-    graph <- graph +
-              theme(
-                 plot.margin = margin(t = 4, r = 4, b = 4, l = 4),
-         
-                 # legend
-                 
-                 legend.title = element_text("Categoria",color="white"),
-                 legend.text = element_text(size = 28),
-                 legend.key.height = unit(1, "cm"),
-                 legend.position = "top",
-                 legend.box = "horizontal",
-                 legend.spacing.y = unit(5, "cm"),
-                 legend.key.width = unit(2, "cm"), 
-                 legend.justification = "center",
-                 legend.margin = margin(t = 20, r = 50),
+  # graph <- delete_layers(graph, "GeomTextRepel")
+  # graph$layers[[1]]$mapping$size <- NULL
+  # graph$layers[[which(sapply(graph$layers, function(x) inherits(x$geom, "GeomSegment")))]]$aes_params$alpha <- 0.2
+  # # 
+  graph <- graph +
+            theme(
+               plot.margin = margin(t = 4, r = 4, b = 4, l = 4),
 
-                 panel.background = element_rect(fill = "white", color = NA),
-                 plot.background = element_rect(fill = "white", color = NA)
-              ) +
+               # legend
+               legend.title = element_text("Categoria", color="white"),
+               legend.text = element_text(size = 28),
+               legend.key.height = unit(1, "cm"),
+               legend.position = "top",
+               legend.box = "horizontal",
+               legend.spacing.y = unit(5, "cm"),
+               legend.key.width = unit(2, "cm"),
+               legend.justification = "center",
+               legend.margin = margin(t = 20, r = 50),
 
-              guides(size = "none") +         # remove size
-              guides(color = guide_legend(nrow = 5,
-                                          byrow = TRUE)) +  # line break in legend
+               panel.background = element_rect(fill = "white", color = NA),
+               plot.background = element_rect(fill = "white", color = NA)
+            ) 
+  #
+            # guides(size = "none") +         # remove size
+            # guides(color = guide_legend(nrow = 5,
+            #                             byrow = TRUE)) +  # line break in legend
+            # 
+            # # change size and color of the category dots
+            # geom_point(
+            #   data = subset(graph$data, .isCategory == TRUE),
+            #   aes(x = x, y = y, color = name),
+            #   size = 20,
+            #   alpha = 0.8
+            # ) +
+            # # scale_color_manual(values = colors) +
+            # # gene labels
+            # geom_text_repel(
+            #   data = subset(graph$data, .isCategory == FALSE),
+            #   aes(x = x, y = y, label = name),
+            #   size = 12,
+            #   box.padding = 1,
+            #   point.padding = 1.5,
+            #   force = 5,
+            #   segment.size = 0.9,
+            #   # nudge_x = 1,
+            #   # nudge_y = 1,
+            #   segment.color = 'gray70',
+            #   max.overlaps = Inf
+            # )
 
-              # change size and color of the category dots
-              geom_point(
-                data = subset(graph$data, .isCategory == TRUE),
-                aes(x = x, y = y, color = name),
-                size = 20,
-                alpha = 0.8
-              ) +
-              scale_color_manual(values = pal) +
-              # gene labels
-              geom_text_repel(
-                data = subset(graph$data, .isCategory == FALSE),
-                aes(x = x, y = y, label = name),
-                size = 12,
-                box.padding = 1,    
-                point.padding = 1.5, 
-                force = 5,
-                segment.size = 0.9,
-                # nudge_x = 1,
-                # nudge_y = 1,
-                segment.color = 'gray70',
-                max.overlaps = Inf
-              ) 
-
-    return(graph)
+  return(graph)
 }
 ```
 
@@ -421,6 +421,8 @@ save_files <- function(graph, geneset, path,
     ggsave(paste0(base_filename, "_graph", ".jpg"),
           plot = graph, width = graph_w, height = graph_h, units = "in")
   }
+  
+  return(1)
 }
 ```
 
@@ -428,14 +430,14 @@ save_files <- function(graph, geneset, path,
 
 ```{r message=FALSE, warning=FALSE}
 # load the data 
-all_targets <- read.table("targets_bsb.csv")$V1
+all_targets <- read.table("targets_both.csv")$V1
 n_gene_ids <- length(all_targets)
 
 # p threshold
 p_value <- 0.001
 
 # or use number of categories
-n_categories <- 20
+n_categories <- 15
 
 # directory to save the plots
 output_path <- 'plots/'
@@ -456,23 +458,22 @@ enrichments <- run_enrichment(gene_ids, p_value, minGSSize = 10)
 ## Process 
 
 ```{r message=FALSE, warning=FALSE}
-n_categories <- 20
+remove_terms <- c()
+# remove_terms <- c("Histone H2AXY142 kinase activity",
+#                   "Protein serine kinase activity",
+#                   "Histone H3Y41 kinase activity",
+#                   "Platelet-derived growth factor alpha-receptor activity",
+#                   "Platelet-derived growth factor beta-receptor activity",
+#                   "Constitutive Signaling by Aberrant PI3K in Cancer",
+#                   "Positive regulation of kinase activity",
+#                   "Positive regulation of protein kinase activity",
+#                   "Positive regulation of phosphorus metabolic process",
+#                   "Positive regulation of protein kinase activity",
+#                   "Positive regulation of protein phosphorylation",
+#                   "Positive regulation of phosphate metabolic process"
+# )
 
-remove_terms <- c("Histone H2AXY142 kinase activity",
-                  "Protein serine kinase activity",
-                  "Histone H3Y41 kinase activity",
-                  "Platelet-derived growth factor alpha-receptor activity",
-                  "Platelet-derived growth factor beta-receptor activity",
-                  "Constitutive Signaling by Aberrant PI3K in Cancer",
-                  "Positive regulation of kinase activity",
-                  "Positive regulation of protein kinase activity",
-                  "Positive regulation of phosphorus metabolic process",
-                  "Positive regulation of protein kinase activity",
-                  "Positive regulation of protein phosphorylation",
-                  "Positive regulation of phosphate metabolic process"
-)
-
-for (geneset in names(enrichments)){
+for (geneset in names(enrichments[1:2])){
  
   cat(paste0("-- Creating pictures for ", geneset, "\n"))
 
@@ -481,20 +482,24 @@ for (geneset in names(enrichments)){
   # e@result$Description <- stringr::str_to_sentence(e@result$Description)
   
   # filter  categories
-  categories <- filter_categories(e, p_value, n_categories, remove_terms)
-
-  # print(categories)
-  # categories <- categories[!tolower(categories) %in% tolower(remove_terms)]
-  # print("barplot \n")
-  # creating barplot
-  # bar_plot <- barplot()
+  # categories <- filter_categories(e, p_value, n_categories, remove_terms)
 
   # creating graph
-  graph <- create_graph(e,
-                        geneset,
-                        remove_terms) 
-
-  save_files(graph, geneset, output_path, graph_h = 40, graph_w = 40)
+  tryCatch({
+      options(warn = 2)   # transforma warning em erro
+    
+      graph <- create_graph(e, remove_terms)
+  
+      save_files(graph, geneset, output_path, graph_h = 10, graph_w = 10)
+  
+    }, error = function(e) {
+      message("Pulando ", geneset, ": ", conditionMessage(e))
+    }, finally = {
+      options(warn = 0)
+    })  
+    
+  
+  
   #
   # if (geneset %in% c('REACTOME')) {
   #   save_files(bar_plot, graph, geneset, output_path, 12, 16, graph_w = 14, graph_h = 16)
