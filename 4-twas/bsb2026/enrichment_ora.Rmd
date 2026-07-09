@@ -292,7 +292,7 @@ create_barplot <- function(enrichment, geneset, categories){
 ```
 
 ```{r cache=TRUE}
-
+library(paletteer)
 
 # Creates a graph from enrichment results
 # Param - enrichment: enrichResult object
@@ -301,50 +301,137 @@ create_barplot <- function(enrichment, geneset, categories){
 # Param - geneset: set used in the enrichment (e.g., MF, BP, DGN) (string)
 # Param - categories: enriched categories to include (numeric or character)
 # Return - graph: object (ggplot)
-create_graph <- function(enrichment, remove_terms){ 
-  # colors <- createPalette(n_categories, c("#ff0000", "#0000ff"))
-  # 
-  # df <- e@result
-  # df <- df[!tolower(df$Description) %in% tolower(remove_terms), ]
-  # 
-  # df_filtered <- df |>
-  #             dplyr::arrange(p.adjust) |>
-  #             head(n_categories)
-  # #
-  # readable <- setReadable(e, 'org.Hs.eg.db', 'ENTREZID')
-  # 
-  # readable@result <- readable@result[
-  #   match(df_filtered$ID, readable@result$ID),
-  # ]
-  # 
-  # readable@result$Description <- stringr::str_wrap(readable@result$Description,
-  #                                                  width = 30)
-  # 
-  # readable@result$geneID[is.na(readable@result$geneID)] <- ""
-  # 
-  # readable@result$Description <- sapply(readable@result$Description, function(x) {
-  #   if (is.na(x)) return(x)
-  # 
-  #   x_low <- tolower(x)
-  # 
-  #   if (grepl("^camp", x_low)) {
-  #     paste0("cAMP", substr(x, 5, nchar(x)))
-  #   } else {
-  #     paste0(toupper(substr(x, 1, 1)), substr(x, 2, nchar(x)))
-  #   }
-  # })
-  readable <- setReadable(e, 'org.Hs.eg.db', 'ENTREZID')
-  graph <- cnetplot(readable, showCategory = 15)
-  # graph <- cnetplot(readable, showCategory = 15,
-  #                   size_item = 4, color_item = "gray80", size_category = 1,
-  #                   node_label = "item", size_edge = 1,
-  #                   color_edge = 'gray50', layout = "fr"
-  #                   )
+create_graph2 <- function(enrichment, remove_terms){ 
+  colors <- unname(Polychrome::createPalette(15, "#A665B5"))
+  
+  df <- enrichment@result
+  df <- df[!tolower(df$Description) %in% tolower(remove_terms), ]
 
-  # graph <- delete_layers(graph, "GeomTextRepel")
-  # graph$layers[[1]]$mapping$size <- NULL
-  # graph$layers[[which(sapply(graph$layers, function(x) inherits(x$geom, "GeomSegment")))]]$aes_params$alpha <- 0.2
-  # # 
+  df_filtered <- df |>
+              dplyr::arrange(p.adjust) |>
+              head(n_categories)
+  #
+  readable <- setReadable(e, 'org.Hs.eg.db', 'ENTREZID')
+
+  readable@result <- readable@result[
+    match(df_filtered$ID, readable@result$ID),
+  ]
+
+  readable@result$Description <- stringr::str_wrap(readable@result$Description, width = 20)
+
+  readable@result$geneID[is.na(readable@result$geneID)] <- ""
+
+  readable@result$Description <- sapply(readable@result$Description, function(x) {
+    if (is.na(x)) return(x)
+
+    x_low <- tolower(x)
+
+    if (grepl("^camp", x_low)) {
+      paste0("cAMP", substr(x, 5, nchar(x)))
+    } else {
+      paste0(toupper(substr(x, 1, 1)), substr(x, 2, nchar(x)))
+    }
+  })
+  graph <- cnetplot(readable, showCategory = nrow(readable@result),
+                    size_item = 4, color_item = "gray60", size_category = 1,
+                    node_label = "item", size_edge = 1,
+                    color_edge = 'gray80', layout = "fr"
+                    )
+
+  cat_data <- subset(graph$data, .isCategory == TRUE)
+  graph <- delete_layers(graph, "GeomTextRepel")
+  graph$layers[[1]]$mapping$size <- NULL
+  
+  graph <- graph +
+    theme(plot.margin = margin(t = 4, r = 4, b = 4, l = 4),
+
+           # legend
+           legend.title = element_text("Categoria", color="white"),
+           legend.text = element_text(size = 28, margin = margin(t = 20, b = 20)),
+           legend.key.height = unit(1, "cm"),
+           legend.position = "right",
+           legend.box = "vertical",
+           legend.justification = "center",
+           legend.margin = margin(t = 20, r = 50),
+
+           panel.background = element_rect(fill = "white", color = NA),
+           plot.background = element_rect(fill = "white", color = NA)
+        ) +
+    ggnewscale::new_scale_colour() +
+    # category nodes
+    geom_point(
+      data = cat_data,
+      aes(x = x, y = y, colour = name),
+      size = 20,
+      alpha = 1
+    ) +
+    scale_colour_manual(values = colors) +
+    guides(color = guide_legend(ncol = 2, byrow = TRUE), size = "none") +
+    # gene labels
+    geom_text_repel(
+      data = subset(graph$data, .isCategory == FALSE),
+      aes(x = x, y = y, label = name),
+      size = 10,
+      box.padding = 1,
+      point.padding = 1.5,
+      force = 5,
+      segment.size = 0.9,
+      # nudge_x = 1,
+      # nudge_y = 1,
+      segment.color = 'gray70',
+      max.overlaps = Inf
+    )
+    
+  
+  return(graph)
+}
+```
+```{R}
+create_graph <- function(enrichment, remove_terms){ 
+  colors <- createPalette(n_categories, c("#ff0000", "#0000ff"))
+
+  df <- e@result
+  df <- df[!tolower(df$Description) %in% tolower(remove_terms), ]
+
+  df_filtered <- df |>
+              dplyr::arrange(p.adjust) |>
+              head(n_categories)
+  #
+  readable <- setReadable(e, 'org.Hs.eg.db', 'ENTREZID')
+
+  readable@result <- readable@result[
+    match(df_filtered$ID, readable@result$ID),
+  ]
+
+  readable@result$Description <- stringr::str_wrap(readable@result$Description,
+                                                   width = 30)
+
+  readable@result$geneID[is.na(readable@result$geneID)] <- ""
+
+  readable@result$Description <- sapply(readable@result$Description, function(x) {
+    if (is.na(x)) return(x)
+
+    x_low <- tolower(x)
+
+    if (grepl("^camp", x_low)) {
+      paste0("cAMP", substr(x, 5, nchar(x)))
+    } else {
+      paste0(toupper(substr(x, 1, 1)), substr(x, 2, nchar(x)))
+    }
+  })
+  # readable <- setReadable(e, 'org.Hs.eg.db', 'ENTREZID')
+  # graph <- cnetplot(readable, showCategory = 15)
+  graph <- cnetplot(readable, showCategory = 15,
+                    size_item = 4, color_item = "gray80", size_category = 1,
+                    node_label = "item", size_edge = 1,
+                    color_edge = 'gray50', layout = "fr"
+                    )
+
+  graph <- delete_layers(graph, "GeomTextRepel")
+  graph$layers[[1]]$mapping$size <- NULL
+  graph$layers[[which(sapply(graph$layers, function(x) inherits(x$geom, "GeomSegment")))]]$aes_params$alpha <- 0.2
+  #
+
   graph <- graph +
             theme(
                plot.margin = margin(t = 4, r = 4, b = 4, l = 4),
@@ -362,34 +449,35 @@ create_graph <- function(enrichment, remove_terms){
 
                panel.background = element_rect(fill = "white", color = NA),
                plot.background = element_rect(fill = "white", color = NA)
-            ) 
+            ) +
   #
-            # guides(size = "none") +         # remove size
-            # guides(color = guide_legend(nrow = 5,
-            #                             byrow = TRUE)) +  # line break in legend
-            # 
-            # # change size and color of the category dots
-            # geom_point(
-            #   data = subset(graph$data, .isCategory == TRUE),
-            #   aes(x = x, y = y, color = name),
-            #   size = 20,
-            #   alpha = 0.8
-            # ) +
-            # # scale_color_manual(values = colors) +
-            # # gene labels
-            # geom_text_repel(
-            #   data = subset(graph$data, .isCategory == FALSE),
-            #   aes(x = x, y = y, label = name),
-            #   size = 12,
-            #   box.padding = 1,
-            #   point.padding = 1.5,
-            #   force = 5,
-            #   segment.size = 0.9,
-            #   # nudge_x = 1,
-            #   # nudge_y = 1,
-            #   segment.color = 'gray70',
-            #   max.overlaps = Inf
-            # )
+            guides(size = "none") +         # remove size
+            guides(color = guide_legend(nrow = 5,
+                                        byrow = TRUE)) +  # line break in legend
+
+            # change size and color of the category dots
+            ggnewscale::new_scale_colour() +
+            geom_point(
+              data = subset(graph$data, .isCategory == TRUE),
+              aes(x = x, y = y, color = name),
+              size = 20,
+              alpha = 0.8
+            )
+            # scale_color_manual(values = colors) +
+            # gene labels
+            geom_text_repel(
+              data = subset(graph$data, .isCategory == FALSE),
+              aes(x = x, y = y, label = name),
+              size = 12,
+              box.padding = 1,
+              point.padding = 1.5,
+              force = 5,
+              segment.size = 0.9,
+              # nudge_x = 1,
+              # nudge_y = 1,
+              segment.color = 'gray70',
+              max.overlaps = Inf
+            )
 
   return(graph)
 }
@@ -458,39 +546,37 @@ enrichments <- run_enrichment(gene_ids, p_value, minGSSize = 10)
 ## Process 
 
 ```{r message=FALSE, warning=FALSE}
-remove_terms <- c()
-# remove_terms <- c("Histone H2AXY142 kinase activity",
-#                   "Protein serine kinase activity",
-#                   "Histone H3Y41 kinase activity",
-#                   "Platelet-derived growth factor alpha-receptor activity",
-#                   "Platelet-derived growth factor beta-receptor activity",
-#                   "Constitutive Signaling by Aberrant PI3K in Cancer",
-#                   "Positive regulation of kinase activity",
-#                   "Positive regulation of protein kinase activity",
-#                   "Positive regulation of phosphorus metabolic process",
-#                   "Positive regulation of protein kinase activity",
-#                   "Positive regulation of protein phosphorylation",
-#                   "Positive regulation of phosphate metabolic process"
-# )
+remove_terms <- c("regulation of synaptic transmission, glutamatergic",
+                  "regulation of membrane potential",
+                  "regulation of long-term neuronal synaptic plasticity",
+                  "excitatory postsynaptic potential",
+                  "transmitter-gated monoatomic ion channel activity involved in regulation of postsynaptic membrane potential",
+                  "ligand-gated monoatomic ion channel activity involved in regulation of presynaptic membrane potential",
+                  "peptidyl-prolyl cis-trans isomerase activity",
+                  "activity involved in regulation of postsynaptic membrane potential",
+              "Positive regulation of phosphate metabolic process",
+              "neurotransmitter receptor activity involved in regulation of postsynaptic membrane potential",
+              "postsynaptic neurotransmitter receptor activity",
+              "learning",
+              "glutamate receptor signaling pathway",
+              "calcium-mediated signaling",
+              "ligand-gated calcium channel activity")
 
-for (geneset in names(enrichments[1:2])){
+
+for (geneset in names(enrichments)){
  
   cat(paste0("-- Creating pictures for ", geneset, "\n"))
 
   # get the enrichment
   e <- enrichments[[geneset]]
-  # e@result$Description <- stringr::str_to_sentence(e@result$Description)
-  
-  # filter  categories
-  # categories <- filter_categories(e, p_value, n_categories, remove_terms)
 
   # creating graph
   tryCatch({
       options(warn = 2)   # transforma warning em erro
     
-      graph <- create_graph(e, remove_terms)
+      graph <- create_graph2(e, remove_terms)
   
-      save_files(graph, geneset, output_path, graph_h = 10, graph_w = 10)
+      save_files(graph, geneset, output_path, graph_h = 10, graph_w = 30)
   
     }, error = function(e) {
       message("Pulando ", geneset, ": ", conditionMessage(e))
