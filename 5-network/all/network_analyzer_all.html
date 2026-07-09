@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.1/cytoscape.min.js"></script>
+    <style>
+ 
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        
+        .container {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            min-height: 600px;
+        }      
+
+        .centrality-section {
+            width: 40%;
+            min-width: 400px;
+            max-width: 700px;
+            max-height: 700px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        
+        .centrality-results {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .centrality-results h3 {
+            margin-top: 0;
+            color: #000000;
+            font-size: 14px;
+        }
+        
+        .centrality-list {
+            list-style: none;
+            padding: 10;
+            margin: 2;
+            font-size: 14px;
+        }
+        
+        .centrality-list li {
+            padding: 10px 0;
+            border-bottom: 5px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+        }
+        
+        .centrality-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .metabolite-name {
+            color: #000000;
+            font-size: 14px;
+        }
+        
+        .centrality-value {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .input-section {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .input-section h3 {
+            margin-top: 0;
+            font-size: 14px;
+            color: #000;
+        }
+        
+        .input-group {
+            margin-bottom: 10px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .input-group input[type="text"],
+        .input-group input[type="number"] {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 12px;
+            box-sizing: border-box;
+        }
+        
+        .input-group small {
+            color: #666;
+            font-size: 11px;
+        }
+        
+        .checkbox-group {
+            margin-bottom: 10px;
+        }
+        
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            font-weight: normal;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 5px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            flex: 1;
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #45a049;
+        }
+        
+        .btn-secondary {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #da190b;
+        }
+    </style>
+</head>
+<body>
+    <h2>Graph visualizer</h2>
+
+    <div class="container">
+       
+        
+        <div class="centrality-section">
+            <!-- Input Section -->
+            <div class="input-section">
+                <h3>Metabolite Analysis for All Target Proteins</h3>              
+
+
+                
+                <div class="input-group">
+                    <label for="percentile-threshold">Percentile Threshold:</label>
+                    <input 
+                        type="number" 
+                        id="percentile-threshold" 
+                        value="95" 
+                        min="50" 
+                        max="99"
+                        style="width: 80px;"
+                    />
+                    <small>Top X% (e.g., 95 = top 5%)</small>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="runGlobalMetaboliteAnalysis()">
+                        Analyze
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults()">
+                        Clear
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Results Section -->
+            <div id="centrality-results">
+                <p style="font-size: 12px; color: #666;">Enter proteins and click Analyze to see results...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cy;
+        
+        function initializeCytoscape(data) {
+            console.log("=== Inicializando Cytoscape ===");
+            console.log("Dados recebidos:", data);
+
+            // Combina nodes e edges num array flat, formato que o Cytoscape aceita
+            const elements = [
+                ...(data.elements.nodes || []),
+                ...(data.elements.edges || [])
+            ];
+            console.log("Elementos:", elements.length);
+
+            cy = cytoscape({
+                headless: true,   // ← sem DOM, sem container
+                elements: elements
+            });
+
+            console.log("Cytoscape inicializado com", cy.nodes().length, "nós e", cy.edges().length, "arestas");
+            const uniqueTypes = [...new Set(cy.nodes().map(n => n.data('type')))];
+            console.log('Tipos encontrados:', uniqueTypes);
+        }
+
+        function clearResults() {
+            document.getElementById('centrality-results').innerHTML = '<p style="font-size: 12px; color: #666;">Enter proteins and click Analyze to see results...</p>';
+            console.log('Results cleared');
+        }
+
+        function runGlobalMetaboliteAnalysis() {
+            const percentile = parseInt(document.getElementById('percentile-threshold').value);
+
+            cy.nodes().forEach(node => {
+                ['name', 'shared_name', 'type'].forEach(field => {
+                    if (node.data(field)) {
+                        node.data(field, node.data(field).replace(/^"|"$/g, ''));
+                    }
+                });
+            });
+
+            const allMetabolites = cy.nodes().filter(n => n.data('type') === 'Metabolite');
+            console.log('Total metabolites found:', allMetabolites.length);
+
+            const data = {
+                metabolites: allMetabolites,
+                proteins: ['ALL'],
+                notFound: []
+            };
+
+            calculateMeasures(data, percentile);
+        }
+                
+
+        // === Calculate Measures Function ===
+        function calculateMeasures(metaboliteData, percentileThreshold = 95) {
+            const { metabolites: metaboliteNodes, proteins, notFound } = metaboliteData;
+
+            if (notFound.length > 0) {
+                document.getElementById('centrality-results').innerHTML = `
+                    <div class="centrality-results">
+                        <h3>Warning: Some Proteins Not Found</h3>
+                        <p style="font-size: 12px;">Could not find: ${notFound.join(', ')}</p>
+                    </div>`;
+            }
+
+            if (metaboliteNodes.length === 0) {
+                document.getElementById('centrality-results').innerHTML = `
+                    <div class="centrality-results">
+                        <h3>No Metabolites Found</h3>
+                        <p style="font-size: 12px;">No metabolite nodes were found connected to: ${proteins.join(', ')}</p>
+                    </div>`;
+                return;
+            }
+
+
+            console.log(`Calculating centrality for ${metaboliteNodes.length} metabolites...`);
+
+            const degreeCentrality = [];
+            metaboliteNodes.forEach(function (node) {
+                const degree = node.degree();
+                const name = node.data('name') ? node.data('name').replace(/"/g, '') : node.id();
+                degreeCentrality.push({ name: name, value: degree, id: node.id() });
+            });
+
+            const betweenness = cy.elements().betweennessCentrality();
+            const betweennessCentrality = [];
+            metaboliteNodes.forEach(function (node) {
+                const betweennessValue = betweenness.betweenness('#' + node.id()) || 0;
+                const name = node.data('name') ? node.data('name').replace(/"/g, '') : node.id();
+                betweennessCentrality.push({ name: name, value: betweennessValue, id: node.id() });
+            });
+
+            const closeness = cy.elements().closenessCentralityNormalized();
+            const closenessCentrality = [];
+            metaboliteNodes.forEach(function (node) {
+                const closenessValue = closeness.closeness('#' + node.id()) || 0;
+                const name = node.data('name') ? node.data('name').replace(/"/g, '') : node.id();
+                closenessCentrality.push({ name: name, value: closenessValue, id: node.id() });
+            });
+
+            const topDegree = [...degreeCentrality].sort((a, b) => b.value - a.value).slice(0, 5);
+            const topBetweenness = [...betweennessCentrality].sort((a, b) => b.value - a.value).slice(0, 5);
+            const topCloseness = [...closenessCentrality].sort((a, b) => b.value - a.value).slice(0, 5);
+
+            function percentile(arr, p) {
+                const sorted = [...arr].sort((a, b) => a - b);
+                const idx = (p / 100) * (sorted.length - 1);
+                const lower = Math.floor(idx);
+                const upper = Math.ceil(idx);
+                const weight = idx - lower;
+                return sorted[lower] + weight * (sorted[upper] - sorted[lower]);
+            }
+
+            const Q = percentileThreshold;
+            const degVals = degreeCentrality.map(d => d.value);
+            const betVals = betweennessCentrality.map(b => b.value);
+            const cloVals = closenessCentrality.map(c => c.value);
+
+            const degThr = percentile(degVals, Q);
+            const betThr = percentile(betVals, Q);
+            const cloThr = percentile(cloVals, Q);
+            
+            // Find MDD node by name
+            const mddNode = cy.nodes('[name="MDD"]');
+
+            if (mddNode.length > 0) {
+                console.log('Found MDD node');
+
+                // Use its ID for Dijkstra
+                const dijkstra = cy.elements().dijkstra('#' + mddNode.id(), () => 1, false);
+
+                // Example: distance to some metabolite node
+                // const dist = dijkstra.distanceTo('#' + metaboliteNode.id());
+            } else {
+                console.log('MDD node NOT found');
+            }
+            const dijkstra = cy.elements().dijkstra('#' + mddNode.id(), () => 1, false);
+            const filtered = metaboliteNodes.map((node, i) => {
+                const id = node.id();
+                const name = node.data('name') ? node.data('name').replace(/"/g, '') : id;
+                const deg = degreeCentrality[i].value;
+                const bet = betweennessCentrality[i].value;
+                const clo = closenessCentrality[i].value;
+                const dist = dijkstra.distanceTo('#' + id);
+
+                // alvos conectados a esse metabolito
+                const connectedTargets = node
+                    .connectedEdges()
+                    .connectedNodes()
+                    .filter(n => n.data('type') === 'Gene') // ajusta o _type_ se necessário
+                    .map(n => n.data('name'))
+                    .filter(Boolean);
+
+                return { id, name, deg, bet, clo, dist, connectedTargets, passes: deg >= degThr && bet >= betThr && clo >= cloThr };
+            });
+
+            let topPercentileMetabolites = filtered.filter(x => x.passes);
+
+            topPercentileMetabolites.sort((a, b) => {
+                if (a.dist !== b.dist) return a.dist - b.dist;
+                return b.deg - a.deg;
+            }); 
+
+            const container = document.getElementById('centrality-results');
+            const htmlQ = `
+                <div class="centrality-results" style="font-size: 0.85em; margin-top: 10px;">
+                    <h3 style="font-size: 1em;">Top ${100 - Q}% Metabolites (targeting: ${proteins.join(', ')}, sorted by distance to MDD)</h3>
+                    ${
+                        topPercentileMetabolites.length > 0
+                            ? `
+                                <ol style="margin: 0; padding-left: 10px; font-size: 12px; list-style: none;">
+                                    ${topPercentileMetabolites.map(n =>
+                                        `<li class="metabolite-name">
+                                            ${n.name} — dist: ${isFinite(n.dist) ? n.dist : '∞'}, deg: ${n.deg}, bet: ${n.bet.toFixed(2)}, clo: ${n.clo.toFixed(3)}
+                                            <br><span style="font-size: 11px; color: #666;">Targets: ${n.connectedTargets.length > 0 ? n.connectedTargets.join(', ') : 'none'}</span>
+                                        </li>`
+                                    ).join('')}
+                                </ol>
+                            `
+                            : `<p style="font-size: 12px;">No metabolites found above ${Q}th percentile thresholds.</p>`
+                    }
+                </div>
+            `;
+
+            container.insertAdjacentHTML('beforeend', htmlQ);
+        }
+                
+
+        // Load the file and initialize
+        fetch("network_all.cyjs")
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Arquivo não encontrado.');
+                }
+                return res.json();
+            })
+            .then(data => {
+                data.elements.nodes.forEach(n => {
+                    // limpa aspas
+                    if (n.data.name) n.data.name = n.data.name.replace(/"/g, '');
+                    if (n.data.shared_name) n.data.shared_name = n.data.shared_name.replace(/"/g, '');
+
+                    // preenche type vazio
+                    if (!n.data.type || n.data.type.trim() === '') {
+                        n.data.type = 'Pathway';
+                    }
+                });
+                initializeCytoscape(data);
+
+            })
+            .catch(error => {
+                console.error('Error loading data:', error);
+                document.getElementById('centrality-results').innerHTML = 
+                    '<div class="centrality-results"><h3>Error</h3><p>Could not load network data. Make sure file exists.</p></div>';
+            });
+    </script>
+</body>
+</html>
