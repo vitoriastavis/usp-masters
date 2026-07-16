@@ -518,6 +518,8 @@ save_files <- function(graph, geneset, path,
 
 ```{r message=FALSE, warning=FALSE}
 # load the data 
+inter_targets <- read.table("targets_inter.csv")$V1
+
 all_targets <- read.table("targets_both.csv")$V1
 n_gene_ids <- length(all_targets)
 

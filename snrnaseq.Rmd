@@ -676,14 +676,14 @@ save(subtype_intersection, file = "data/snrnaseq/degs_intersections_subtype.RDat
 source("get_metabolites.R")  
 
 all_targets <- read.table("data/targets.txt")$V1
-selected_genes <- c("PDE4B", "PDE4D")
+# selected_genes <- c("PDE4B", "PDE4D")
 
-targets_to_metabolites_all <- get_metabolites(all_targets)
+targets_to_metabolites_all <- get_metabolites(inter_targets, "casa" )
 targets_to_metabolites_all <- lapply(targets_to_metabolites_all, unique)
-targets_to_metabolites_all <- lapply(targets_to_metabolites_all, function(x) {
-  gsub("cid", "", x, ignore.case = TRUE)
-})
-save(targets_to_metabolites_all, file="data/network/network_wcpg/targets_metabolites_all.RData")
+# targets_to_metabolites_all <- lapply(targets_to_metabolites_all, function(x) {
+#   gsub("cid", "", x, ignore.case = TRUE)
+# })
+save(targets_to_metabolites_all, file="5-network/bsb/targets_metabolites_all.RData")
 
 targets_to_metabolites_PDE4B <- get_metabolites(selected_genes)
 targets_to_metabolites_PDE4B <- lapply(targets_to_metabolites_PDE4B, unique)

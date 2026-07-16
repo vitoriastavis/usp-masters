@@ -1,7 +1,13 @@
 library(readxl)
 
-get_metabolites <- function(analysis_targets) {
-  tp <- "/home/gbiuser/Documents/vitoria/usp-masters/2-targetprediction/data/"
+get_metabolites <- function(analysis_targets, place) {
+  if (place=="lab"){
+    tp <- "/home/gbiuser/Documents/vitoria/usp-masters/2-targetprediction/data/"
+  }
+  else{
+    tp <- "~/usp/usp-masters/2-targetprediction/data/"
+  }
+  
   load(paste0(tp, "stp/target_metabolites_stp.RData"))
   stp_mappings <- read.csv(paste0(tp, "stp/stp_mappings.csv"))
   # target_metabolites_stp <- target_metabolites_stp[names(target_metabolites_stp) %in% analysis_targets]
