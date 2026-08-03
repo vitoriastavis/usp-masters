@@ -12,7 +12,7 @@ get_metabolites <- function(analysis_targets, place) {
   stp_mappings <- read.csv(paste0(tp, "stp/stp_mappings.csv"))
   # target_metabolites_stp <- target_metabolites_stp[names(target_metabolites_stp) %in% analysis_targets]
   
-  sea_result <- read_excel(paste0(tp, "sea/sea_results.xlsx"))
+  sea_result <- read_excel(paste0(tp, "sea/sea-results.xlsx"))
   sea_mappings <- read.csv(paste0(tp, "sea/sea_mappings.csv"))
   colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
                             "Max_Tc", "Cut_Sum", "Z_Score", "Name", "Description", "Query_Smiles")

@@ -20,6 +20,7 @@ all_analyses <- list()
 # List all subdirectories inside the main directory
 subdirs <- list.dirs(twas_path, recursive = FALSE)
 subdirs <- subdirs[subdirs != "./bsb2026"]
+subdirs <- subdirs[subdirs != "./jad"]
 
 # Loop through each subdirectory
 for (subdir in subdirs) {
@@ -52,39 +53,13 @@ for (subdir in subdirs) {
     warning(paste("No CSV file found in", subdir))
   }
 }
+
+# for (i in names(all_unique)){
+#   print(i)
+#   print(length(all_unique[[i]]))
+# }
 ```
 
-
-```{r}
-# Ler cada arquivo CSV e fazer interseção com snrnaseq_intersection
-csv_folder <- "../2-targetprediction/data/intersections"
-csv_files <- list.files(csv_folder, pattern = "\\.csv$", full.names = TRUE)
-
-# Lista para guardar os resultados
-intersection_results <- list()
-for (file in csv_files) {
-  # Read raw lines first
-  raw_lines <- readLines(file, warn = FALSE)
-
-  # Nome base do arquivo para usar como key
-  key <- gsub("^intersection_|\\.csv$", "", basename(file))
-  
-  # Ler CSV
-  # print(file)
-  df <- read.csv(file, stringsAsFactors = FALSE)
-  # print(file)
-  # Garantir vetor
-  vec <- as.character(df$target)
-  
-  # Interseção com snrnaseq_intersection
-  for (twas in names(all_unique)){
-    genes_twas <- all_unique[[twas]]
-    key <- paste0(basename(file), twas)
-    inter <- intersect(vec, genes_twas)
-    intersection_results[[key]] <- inter
-  }
-}
-```
 
 ```{r}
 library(ggplot2)
@@ -172,12 +147,21 @@ all_twas <- unique(unname(unlist(all_unique)))
 
 load("../3-snrnaseq/sct/degs_sct_celltype/GSE213982_celltype_f.RData")
 load("../3-snrnaseq/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
+cell_types <- names(GSE144136_celltype_filtered)
+intersection_celltypes <- list()
+for (ct in cell_types) {
+  intersection_celltypes[[ct]] <- intersect(rownames(GSE144136_celltype_filtered[[ct]]),
+                                            rownames(GSE213982_celltype_filtered[[ct]]))
+}
+snrnaseq_intersection_celltype <- unique(unname(unlist(intersection_celltypes)))
 degs_celltype_14 <-  unique(unname(unlist(lapply(GSE144136_celltype_filtered, rownames))) )
 degs_celltype_21 <-  unique(unname(unlist(lapply(GSE213982_celltype_filtered, rownames))) )
 
 load("~/usp/usp-masters/3-snrnaseq/sct/degs_sct_novo/degs_f.RData")
 degs_GSE213982 <- degs_GSE213982_f$X
 degs_GSE144136 <- degs_GSE144136_f$X
+snrnaseq_intersection <- intersect(degs_GSE144136, degs_GSE213982)
+
 all_degs <- Reduce(union, list(degs_GSE144136, degs_GSE213982, degs_celltype_14, degs_celltype_21))
 
 targets_nofilter <- Reduce(intersect, list(
@@ -190,7 +174,7 @@ length(targets_nofilter)
 ```
 
 ```{r}
-# intersecao targets
+# add intersecao targets
 all_list <- list(toupper(all_sea), toupper(all_stp), toupper(all_ppb), toupper(all_multitask))
 targets_2plus <- names(which(table(unlist(all_list)) >= 2))
 
@@ -219,13 +203,12 @@ length(targets_filtertargetstwas)
 # write.table(targets_filtertargetstwas, "bsb2026/targets_inter.csv", row.names = FALSE, col.names = FALSE)
 ```
 
-
 ```{r}
 # intersecao targets e twas e degs -> nao deu nada
 targets_2plus <- names(which(table(unlist(all_list)) >= 2))
 twas_2plus <- unique(genes_autores_filtrado$gene)
 
-degs_2plus <- union(intersect(degs_GSE213982, degs_GSE144136), intersect(degs_celltype_14, degs_celltype_21))
+degs_2plus <- union(snrnaseq_intersection, snrnaseq_intersection_celltype)
 
 targets_filtertargetstwasdegs <- Reduce(intersect, list(
   (targets_2plus),
@@ -238,17 +221,36 @@ length(targets_filtertargetstwasdegs)
 
 
 ```{r}
-# intersecao targets e twas e degs
+# intersecao targets e degs
+targets_2plus <- names(which(table(unlist(all_list)) >= 2))
+twas_2plus <- unique(genes_autores_filtrado$gene)
 
-# 28 (16)
+targets_filtertargetsdegs <- Reduce(intersect, list(
+  (targets_2plus),
+  (degs_2plus),
+  (all_twas)
+))
+
+length(targets_filtertargetsdegs)
+
+# write.table(targets_filtertargetstwas, "bsb2026/targets_inter.csv", row.names = FALSE, col.names = FALSE)
+```
+
+
+
+```{r}
+# intersecao de cada com targets e depois soma
+
+# 28
 twas_targets <- intersect(targets_2plus, twas_2plus)
 
-# 23 (19)
+# 19
 degs_targets <- intersect(degs_2plus, targets_2plus)
 
-# 51
+# 47
 final <- union(twas_targets, degs_targets)
-# write.table(final, "bsb2026/targets_both.csv", row.names = FALSE, col.names = FALSE)
+length(final)
+write.table(final, "jad/targets_both.csv", row.names = FALSE, col.names = FALSE)
 ```
 
 ```{r}
@@ -318,11 +320,11 @@ multi_analysis_genes <- gene_analyses_df %>%
 # rownames(degs_GSE144136_f) <- degs_GSE144136_f$X
 # all_targets <- read.table("data/targets.txt")$V1
 
-all_targets <- c()
+all_targets <- c("PPIA")
 
-for (gene in targets_filtertargetstwas){
-  cat (gene %in% all_degs & gene %in% all_twas)
-  cat("\t",gene, "\n")
+for (gene in all_targets){
+  # cat (gene %in% all_degs & gene %in% all_twas)
+  # cat("\t",gene, "\n")
   if (gene %in% rownames(GSE144136_celltype_filtered$InN) & gene %in% rownames(GSE213982_celltype_filtered$InN)){
     cat("inn ",GSE144136_celltype_filtered$InN[gene, "avg_log2FC"], '\n')
   }

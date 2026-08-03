@@ -189,8 +189,8 @@ gutmgene_h$Metabolite_CID <- str_match(
 )[, 2]
 
 # Save data 
-save(gutmgene_m, file = "data/gutmgenem_processed.RData")
-save(gutmgene_h, file = "data/gutmgeneh_processed.RData")
+# save(gutmgene_m, file = "data/gutmgenem_processed.RData")
+# save(gutmgene_h, file = "data/gutmgeneh_processed.RData")
 ```
 
 ## Build plots of raw data
@@ -198,81 +198,63 @@ save(gutmgene_h, file = "data/gutmgeneh_processed.RData")
 ### Plot 1 - Distribution of genera among metabolites
 
 ```{r}
-
-gutmgene1$Genus <- sub(" .*", "", gutmgene1$Gut_Microbe_Name)
-gutmgene1$Genus <- gsub("\\[|\\]", "", gutmgene1$Genus)
-gutmgene1$Genus <- gsub("\\.|\\]", "", gutmgene1$Genus)
+gutmgene_m$Genus <- sub(" .*", "", gutmgene_m$Gut_Microbe_Name)
+gutmgene_m$Genus <- gsub("\\[|\\]", "", gutmgene_m$Genus)
+gutmgene_m$Genus <- gsub("\\.|\\]", "", gutmgene_m$Genus)
 
 # Count occurrences of each genus
-genus_counts <- table(gutmgene1$Genus)
+genus_counts <- table(gutmgene_m$Genus)
 
 # Filter to only include genera with frequency > 5
 genera_to_keep <- names(genus_counts[genus_counts >= 5])
-gutmgene_filtered <- gutmgene1[gutmgene1$Genus %in% genera_to_keep, ]
+gutmgene_filtered <- gutmgene_m[gutmgene_m$Genus %in% genera_to_keep, ]
 
 # Order from most frequent to less frequent
 gutmgene_filtered_count <- gutmgene_filtered %>%
   count(Genus) %>%
   mutate(Genus = reorder(Genus, -n))
 
-esquisse::esquisser(gutmgene_filtered_count)
+gutmgene_filtered_count <- gutmgene_filtered_count[
+  gutmgene_filtered_count$Genus != "uncultured",
+]
+gutmgene_filtered_count <- gutmgene_filtered_count[
+  gutmgene_filtered_count$Genus != "unclassified",
+]
+gutmgene_filtered_count <- gutmgene_filtered_count[
+  gutmgene_filtered_count$Genus != "bacterium",
+]
 
-p_generos <- ggplot(gutmgene_filtered_count) +
+p_genus <- ggplot(gutmgene_filtered_count) +
   aes(x = Genus, y = n) +
   geom_col(fill = "#6FAF9C") +
-  labs(x = "Gênero", y = "Número de Metabólitos Produzidos") +
+  scale_y_continuous(
+    breaks = seq(0, max(gutmgene_filtered_count$n), by = 10),
+    limits = c(0, max(gutmgene_filtered_count$n))
+  ) +
+  labs(x = "Genera", y = "Number of produced metabolites") +
   theme_classic() +
   theme(
-    axis.title.y = element_text(size = 15L),
-    axis.title.x = element_text(size = 14L),
-    axis.text.y = element_text(size = 14L),
-    axis.text.x = element_text(size = 14L,
+    axis.title.y = element_text(size = 20L),
+    axis.title.x = element_text(size = 20L),
+    axis.text.y = element_text(size = 20L),
+    axis.text.x = element_text(size = 20L,
     angle = 55L,
     hjust = 1L,
     vjust = 1L,
-    face = "italic")
+    face = "italic"),
+    plot.margin = margin(
+    t = 10,
+    r = 10,
+    b = 10,
+    l = 15  
+    )
   )
-
+# Save
 ggsave(
-  "/home/gbiuser/Documents/vitoria/usp-masters/data/target_prediction/plot_generos2.pdf",
-  plot = p_generos,
-  width = 10
+  "plots/Figure_1.tiff",
+  plot = p_genus,
+  width = 15
 )
-
-title_portuguese <- "Distribuição dos microorganismos da microbiota intestinal"
-x_axis_portuguese <- "Microorganismo (gênero)"
-y_axis_portuguese <- "Número de metabólitos produzidos"
-
-# Create the plot
-microbe_distribution <- ggplot(gutmgene_filtered_count,
-                               aes(x = Genus, y = n)) +
-  geom_bar(stat = "identity", fill = "gray30", width = 0.5) +
-  theme_minimal() + 
-  ggtitle(title_portuguese) +  
-  theme(
-    plot.title = element_text(size = 18, hjust = 0.5),  
-    axis.title.y = element_text(size = 16),
-    axis.title.x = element_text(size = 16),
-    axis.text.y = element_text(size = 16),
-    axis.text.x = element_text(size = 16, angle = 60, hjust = 1),
-    panel.grid = element_blank(),  # Remove grid lines
-    axis.line.x = element_line(color = "black", linewidth = 0.5),  # Only X-axis line
-    axis.line.y = element_line(color = "black", linewidth = 0.5),  # Only Y-axis line
-    axis.ticks = element_line(color = "black", linewidth = 1)      # Ensure ticks are visible
-  ) +
-  labs(x = x_axis_portuguese, 
-       y = y_axis_portuguese) +
-  scale_y_continuous(breaks = seq(0,max(gutmgene_filtered_count$n),
-                                  by = 5))
-# Create a directory for plots if it doesn't exist
-if (!dir.exists("plots")) {
-  dir.create("plots")
-}
-
-# Save plot as PNG
-png("plots/gutmgene/microbe_distribution.png", width = 800, height = 500)
-print(microbe_distribution)
-dev.off()
 ```
 
 ## Clean the data
@@ -307,11 +289,11 @@ cat("N metabolites without duplicates:", length(gutmgene_nodup$Metabolite_CID), 
 gutmgene_na_nodup <- gutmgene_na %>%
   distinct(Metabolite_Name, .keep_all=TRUE)
 
-# Save processed dataframe
-save(gutmgene_bind, file = "data/gutmgene_bind.RData")  # No duplicated metabolites
-save(gutmgene_nodup, file = "data/gutmgene_nodup.RData")  # No duplicated metabolites
-save(gutmgene_na, file = "data/gutmgene_na.RData")        # Only the NAs
-save(gutmgene_na_nodup, file = "data/gutmgene_na_nodup.RData")        # Only the NAs no dup
+# # Save processed dataframe
+# save(gutmgene_bind, file = "data/gutmgene_bind.RData")  # No duplicated metabolites
+# save(gutmgene_nodup, file = "data/gutmgene_nodup.RData")  # No duplicated metabolites
+# save(gutmgene_na, file = "data/gutmgene_na.RData")        # Only the NAs
+# save(gutmgene_na_nodup, file = "data/gutmgene_na_nodup.RData")        # Only the NAs no dup
 ```
 
 ## Get SMILES
@@ -395,10 +377,14 @@ Then go to get_smiles.ipynb to get more smiles.
 
 ```{R}
 # Load gutMGene
-load("~/Documents/vitoria/usp-masters/1-gutmgene/data/gutmgene_nodup.RData")
+load("data/gutmgene_nodup.RData")
+# 253
 df_name_cid <- data.frame(name=gutmgene_nodup$Metabolite_Name,
                          CID=gutmgene_nodup$Metabolite_CID,
                          stringsAsFactors=FALSE)
+
+write.csv(df_name_cid, "data/name_cid.csv", row.names = FALSE)
+
 
 # Gather CID or no CID for all smiles and filter from the original gutMGene
 smiles_all <- readLines("data/smiles_all")
@@ -412,25 +398,21 @@ data_s <- lapply(smiles_all, function(line) {
 df_smiles_all <- as.data.frame(do.call(rbind, data_s), stringsAsFactors = FALSE)
 
 
-# IDs that are in the SMILESS but are not in the original gutMGene (SMILES found in other ways)
-cids_missing <- df_smiles_all[!(df_smiles_all$CID %in% df_name_cid$CID), "CID"]
+# # IDs that are in the SMILESS but are not in the original gutMGene (SMILES found in other ways)
+# cids_missing <- df_smiles_all[!(df_smiles_all$CID %in% df_name_cid$CID), "CID"]
+# 
+# load("data/names_nocid.RData")
+# df_names_nocid[df_names_nocid$CID == "no1",]$CID <- "10661294"
+# df_names_nocid[df_names_nocid$CID == "no2",]$CID <- "71352575"
+# df_names_nocid[df_names_nocid$CID == "no10",]$CID <- "10802382"
+# df_names_nocid[df_names_nocid$CID == "no16",]$CID <- "153520426"
+# df_names_nocid[df_names_nocid$CID == "no23",]$CID <- "9795113"
+# df_names_nocid[df_names_nocid$CID == "no11",]$CID <- "5282155"
+# df_names_nocid[df_names_nocid$CID == "no9",]$CID <- "384870"
+# df_names_nocid[df_names_nocid$CID == "no18",]$CID <- "129858541"
+# df_names_nocid[df_names_nocid$CID == "no14",]$CID <- "45093080"
+# df_names_nocid[df_names_nocid$CID == "no22",]$CID <- "5327011"
 
-load("~/Documents/vitoria/usp-masters/1-gutmgene/data/names_nocid.RData")
-df_names_nocid[df_names_nocid$CID == "no1",]$CID <- "10661294"
-df_names_nocid[df_names_nocid$CID == "no2",]$CID <- "71352575"
-df_names_nocid[df_names_nocid$CID == "no10",]$CID <- "10802382"
-df_names_nocid[df_names_nocid$CID == "no16",]$CID <- "153520426"
-df_names_nocid[df_names_nocid$CID == "no23",]$CID <- "9795113"
-df_names_nocid[df_names_nocid$CID == "no11",]$CID <- "5282155"
-df_names_nocid[df_names_nocid$CID == "no9",]$CID <- "384870"
-df_names_nocid[df_names_nocid$CID == "no18",]$CID <- "129858541"
-df_names_nocid[df_names_nocid$CID == "no14",]$CID <- "45093080"
-df_names_nocid[df_names_nocid$CID == "no22",]$CID <- "5327011"
-
-# Concatenate name and CIDs from both
-df_all_name_cid <- rbind(df_name_cid, df_names_nocid)
-save(df_all_name_cid, file = "data/all_name_cid.RData") 
-
-write.csv(df_all_name_cid, "data/all_name_cid.csv", row.names = FALSE)
+# write.csv(df_all_name_cid, "data/all_name_cid.csv", row.names = FALSE)
 ```
 

@@ -23,53 +23,25 @@ print(dados_deg)
 
 dados_long <- dados_deg %>%
   pivot_longer(
-    cols = -`Análise`,
+    cols = -`Analysis`,
     names_to = "DEGs",
-    values_to = "Número_DEGs"
+    values_to = "Number of DEGs"
   )
-
-# Abrir no esquisse para criar plots interativos
-# esquisse::esquisser(dados_long)
-
-p <- ggplot(dados_long) +
-  aes(x = Análise, y = Número_DEGs, fill = DEGs) +
-  geom_col(position = "dodge") +
-  scale_fill_manual(
-    values = c(DEGs_comum = "#A665B5",
-               DEGs_GSE144136 = "#367B85",
-               DEGs_GSE213982 = "#87CEE0")
-  ) +
-  labs(
-    title = "Tabela 1: DEGs encontrados nas análises de expressão diferencial para tipos celulares e pseudo-bulk",
-    subtitle = " Valores para normalização SCTransform,
-    p_adj <= 0.05,
-    logFC >= 0.6",
-    fill = NULL
-  ) +
-  theme_classic() +
-  theme(
-    legend.position = "top",
-    plot.title = element_text(size = 14L),
-    plot.subtitle = element_text(size = 12L),
-    axis.title.y = element_text(size = 12L),
-    axis.title.x = element_text(size = 12L),
-    axis.text.y = element_text(size = 12L),
-    axis.text.x = element_text(size = 12L),
-    legend.text = element_text(size = 12L),
-    legend.title = element_text(size = 12L)
-  )
-
 
 library(ggplot2)
 
 pp <- ggplot(dados_long) +
- aes(x = Análise, y = Número_DEGs, fill = DEGs) +
+ aes(x = Analysis, y = `Number of DEGs`, fill = DEGs) +
  geom_col(position = "dodge") +
- scale_fill_manual(values = c(Comum = "#A665B5", GSE144136 = "#6FAF9C", GSE213982 = "#87CEE0")) +
+ scale_fill_manual(values = c(Shared = "#87C909", GSE144136 = "#E69F00", GSE213982 = "#0072B2")) +
  theme_classic() +
- theme(legend.position = "top", axis.title.y = element_text(size = 14L), axis.title.x = element_text(size = 14L), 
- axis.text.y = element_text(size = 14L), axis.text.x = element_text(size = 14L), legend.text = element_text(size = 14L))
-ggsave("degs.png")
+ theme(legend.position = "top", axis.title.y = element_text(size = 14L),
+       axis.title.x = element_text(size = 14L),
+       axis.text.y = element_text(size = 14L),
+       axis.text.x = element_text(size = 14L),
+       legend.text = element_text(size = 14L),
+      legend.title = element_blank())
+ggsave("plots/Figure_2.tiff", width = 10)
 
 
 load("intersection_all_degs.RData")
