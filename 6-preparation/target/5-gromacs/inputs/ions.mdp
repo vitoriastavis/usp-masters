@@ -1,7 +1,7 @@
 ; ions.mdp - parameter file for generating ions.tpr (energy minimization)
 
 integrator      = steep         ; simple steepest descent
-emtol           = 1000.0        ; stop if Fmax < 500 kJ/mol/nm
+emtol           = 500.0        ; stop if Fmax < 500 kJ/mol/nm
 emstep          = 0.01
 nsteps          = 5000          
 
