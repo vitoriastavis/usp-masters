@@ -5,7 +5,7 @@ from plip.structure.preparation import PDBComplex
 # Protein names (longest first to avoid partial matches)
 proteins = [
     "PDE4B_catalytic",
-    "PDE4B_monomer_md",
+    "PDE4B_monomer",
     "PDE4B_dimer",
     "PDE4D_catalytic",
 ]
