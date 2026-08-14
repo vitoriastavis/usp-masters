@@ -1,9 +1,11 @@
 #!/bin/bash
 
-mkdir -p pdbs
+for f in complexes/*.pdbqt; do
+    obabel "$f" -O "pdbs/$(basename "${f%.pdbqt}.pdb")" &
 
-find complexes -name "*.pdbqt" -print0 |
-    xargs -0 -P 8 -I {} bash -c '
-        f="$1"
-        obabel "$f" -O "pdbs/$(basename "${f%.pdbqt}.pdb")"
-    ' _ {}
+    while [ "$(jobs -rp | wc -l)" -ge 8 ]; do
+        wait -n
+    done
+done
+
+wait

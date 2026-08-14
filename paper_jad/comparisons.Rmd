@@ -1,0 +1,60 @@
+---
+title: "comparisons"
+output: html_document
+---
+
+```{R}
+twas_path <- "../4-twas"
+
+all_twas  <- list()
+
+# List all subdirectories inside the main directory
+subdirs <- list.dirs(twas_path, recursive = FALSE)
+subdirs <- subdirs[subdirs != "../4-twas/bsb2026"]
+subdirs <- subdirs[subdirs != "../4-twas/jad"]
+
+# Loop through each subdirectory
+for (subdir in subdirs) {
+
+  analyses_genes <- list()
+  unique_genes <- c()
+  
+  # Find the CSV file in the subdirectory
+  csv_files <- list.files(subdir, pattern = "\\.csv$", full.names = TRUE)
+  
+  # If there's at least one CSV file, read it
+  if (length(csv_files) > 0) {
+    csv_path <- csv_files[1]  # Assuming there's only one CSV per folder
+    
+    # Extract the file name without extension
+    file_name <- tools::file_path_sans_ext(basename(csv_path))
+    
+    data <- read.csv(csv_path, header = TRUE)
+    
+    for (col in colnames(data)){
+      genes <- unique(data[[col]])
+      analyses_genes[[col]] <- genes
+      unique_genes <- unique(c(unique_genes, genes))
+    }
+    
+    all_twas[[file_name]] <- unique_genes
+    
+  } else {
+    warning(paste("No CSV file found in", subdir))
+  }
+}
+```
+
+```{R}
+all_targets <- read.csv("all_targets.csv", header = FALSE)$V1
+
+for (target in all_targets){
+  for (twas_paper in names(all_twas)){
+    twas_genes <- all_twas[[twas_paper]]
+    if (target %in% twas_genes){
+      print(paste0(target, " in ", twas_paper))
+    }  
+  }
+  cat("\n")
+}
+```
