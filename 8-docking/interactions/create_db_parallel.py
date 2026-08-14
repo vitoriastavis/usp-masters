@@ -5,9 +5,9 @@ from plip.structure.preparation import PDBComplex
 
 # Protein names (longest first to avoid partial matches)
 proteins = [
-    "PDE4B_catalytic",
-    "PDE4B_monomer",
-    "PDE4B_dimer",
+    # "PDE4B_catalytic",
+    # "PDE4B_monomer",
+    # "PDE4B_dimer",
     "PDE4D_catalytic",
     "PDE4D_monomer",
     "PDE4D_dimer"
@@ -141,7 +141,7 @@ def main():
         df["residue_chain"].astype(str)
     )
 
-    df.to_csv("protein_interactions.csv", index=False)
+    df.to_csv("protein_interactions_d.csv", index=False)
 
     with open(log_file, "a") as log:
         log.write(f"\nDone. {len(df)} interactions written to protein_interactions.csv\n")
