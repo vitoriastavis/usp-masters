@@ -3,7 +3,7 @@ from pathlib import Path
 outdir = Path("complexes")
 outdir.mkdir(exist_ok=True)
 
-for receptor in Path(".").glob("*.pdbqt"):
+for receptor in Path(".").glob("PDE4B_dimer*.pdbqt"):
 
     target = receptor.stem
     target_dir = Path("results_docking") / target
