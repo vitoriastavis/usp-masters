@@ -37,10 +37,6 @@ for receptor in Path(".").glob("PDE4B_dimer*.pdbqt"):
             with open(receptor) as f:
                 for line in f:
                     if line.startswith(("ATOM", "HETATM")):
-                        resnum = int(line[22:26])
-                        new_resnum = resnum - 165
-
-                        line = f"{line[:22]}{new_resnum:4d}{line[26:]}"
                         out.write(line)
             out.write("TER\n")
 
