@@ -1,0 +1,1 @@
+"${SCHRODINGER}/utilities/prepwizard" proteinprep_12.maegz proteinprep_12-out.maegz -noepik -antibody_cdr_scheme Kabat -tcr_cdr_scheme IMGT -noprotassign -norefine -keepfarwat -JOBNAME proteinprep_12 -HOST localhost:4

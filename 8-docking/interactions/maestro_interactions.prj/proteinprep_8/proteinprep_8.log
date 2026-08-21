@@ -1,0 +1,885 @@
+Command: /home/gbiuser/Downloads/maestro/mmshare-v7.5/bin/Linux-x86_64/../../python/scripts/prepwizard_driver.py proteinprep_8.maegz proteinprep_8-out.maegz -noepik -antibody_cdr_scheme Kabat -tcr_cdr_scheme IMGT -use_picked_epik_state -propka_pH 2.0 -f OPLS_2005 -rmsd 0.3 -watdist 5.0
+Number of input structures: 1
+Preparing structure: 2L7B
+Pre-treating metals...
+Done treating metals
+Assigning bond orders...
+  Using CCD: True
+  Processing all residues
+No CCD entry found or failed to read entry for HIE 
+  No bond orders were changed
+Fixing common structure mistakes...
+  No mistakes were found
+Adding missing inter-residues bonds...
+Removing and re-adding hydrogens...
+Treating metals...
+Creating di-sulfur bonds...
+Adding glycosylation bonds...
+Converting Selenomethionines...
+Idealizing hydrogen temperature factors...
+Pre-processing has completed
+  will sample waters
+  will include embedded Epik states
+  Using PROPKA with pH: 2.0
+  RUNNING: /home/gbiuser/Downloads/maestro/utilities/protassign /home/gbiuser/.schrodinger/tmp/gbiuser/jobs/024359ed-9ca5-11f1-ba54-34e6d7fcd94a/proteinprep_8-001/Optimize_H-bond_Assignments.maegz Optimize_H-bond_Assignments-out.maegz -NOJOBID -include_epik_states -pHt 2.0 -propka_pH 2.0
+Running PROPKA to get pKas
+
+Clustering hydrogen bond network ...
+Found 81 clusters
+
+Cluster 1 (8):
+    A:GLN 4
+    A:GLN 246
+    A:GLN 249
+    A:GLN 253
+    A:LYS 143
+    A:LYS 146
+    A:GLU 281
+    A:GLU 287
+Cluster 2 (1):
+    A:GLN 16
+Cluster 3 (7):
+    A:GLN 17
+    A:GLN 275
+    A:GLN 279
+    A:LYS 157
+    A:ASP 153
+    A:ASP 154
+    A:ASP 271
+Cluster 4 (1):
+    A:GLN 21
+Cluster 5 (1):
+    A:GLN 24
+Cluster 6 (4):
+    A:GLN 41
+    A:LYS 1
+    A:THR 225: HG1
+    A:ASP 227
+Cluster 7 (5):
+    A:GLN 46
+    A:GLN 48
+    A:SER 44: HG 
+    A:GLU 45
+    A:GLU 49
+Cluster 8 (2):
+    A:GLN 55
+    A:GLU 50
+Cluster 9 (1):
+    A:GLN 58
+Cluster 10 (1):
+    A:GLN 81
+Cluster 11 (4):
+    A:GLN 98
+    A:LYS 95
+    A:GLU 179
+    A:GLU 255
+Cluster 12 (1):
+    A:GLN 101
+Cluster 13 (1):
+    A:GLN 117
+Cluster 14 (2):
+    A:GLN 123
+    A:GLN 201
+Cluster 15 (4):
+    A:GLN 128
+    A:SER 129: HG 
+    A:GLU 132
+    A:GLU 234
+Cluster 16 (2):
+    A:GLN 156
+    A:SER 22: HG 
+Cluster 17 (1):
+    A:GLN 163
+Cluster 18 (1):
+    A:GLN 187
+Cluster 19 (1):
+    A:GLN 204
+Cluster 20 (2):
+    A:GLN 208
+    A:SER 53: HG 
+Cluster 21 (2):
+    A:GLN 235
+    A:GLU 238
+Cluster 22 (1):
+    A:GLN 248
+Cluster 23 (1):
+    A:GLN 258
+Cluster 24 (1):
+    A:GLN 273
+Cluster 25 (1):
+    A:GLN 284
+Cluster 26 (2):
+    A:ASN 298
+    A:HIS 299
+Cluster 27 (1):
+    A:LYS 69
+Cluster 28 (1):
+    A:LYS 72
+Cluster 29 (2):
+    A:LYS 75
+    A:GLU 79
+Cluster 30 (3):
+    A:LYS 233
+    A:GLU 231
+    A:ASP 297
+Cluster 31 (4):
+    A:LYS 242
+    A:ASP 107
+    A:ASP 110
+    A:GLU 245
+Cluster 32 (5):
+    A:LYS 262
+    A:THR 83: HG1
+    A:THR 89: HG1
+    A:GLU 88
+    A:GLU 266
+Cluster 33 (1):
+    A:LYS 282
+Cluster 34 (1):
+    A:HIS 140
+Cluster 35 (1):
+    A:THR 8: HG1
+Cluster 36 (1):
+    A:THR 18: HG1
+Cluster 37 (2):
+    A:TYR 36: HH 
+    A:GLU 59
+Cluster 38 (1):
+    A:THR 42: HG1
+Cluster 39 (2):
+    A:SER 54: HG 
+    A:THR 57: HG1
+Cluster 40 (1):
+    A:THR 67: HG1
+Cluster 41 (1):
+    A:TYR 74: HH 
+Cluster 42 (1):
+    A:SER 76: HG 
+Cluster 43 (1):
+    A:SER 94: HG 
+Cluster 44 (1):
+    A:CYS 112: HG 
+Cluster 45 (1):
+    A:TYR 118: HH 
+Cluster 46 (1):
+    A:THR 130: HG1
+Cluster 47 (1):
+    A:SER 139: HG 
+Cluster 48 (3):
+    A:TYR 162: HH 
+    A:SER 263: HG 
+    A:GLU 96
+Cluster 49 (1):
+    A:SER 175: HG 
+Cluster 50 (1):
+    A:THR 194: HG1
+Cluster 51 (1):
+    A:SER 197: HG 
+Cluster 52 (2):
+    A:SER 223: HG 
+    A:GLU 220
+Cluster 53 (1):
+    A:THR 289: HG1
+Cluster 54 (1):
+    A:SER 290: HG 
+Cluster 55 (1):
+    A:SER 296: HG 
+Cluster 56 (1):
+    A:GLU 3
+Cluster 57 (1):
+    A:GLU 7
+Cluster 58 (1):
+    A:GLU 9
+Cluster 59 (1):
+    A:GLU 11
+Cluster 60 (1):
+    A:GLU 13
+Cluster 61 (2):
+    A:GLU 19
+    A:GLU 27
+Cluster 62 (1):
+    A:ASP 35
+Cluster 63 (1):
+    A:ASP 65
+Cluster 64 (1):
+    A:GLU 66
+Cluster 65 (1):
+    A:GLU 70
+Cluster 66 (1):
+    A:GLU 77
+Cluster 67 (1):
+    A:GLU 80
+Cluster 68 (1):
+    A:GLU 87
+Cluster 69 (1):
+    A:GLU 109
+Cluster 70 (1):
+    A:GLU 121
+Cluster 71 (1):
+    A:GLU 131
+Cluster 72 (1):
+    A:ASP 151
+Cluster 73 (1):
+    A:GLU 168
+Cluster 74 (1):
+    A:GLU 171
+Cluster 75 (1):
+    A:GLU 186
+Cluster 76 (1):
+    A:GLU 205
+Cluster 77 (1):
+    A:GLU 212
+Cluster 78 (1):
+    A:GLU 219
+Cluster 79 (1):
+    A:ASP 230
+Cluster 80 (1):
+    A:GLU 244
+Cluster 81 (1):
+    A:GLU 270
+
+Optimizing cluster #1 ...
+Lowest energy: -12.2319
+Assignments:
+  A:GLN 4         -> Flip
+  A:GLN 246       -> Flip
+  A:GLN 249       -> No Flip
+  A:GLN 253       -> No Flip
+  A:LYS 143       -> Orientation 4/4 (pKa = 4.62)
+  A:LYS 146       -> Orientation 3/4 (pKa = 8.63)
+  A:GLU 281       -> Charged (pKa = 4.27)
+  A:GLU 287       -> Charged (pKa = 2.00)
+
+Optimizing cluster #2 ...
+Lowest energy: 0.0000
+Assignments:
+  A:GLN 16        -> No Flip
+
+Optimizing cluster #3 ...
+Lowest energy: 7.1852
+Assignments:
+  A:GLN 17        -> No Flip
+  A:GLN 275       -> No Flip
+  A:GLN 279       -> No Flip
+  A:LYS 157       -> Orientation 4/4 (pKa = 7.68)
+  A:ASP 153       -> Neutral 1 (pKa = 6.86)
+  A:ASP 154       -> Charged (pKa = 0.82)
+  A:ASP 271       -> Charged (pKa = 2.26)
+
+Optimizing cluster #4 ...
+Lowest energy: -0.4439
+Assignments:
+  A:GLN 21        -> Flip
+
+Optimizing cluster #5 ...
+Lowest energy: -0.1194
+Assignments:
+  A:GLN 24        -> No Flip
+
+Optimizing cluster #6 ...
+Lowest energy: -7.4822
+Assignments:
+  A:GLN 41        -> No Flip
+  A:LYS 1         -> Orientation 1/1 (pKa = 8.02)
+  A:THR 225: HG1  -> Stagger 3 11/11
+  A:ASP 227       -> Charged (pKa = 3.51)
+
+Optimizing cluster #7 ...
+Lowest energy: -6.2856
+Assignments:
+  A:GLN 46        -> No Flip
+  A:GLN 48        -> No Flip
+  A:SER 44: HG    -> Orientation 2/5
+  A:GLU 45        -> Neutral 1 (pKa = 5.11)
+  A:GLU 49        -> Charged (pKa = 4.03)
+
+Optimizing cluster #8 ...
+Lowest energy: -2.5638
+Assignments:
+  A:GLN 55        -> Flip
+  A:GLU 50        -> Charged (pKa = 6.67)
+
+Optimizing cluster #9 ...
+Lowest energy: -0.7879
+Assignments:
+  A:GLN 58        -> No Flip
+
+Optimizing cluster #10 ...
+Lowest energy: -0.5075
+Assignments:
+  A:GLN 81        -> No Flip
+
+Optimizing cluster #11 ...
+Lowest energy: 99.5234
+Assignments:
+  A:GLN 98        -> No Flip
+  A:LYS 95        -> Orientation 2/2 (pKa = 11.08)
+  A:GLU 179       -> Neutral 1 (pKa = 4.79)
+  A:GLU 255       -> Charged (pKa = 3.89)
+
+Optimizing cluster #12 ...
+Lowest energy: -0.4775
+Assignments:
+  A:GLN 101       -> Flip
+
+Optimizing cluster #13 ...
+Lowest energy: -0.2897
+Assignments:
+  A:GLN 117       -> No Flip
+
+Optimizing cluster #14 ...
+Lowest energy: -1.3969
+Assignments:
+  A:GLN 123       -> No Flip
+  A:GLN 201       -> No Flip
+
+Optimizing cluster #15 ...
+Lowest energy: -2.4572
+Assignments:
+  A:GLN 128       -> Flip
+  A:SER 129: HG   -> Stagger 2 3/4
+  A:GLU 132       -> Neutral 1 (pKa = 4.51)
+  A:GLU 234       -> Neutral 1 (pKa = 5.81)
+
+Optimizing cluster #16 ...
+Lowest energy: -2.4009
+Assignments:
+  A:GLN 156       -> Flip
+  A:SER 22: HG    -> Orientation 1/6
+
+Optimizing cluster #17 ...
+Lowest energy: -0.5189
+Assignments:
+  A:GLN 163       -> Flip
+
+Optimizing cluster #18 ...
+Lowest energy: -0.2929
+Assignments:
+  A:GLN 187       -> Flip
+
+Optimizing cluster #19 ...
+Lowest energy: -0.2728
+Assignments:
+  A:GLN 204       -> No Flip
+
+Optimizing cluster #20 ...
+Lowest energy: -0.4955
+Assignments:
+  A:GLN 208       -> No Flip
+  A:SER 53: HG    -> Stagger 2 7/8
+
+Optimizing cluster #21 ...
+Lowest energy: 98.9545
+Assignments:
+  A:GLN 235       -> No Flip
+  A:GLU 238       -> Neutral 2 (pKa = 6.67)
+
+Optimizing cluster #22 ...
+Lowest energy: 0.0000
+Assignments:
+  A:GLN 248       -> No Flip
+
+Optimizing cluster #23 ...
+Lowest energy: -0.5070
+Assignments:
+  A:GLN 258       -> No Flip
+
+Optimizing cluster #24 ...
+Lowest energy: 0.0000
+Assignments:
+  A:GLN 273       -> No Flip
+
+Optimizing cluster #25 ...
+Lowest energy: -0.0329
+Assignments:
+  A:GLN 284       -> No Flip
+
+Optimizing cluster #26 ...
+Lowest energy: -0.6739
+Assignments:
+  A:ASN 298       -> No Flip
+  A:HIS 299       -> Flip HIP (pKa = 6.39)
+
+Optimizing cluster #27 ...
+Lowest energy: 0.0000
+Assignments:
+  A:LYS 69        -> Orientation 1/1 (pKa = 10.58)
+
+Optimizing cluster #28 ...
+Lowest energy: 0.0000
+Assignments:
+  A:LYS 72        -> Stagger (pKa = 10.40)
+
+Optimizing cluster #29 ...
+Lowest energy: -0.4237
+Assignments:
+  A:LYS 75        -> Stagger (pKa = 8.56)
+  A:GLU 79        -> Neutral 2 (pKa = 6.06)
+
+Optimizing cluster #30 ...
+Lowest energy: -2.8581
+Assignments:
+  A:LYS 233       -> Orientation 3/3 (pKa = 11.05)
+  A:GLU 231       -> Charged (pKa = 4.38)
+  A:ASP 297       -> Charged (pKa = 2.81)
+
+Optimizing cluster #31 ...
+Lowest energy: 0.4836
+Assignments:
+  A:LYS 242       -> Stagger (pKa = 10.25)
+  A:ASP 107       -> Charged (pKa = 5.76)
+  A:ASP 110       -> Neutral 1 (pKa = 4.87)
+  A:GLU 245       -> Charged (pKa = 1.81)
+
+Optimizing cluster #32 ...
+Lowest energy: -6.4577
+Assignments:
+  A:LYS 262       -> Orientation 1/1 (pKa = 11.38)
+  A:THR 83: HG1   -> Orientation 1/9
+  A:THR 89: HG1   -> Orientation 2/8
+  A:GLU 88        -> Charged (pKa = 3.57)
+  A:GLU 266       -> Charged (pKa = 4.54)
+
+Optimizing cluster #33 ...
+Lowest energy: 0.0000
+Assignments:
+  A:LYS 282       -> Stagger (pKa = 10.04)
+
+Optimizing cluster #34 ...
+Lowest energy: -0.9421
+Assignments:
+  A:HIS 140       -> Flip HIE (pKa = 0.44)
+
+Optimizing cluster #35 ...
+Lowest energy: -0.6795
+Assignments:
+  A:THR 8: HG1    -> Stagger 3 4/4
+
+Optimizing cluster #36 ...
+Lowest energy: -1.9882
+Assignments:
+  A:THR 18: HG1   -> Orientation 1/8
+
+Optimizing cluster #37 ...
+Lowest energy: -0.7004
+Assignments:
+  A:TYR 36: HH    -> Default 2 3/3 (pKa = 11.13)
+  A:GLU 59        -> Neutral 2 (pKa = 5.26)
+
+Optimizing cluster #38 ...
+Lowest energy: -1.4225
+Assignments:
+  A:THR 42: HG1   -> Orientation 1/5
+
+Optimizing cluster #39 ...
+Lowest energy: -1.8036
+Assignments:
+  A:SER 54: HG    -> Orientation 2/6
+  A:THR 57: HG1   -> Orientation 1/8
+
+Optimizing cluster #40 ...
+Lowest energy: -0.6592
+Assignments:
+  A:THR 67: HG1   -> Stagger 3 4/4
+
+Optimizing cluster #41 ...
+Lowest energy: 0.0000
+Assignments:
+  A:TYR 74: HH    -> Orientation 1/2 (pKa = 10.55)
+
+Optimizing cluster #42 ...
+Lowest energy: -1.3410
+Assignments:
+  A:SER 76: HG    -> Default 4/6
+
+Optimizing cluster #43 ...
+Lowest energy: -1.9309
+Assignments:
+  A:SER 94: HG    -> Orientation 1/8
+
+Optimizing cluster #44 ...
+Lowest energy: -0.4520
+Assignments:
+  A:CYS 112: HG   -> Stagger 1 4/6 (pKa = 11.30)
+
+Optimizing cluster #45 ...
+Lowest energy: 0.0000
+Assignments:
+  A:TYR 118: HH   -> Default 1 1/2 (pKa = 13.35)
+
+Optimizing cluster #46 ...
+Lowest energy: -1.2190
+Assignments:
+  A:THR 130: HG1  -> Orientation 1/6
+
+Optimizing cluster #47 ...
+Lowest energy: -0.4669
+Assignments:
+  A:SER 139: HG   -> Stagger 2 5/6
+
+Optimizing cluster #48 ...
+Lowest energy: -5.3131
+Assignments:
+  A:TYR 162: HH   -> Orientation 1/4 (pKa = 14.33)
+  A:SER 263: HG   -> Stagger 2 9/10
+  A:GLU 96        -> Charged (pKa = 4.64)
+
+Optimizing cluster #49 ...
+Lowest energy: -0.3567
+Assignments:
+  A:SER 175: HG   -> Stagger 3 6/6
+
+Optimizing cluster #50 ...
+Lowest energy: -0.5167
+Assignments:
+  A:THR 194: HG1  -> Stagger 3 5/5
+
+Optimizing cluster #51 ...
+Lowest energy: -1.8294
+Assignments:
+  A:SER 197: HG   -> Orientation 1/8
+
+Optimizing cluster #52 ...
+Lowest energy: -0.4588
+Assignments:
+  A:SER 223: HG   -> Orientation 3/6
+  A:GLU 220       -> Charged (pKa = 4.76)
+
+Optimizing cluster #53 ...
+Lowest energy: -1.4659
+Assignments:
+  A:THR 289: HG1  -> Default 4/6
+
+Optimizing cluster #54 ...
+Lowest energy: -1.5599
+Assignments:
+  A:SER 290: HG   -> Stagger 3 9/9
+
+Optimizing cluster #55 ...
+Lowest energy: -0.6838
+Assignments:
+  A:SER 296: HG   -> Orientation 4/7
+
+Optimizing cluster #56 ...
+Lowest energy: -2.5996
+Assignments:
+  A:GLU 3         -> Charged (pKa = 4.03)
+
+Optimizing cluster #57 ...
+Lowest energy: 0.0000
+Assignments:
+  A:GLU 7         -> Charged (pKa = 5.24)
+
+Optimizing cluster #58 ...
+Lowest energy: 0.0000
+Assignments:
+  A:GLU 9         -> Charged (pKa = 4.52)
+
+Optimizing cluster #59 ...
+Lowest energy: -0.6808
+Assignments:
+  A:GLU 11        -> Neutral 2 (pKa = 6.22)
+
+Optimizing cluster #60 ...
+Lowest energy: -1.3292
+Assignments:
+  A:GLU 13        -> Charged (pKa = 4.25)
+
+Optimizing cluster #61 ...
+Lowest energy: -1.0295
+Assignments:
+  A:GLU 19        -> Charged (pKa = 4.68)
+  A:GLU 27        -> Charged (pKa = 5.38)
+
+Optimizing cluster #62 ...
+Lowest energy: -0.0024
+Assignments:
+  A:ASP 35        -> Charged (pKa = 3.88)
+
+Optimizing cluster #63 ...
+Lowest energy: -1.5641
+Assignments:
+  A:ASP 65        -> Charged (pKa = 3.95)
+
+Optimizing cluster #64 ...
+Lowest energy: -0.0332
+Assignments:
+  A:GLU 66        -> Charged (pKa = 5.44)
+
+Optimizing cluster #65 ...
+Lowest energy: -0.0712
+Assignments:
+  A:GLU 70        -> Neutral 2 (pKa = 4.77)
+
+Optimizing cluster #66 ...
+Lowest energy: 0.0000
+Assignments:
+  A:GLU 77        -> Charged (pKa = 4.79)
+
+Optimizing cluster #67 ...
+Lowest energy: 0.0000
+Assignments:
+  A:GLU 80        -> Charged (pKa = 4.67)
+
+Optimizing cluster #68 ...
+Lowest energy: 0.0000
+Assignments:
+  A:GLU 87        -> Charged (pKa = 4.70)
+
+Optimizing cluster #69 ...
+Lowest energy: -0.0045
+Assignments:
+  A:GLU 109       -> Charged (pKa = 6.42)
+
+Optimizing cluster #70 ...
+Lowest energy: -0.5912
+Assignments:
+  A:GLU 121       -> Neutral 1 (pKa = 5.30)
+
+Optimizing cluster #71 ...
+Lowest energy: -0.8786
+Assignments:
+  A:GLU 131       -> Charged (pKa = 4.87)
+
+Optimizing cluster #72 ...
+Lowest energy: -0.6956
+Assignments:
+  A:ASP 151       -> Neutral 1 (pKa = 8.91)
+
+Optimizing cluster #73 ...
+Lowest energy: 0.0000
+Assignments:
+  A:GLU 168       -> Charged (pKa = 4.49)
+
+Optimizing cluster #74 ...
+Lowest energy: 0.0000
+Assignments:
+  A:GLU 171       -> Charged (pKa = 4.58)
+
+Optimizing cluster #75 ...
+Lowest energy: -0.0378
+Assignments:
+  A:GLU 186       -> Charged (pKa = 4.93)
+
+Optimizing cluster #76 ...
+Lowest energy: 0.0000
+Assignments:
+  A:GLU 205       -> Charged (pKa = 4.60)
+
+Optimizing cluster #77 ...
+Lowest energy: 0.0000
+Assignments:
+  A:GLU 212       -> Charged (pKa = 4.31)
+
+Optimizing cluster #78 ...
+Lowest energy: -0.0014
+Assignments:
+  A:GLU 219       -> Charged (pKa = 4.95)
+
+Optimizing cluster #79 ...
+Lowest energy: -0.4094
+Assignments:
+  A:ASP 230       -> Neutral 1 (pKa = 4.12)
+
+Optimizing cluster #80 ...
+Lowest energy: 0.0000
+Assignments:
+  A:GLU 244       -> Charged (pKa = 4.61)
+
+Optimizing cluster #81 ...
+Lowest energy: 0.0000
+Assignments:
+  A:GLU 270       -> Charged (pKa = 4.64)
+
+
+Recalculating pKas to identify changes in protonation penalties...
+Running PROPKA to get pKas
+No changes in protonation penalties found.
+
+Combined total energy: 120.4507
+Alternative States for A:GLN 253  Gap  0.31 kcals/mol
+    No Flip   0.00 kcals/mol
+    Flip      0.31 kcals/mol
+Alternative States for A:ASP 153  Gap  0.42 kcals/mol
+    Neutral 1  0.00 kcals/mol
+    Charged   0.42 kcals/mol
+Alternative States for A:GLN 21   Gap  0.44 kcals/mol
+    Flip      0.00 kcals/mol
+    No Flip   0.44 kcals/mol
+Alternative States for A:GLN 24   Gap  0.12 kcals/mol
+    No Flip   0.00 kcals/mol
+    Flip      0.12 kcals/mol
+Alternative States for A:GLN 55   Gap  0.49 kcals/mol
+    Flip      0.00 kcals/mol
+    No Flip   0.49 kcals/mol
+Alternative States for A:GLU 50   Gap  0.49 kcals/mol
+    Charged   0.00 kcals/mol
+    Neutral 2  0.49 kcals/mol
+Alternative States for A:GLN 81   Gap  0.42 kcals/mol
+    No Flip   0.00 kcals/mol
+    Flip      0.42 kcals/mol
+Alternative States for A:GLU 179  Gap  0.20 kcals/mol
+    Neutral 1  0.00 kcals/mol
+    Charged   0.20 kcals/mol
+Alternative States for A:GLN 101  Gap  0.48 kcals/mol
+    Flip      0.00 kcals/mol
+    No Flip   0.48 kcals/mol
+Alternative States for A:GLN 123  Gap  0.51 kcals/mol
+    No Flip   0.00 kcals/mol
+    Flip      0.51 kcals/mol
+Alternative States for A:GLU 132  Gap  0.00 kcals/mol
+    Neutral 1  0.00 kcals/mol
+    Charged   0.00 kcals/mol
+Alternative States for A:GLU 234  Gap  0.15 kcals/mol
+    Neutral 1  0.00 kcals/mol
+    Neutral 2  0.15 kcals/mol
+    Charged   0.27 kcals/mol
+Alternative States for A:GLN 187  Gap  0.11 kcals/mol
+    Flip      0.00 kcals/mol
+    No Flip   0.11 kcals/mol
+Alternative States for A:GLN 204  Gap  0.27 kcals/mol
+    No Flip   0.00 kcals/mol
+    Flip      0.27 kcals/mol
+Alternative States for A:GLN 208  Gap  0.03 kcals/mol
+    No Flip   0.00 kcals/mol
+    Flip      0.03 kcals/mol
+Alternative States for A:GLU 238  Gap  0.38 kcals/mol
+    Neutral 2  0.00 kcals/mol
+    Neutral 1  0.38 kcals/mol
+    Charged   0.83 kcals/mol
+Alternative States for A:GLN 258  Gap  0.51 kcals/mol
+    No Flip   0.00 kcals/mol
+    Flip      0.51 kcals/mol
+Alternative States for A:GLN 284  Gap  0.03 kcals/mol
+    No Flip   0.00 kcals/mol
+    Flip      0.03 kcals/mol
+Alternative States for A:HIS 299  Gap  0.19 kcals/mol
+    Flip HIP  0.00 kcals/mol
+    HIP       0.19 kcals/mol
+Alternative States for A:HIS 140  Gap  0.01 kcals/mol
+    Flip HIE  0.00 kcals/mol
+    HIE       0.01 kcals/mol
+    HID       0.36 kcals/mol
+    Flip HID  0.74 kcals/mol
+Alternative States for A:GLU 59   Gap  0.29 kcals/mol
+    Neutral 2  0.00 kcals/mol
+    Neutral 1  0.29 kcals/mol
+    Charged   0.66 kcals/mol
+Alternative States for A:GLU 11   Gap  0.39 kcals/mol
+    Neutral 2  0.00 kcals/mol
+    Neutral 1  0.39 kcals/mol
+    Charged   0.60 kcals/mol
+Alternative States for A:GLU 70   Gap  0.04 kcals/mol
+    Neutral 2  0.00 kcals/mol
+    Neutral 1  0.04 kcals/mol
+    Charged   0.07 kcals/mol
+Alternative States for A:GLU 121  Gap  0.29 kcals/mol
+    Neutral 1  0.00 kcals/mol
+    Neutral 2  0.29 kcals/mol
+    Charged   0.59 kcals/mol
+Alternative States for A:ASP 151  Gap  0.34 kcals/mol
+    Neutral 1  0.00 kcals/mol
+    Neutral 2  0.34 kcals/mol
+    Charged   0.68 kcals/mol
+
+Final pKas:
+  A:LYS 1 : 8.02
+  A:LYS 69 : 10.58
+  A:LYS 72 : 10.40
+  A:LYS 75 : 8.56
+  A:LYS 95 : 11.08
+  A:LYS 143 : 4.62
+  A:LYS 146 : 8.62
+  A:LYS 157 : 7.68
+  A:LYS 233 : 11.05
+  A:LYS 242 : 10.24
+  A:LYS 262 : 11.38
+  A:LYS 282 : 10.04
+  A:HIS 140 : 0.24
+  A:HIS 299 : 6.39
+  A:TYR 36: HH  : 11.13
+  A:TYR 74: HH  : 10.55
+  A:CYS 112: HG  : 11.30
+  A:TYR 118: HH  : 13.35
+  A:TYR 162: HH  : 14.33
+  A:GLU 3 : 4.17
+  A:GLU 7 : 5.24
+  A:GLU 9 : 4.52
+  A:GLU 11 : 6.22
+  A:GLU 13 : 4.25
+  A:GLU 19 : 4.68
+  A:GLU 27 : 5.38
+  A:ASP 35 : 3.88
+  A:GLU 45 : 5.11
+  A:GLU 49 : 4.03
+  A:GLU 50 : 6.02
+  A:GLU 59 : 5.26
+  A:ASP 65 : 3.95
+  A:GLU 66 : 5.44
+  A:GLU 70 : 4.77
+  A:GLU 77 : 4.79
+  A:GLU 79 : 6.06
+  A:GLU 80 : 4.67
+  A:GLU 87 : 4.70
+  A:GLU 88 : 3.57
+  A:GLU 96 : 4.64
+  A:ASP 107 : 5.76
+  A:GLU 109 : 6.42
+  A:ASP 110 : 4.87
+  A:GLU 121 : 5.30
+  A:GLU 131 : 4.87
+  A:GLU 132 : 5.51
+  A:ASP 151 : 8.91
+  A:ASP 153 : 6.86
+  A:ASP 154 : 0.82
+  A:GLU 168 : 4.49
+  A:GLU 171 : 4.58
+  A:GLU 179 : 4.79
+  A:GLU 186 : 4.93
+  A:GLU 205 : 4.60
+  A:GLU 212 : 4.31
+  A:GLU 219 : 4.95
+  A:GLU 220 : 4.76
+  A:ASP 227 : 3.51
+  A:ASP 230 : 4.12
+  A:GLU 231 : 4.38
+  A:GLU 234 : 4.61
+  A:GLU 238 : 6.66
+  A:GLU 244 : 4.61
+  A:GLU 245 : 1.81
+  A:GLU 255 : 3.89
+  A:GLU 266 : 4.54
+  A:GLU 270 : 4.64
+  A:ASP 271 : 2.26
+  A:GLU 281 : 4.00
+  A:GLU 287 : 2.09
+  A:ASP 297 : 2.81
+Structure extracted from file: /home/gbiuser/.schrodinger/tmp/gbiuser/jobs/024359ed-9ca5-11f1-ba54-34e6d7fcd94a/proteinprep_8-001/Optimize_H-bond_Assignments.maegz
+Output structure will be written to: Optimize_H-bond_Assignments-out.maegz
+
+Complete. Output file: Optimize_H-bond_Assignments-out.maegz
+Idealizing hydrogen temperature factors...
+Optimize H-bond job completed
+Running restrained minimization...
+  RMSD: 0.3
+  Force field: OPLS_2005
+  all atoms
+Setting up minimizer (OPLS_2005)
+Stage 1. Minimizing hydrogen atoms.
+Traceback (most recent call last):
+  File "/home/gbiuser/Downloads/maestro/mmshare-v7.5/python/scripts/ppw_minimizer.py", line 204, in <module>
+    mini_st = run_minimization(st,
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/home/gbiuser/Downloads/maestro/mmshare-v7.5/python/scripts/ppw_minimizer.py", line 102, in run_minimization
+    minner.minimize()
+  File "/home/gbiuser/Downloads/maestro/internal/lib/python3.11/site-packages/schrodinger/structutils/minimize.py", line 282, in minimize
+    return mm.mmffld_minimize(self.handle)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: minimize: license doesn't exist.
+
+Task Clean_Up failed: Protein refinement has failed: <ProteinRefinementTask: Clean_Up-refine - RUNNING> returned non-zero exit code.
+Log file not found: /home/gbiuser/.schrodinger/tmp/gbiuser/jobs/024359ed-9ca5-11f1-ba54-34e6d7fcd94a/proteinprep_8-001/Clean_Up-refine.log
+ERROR: Following structures failed to prepare:
+  2L7B
+Total number of failed structures: 1
+All batch preparations have failed; exiting...
