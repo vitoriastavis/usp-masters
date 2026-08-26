@@ -27,12 +27,71 @@ interaction_types = [
     "metal_complexes",
 ]
 
+# All PLIP interaction attributes to extract
+interaction_attributes = [
+    # General
+    "resnr",
+    "restype",
+    "reschain",
+    "resnr_lig",
+    "restype_lig",
+    "reschain_lig",
+    "dist",
+    "ligcoo",
+    "protcoo",
+
+    # Hydrogen bonds
+    "sidechain",
+    "dist_h_a",
+    "dist_d_a",
+    "don_angle",
+    "protisdon",
+    "donoridx",
+    "donortype",
+    "acceptoridx",
+    "acceptortype",
+
+    # Water bridges
+    "dist_a_w",
+    "dist_d_w",
+    "water_angle",
+    "water_idx",
+
+    # Halogen bonds
+    "acc_angle",
+
+    # Salt bridges / pi-cation
+    "protispos",
+    "lig_group",
+
+    # Pi interactions
+    "lig_idx_list",
+    "cent_dist",
+    "angle",
+    "offset",
+    "type",
+    "protcharged",
+
+    # Metal complexes
+    "metalcoo",
+    "targetcoo",
+    "metal_idx",
+    "metal_type",
+    "target_idx",
+    "target_type",
+    "coordination",
+    "location",
+    "rms",
+    "geometry",
+    "complexnum",
+]
+
 pdb_folder = "../pdbs"
 log_file = "protein_interactions.log"
 
 
 def process_pdb(pdb_file):
-    """Analyze one PDB file and return interaction rows."""
+    """Analyze one PDB file and return all PLIP interaction rows."""
 
     basename = os.path.splitext(pdb_file)[0]
 
@@ -68,15 +127,20 @@ def process_pdb(pdb_file):
 
             for i in interactions:
 
-                rows.append({
+                row = {
                     "protein": protein,
                     "ligand": ligand,
                     "binding_site": bsid,
                     "interaction_type": interaction_type,
-                    "residue_number": getattr(i, "resnr", None),
-                    "residue_name": getattr(i, "restype", None),
-                    "residue_chain": getattr(i, "reschain", None),
-                })
+                }
+
+                # Extract every PLIP attribute.
+                # If the attribute does not exist for this interaction,
+                # getattr returns None, which becomes NaN in pandas.
+                for attr in interaction_attributes:
+                    row[attr] = getattr(i, attr, None)
+
+                rows.append(row)
 
     return protein, rows
 
@@ -109,7 +173,8 @@ def main():
 
     all_rows = []
 
-    with ProcessPoolExecutor(max_workers=10) as executor:
+    # Parallel processing
+    with ProcessPoolExecutor(max_workers=12) as executor:
 
         for protein, rows in executor.map(process_pdb, pdb_files):
 
@@ -128,24 +193,28 @@ def main():
                         f"Finished: {protein} "
                         f"({completed_per_protein[protein]}/"
                         f"{total_per_protein[protein]} PDBs)\n"
-                    ) 
+                    )
 
     # Convert to DataFrame
     df = pd.DataFrame(all_rows)
 
     # Create residue ID
     df["residue_id"] = (
-        df["residue_name"].astype(str) +
-        df["residue_number"].astype("Int64").astype(str) +
+        df["restype"].astype(str) +
+        df["resnr"].astype("Int64").astype(str) +
         ":" +
-        df["residue_chain"].astype(str)
+        df["reschain"].astype(str)
     )
 
+    # Save
     df.to_csv("protein_interactions.csv", index=False)
 
     with open(log_file, "a") as log:
-        log.write(f"\nDone. {len(df)} interactions written to protein_interactions.csv\n")
+        log.write(
+            f"\nDone. {len(df)} interactions written "
+            f"to protein_interactions.csv\n"
+        )
 
-  
+
 if __name__ == "__main__":
     main()
