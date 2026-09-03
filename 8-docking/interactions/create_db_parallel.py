@@ -28,7 +28,6 @@ interaction_types = [
 ]
 
 # All PLIP interaction attributes to extract
-
 # General attributes
 general_attributes = {
     "resnr": "resnr",
@@ -37,9 +36,7 @@ general_attributes = {
     "resnr_lig": "resnr_l",
     "restype_lig": "restype_l",
     "reschain_lig": "reschain_l",
-    "dist": "distance",
-    "ligcoo": "ligcoo",
-    "protcoo": "protcoo",
+    "dist": "distance"
 }
 
 # Hydrogen bonds
@@ -82,8 +79,6 @@ pistacking_attributes = {
 }
 
 metal_attributes = {
-    "metalcoo": "metal",
-    "targetcoo": "target",
     "metal_idx": "metal_orig_idx",
     "metal_type": "metal_type",
     "target_idx": "target_orig_idx",
@@ -102,8 +97,6 @@ hydrophobic_attributes = {
 
 # Pi-cation
 pication_attributes = {
-    "ring": "ring",
-    "charge": "charge",
     "cent_dist": "distance",
     "offset": "offset",
     "type": "type",
@@ -192,6 +185,10 @@ def process_pdb(pdb_file):
 
                 elif interaction_type == "saltbridge_pneg":
                     row["lig_group"] = i.positive.fgroup
+                # Metal coordinates
+                if interaction_type == "metal_complexes":
+                    row["metalcoo"] = tuple(float(x) for x in i.metal.coords)
+                    row["targetcoo"] = tuple(float(x) for x in i.target.atom.coords)
 
                 rows.append(row)
 
