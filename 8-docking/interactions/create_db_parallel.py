@@ -28,67 +28,104 @@ interaction_types = [
 ]
 
 # All PLIP interaction attributes to extract
-interaction_attributes = [
-    # General
-    "resnr",
-    "restype",
-    "reschain",
-    "resnr_lig",
-    "restype_lig",
-    "reschain_lig",
-    "dist",
-    "ligcoo",
-    "protcoo",
 
-    # Hydrogen bonds
-    "sidechain",
-    "dist_h_a",
-    "dist_d_a",
-    "don_angle",
-    "protisdon",
-    "donoridx",
-    "donortype",
-    "acceptoridx",
-    "acceptortype",
+# General attributes
+general_attributes = {
+    "resnr": "resnr",
+    "restype": "restype",
+    "reschain": "reschain",
+    "resnr_lig": "resnr_l",
+    "restype_lig": "restype_l",
+    "reschain_lig": "reschain_l",
+    "dist": "distance",
+    "ligcoo": "ligcoo",
+    "protcoo": "protcoo",
+}
 
-    # Water bridges
-    "dist_a_w",
-    "dist_d_w",
-    "water_angle",
-    "water_idx",
+# Hydrogen bonds
+hbond_attributes = {
+    "sidechain": "sidechain",
+    "dist_h_a": "distance_ah",
+    "dist_d_a": "distance_ad",
+    "don_angle": "angle",
+    "protisdon": "protisdon",
+    "donoridx": "d_orig_idx",
+    "donortype": "dtype",
+    "acceptoridx": "a_orig_idx",
+    "acceptortype": "atype",
+}
 
-    # Halogen bonds
-    "acc_angle",
+# Water bridges
+water_bridge_attributes = {
+    "dist_a_w": "distance_aw",
+    "dist_d_w": "distance_dw",
+    "water_angle": "w_angle",
+    "water_idx": "water_orig_idx",
+}
 
-    # Salt bridges / pi-cation
-    "protispos",
-    "lig_group",
+# Halogen bonds
+halogen_attributes = {
+    "acc_angle": "acc_angle",
+}
 
-    # Pi interactions
-    "lig_idx_list",
-    "cent_dist",
-    "angle",
-    "offset",
-    "type",
-    "protcharged",
+# Salt bridges
+saltbridge_attributes = {
+    "protispos": "protispos",
+}
+    
+# Pi-stacking
+pistacking_attributes = {
+    "cent_dist": "distance",
+    "angle": "angle",
+    "offset": "offset",
+    "type": "type",
+}
 
-    # Metal complexes
-    "metalcoo",
-    "targetcoo",
-    "metal_idx",
-    "metal_type",
-    "target_idx",
-    "target_type",
-    "coordination",
-    "location",
-    "rms",
-    "geometry",
-    "complexnum",
-]
+metal_attributes = {
+    "metalcoo": "metal",
+    "targetcoo": "target",
+    "metal_idx": "metal_orig_idx",
+    "metal_type": "metal_type",
+    "target_idx": "target_orig_idx",
+    "target_type": "target_type",
+    "coordination": "coordination_num",
+    "location": "location",
+    "rms": "rms",
+    "geometry": "geometry",
+    "complexnum": "complexnum",
+}
+
+# Hydrophobic contacts
+hydrophobic_attributes = {
+    "dist": "distance",
+}
+
+# Pi-cation
+pication_attributes = {
+    "ring": "ring",
+    "charge": "charge",
+    "cent_dist": "distance",
+    "offset": "offset",
+    "type": "type",
+    "protcharged": "protcharged",
+}
+
+interaction_attributes = {
+    "hydrophobic_contacts": hydrophobic_attributes,
+    "hbonds_ldon": hbond_attributes,
+    "hbonds_pdon": hbond_attributes,
+    "water_bridges": water_bridge_attributes,
+    "saltbridge_lneg": saltbridge_attributes,
+    "saltbridge_pneg": saltbridge_attributes,
+    "pistacking": pistacking_attributes,
+    "pication_laro": pication_attributes,
+    "pication_paro": pication_attributes,
+    "halogen_bonds": halogen_attributes,
+    "metal_complexes": metal_attributes,
+}
 
 pdb_folder = "../pdbs"
 log_file = "protein_interactions.log"
-
 
 def process_pdb(pdb_file):
     """Analyze one PDB file and return all PLIP interaction rows."""
@@ -125,6 +162,17 @@ def process_pdb(pdb_file):
 
             interactions = getattr(inter, interaction_type)
 
+            # Get interaction-specific attributes
+            specific_attributes = interaction_attributes.get(
+                interaction_type, {}
+            )
+
+            # Combine general and interaction-specific attributes
+            attributes = {
+                **general_attributes,
+                **specific_attributes
+            }
+
             for i in interactions:
 
                 row = {
@@ -134,16 +182,20 @@ def process_pdb(pdb_file):
                     "interaction_type": interaction_type,
                 }
 
-                # Extract every PLIP attribute.
-                # If the attribute does not exist for this interaction,
-                # getattr returns None, which becomes NaN in pandas.
-                for attr in interaction_attributes:
-                    row[attr] = getattr(i, attr, None)
+                # Extract general + interaction-specific attributes
+                for attr, raw_attr in attributes.items():
+                    row[attr] = getattr(i, raw_attr, None)
+
+                # Salt-bridge ligand functional group
+                if interaction_type == "saltbridge_lneg":
+                    row["lig_group"] = i.negative.fgroup
+
+                elif interaction_type == "saltbridge_pneg":
+                    row["lig_group"] = i.positive.fgroup
 
                 rows.append(row)
 
     return protein, rows
-
 
 def main():
 
