@@ -119,19 +119,18 @@ interaction_attributes = {
 }
 
 pdb_folder = "../pdbs"
-log_file = "protein_interactions.log"
+log_file = "interactions_ucr2.log"
 
-def process_pdb(pdb_file):
-    """Analyze one PDB file and return all PLIP interaction rows."""
+def process_ucr2_pdb(pdb_file):
+    """Analyze UCR2 <-> binding-site interactions for dimer PDBs only."""
 
     basename = os.path.splitext(pdb_file)[0]
 
-    # Identify protein and ligand from filename
     protein = None
     ligand = None
 
     for p in proteins:
-        if basename.startswith(p + "_"):
+        if "dimer" in p and basename.startswith(p + "_"):
             protein = p
             ligand = basename[len(p) + 1:]
             break
@@ -141,11 +140,47 @@ def process_pdb(pdb_file):
 
     pdb_path = os.path.join(pdb_folder, pdb_file)
 
-    rows = []
+    ucr2_residues = [226, 227, 230, 233, 234, 274]
 
+    binding_site_residues = [
+        278, 405, 476, 519, 565, 567, 575,
+        579, 582, 583, 586, 614, 615, 618
+    ]
+
+    # Detect the two protein chains
+    mol = PDBComplex()
+    mol.load_pdb(pdb_path)
+
+    chains = sorted(set(
+        atom.OBAtom.GetResidue().GetChain()
+        for atom in mol.atoms.values()
+        if atom.OBAtom.GetResidue() is not None
+    ))
+
+    if len(chains) < 2:
+        return protein, []
+
+    chain_a, chain_b = chains[:2]
+
+    # UCR2 A -> binding site B
+    # UCR2 B -> binding site A
+    config.REGIONS = [
+        (
+            {chain_a: ucr2_residues},
+            {chain_b: binding_site_residues}
+        ),
+        (
+            {chain_b: ucr2_residues},
+            {chain_a: binding_site_residues}
+        )
+    ]
+
+    # Re-load after setting REGIONS
     mol = PDBComplex()
     mol.load_pdb(pdb_path)
     mol.analyze()
+
+    rows = []
 
     for bsid, inter in mol.interaction_sets.items():
 
@@ -156,114 +191,79 @@ def process_pdb(pdb_file):
 
             interactions = getattr(inter, interaction_type)
 
-            # Get interaction-specific attributes
             specific_attributes = interaction_attributes.get(
                 interaction_type, {}
             )
 
-            # Combine general and interaction-specific attributes
             attributes = {
                 **general_attributes,
                 **specific_attributes
             }
 
             for i in interactions:
-
                 row = {
                     "protein": protein,
                     "ligand": ligand,
                     "binding_site": bsid,
                     "interaction_type": interaction_type,
+                    "ucr2_residue_id": None,
+                    "binding_site_residue_id": None,
                 }
 
-                # Extract general + interaction-specific attributes
                 for attr, raw_attr in attributes.items():
                     row[attr] = getattr(i, raw_attr, None)
 
-                # Salt-bridge ligand functional group
-                if interaction_type == "saltbridge_lneg":
-                    row["lig_group"] = i.negative.fgroup
+                # Create IDs for both participating residues
+                if (
+                    row["restype_lig"] is not None
+                    and row["resnr_lig"] is not None
+                    and row["reschain_lig"] is not None
+                ):
+                    row["ucr2_residue_id"] = (
+                        f"{row['restype_lig']}{row['resnr_lig']}:{row['reschain_lig']}"
+                    )
 
-                elif interaction_type == "saltbridge_pneg":
-                    row["lig_group"] = i.positive.fgroup
-                # Metal coordinates
-                if interaction_type == "metal_complexes":
-                    row["metalcoo"] = tuple(float(x) for x in i.metal.coords)
-                    row["targetcoo"] = tuple(float(x) for x in i.target.atom.coords)
+                if (
+                    row["restype"] is not None
+                    and row["resnr"] is not None
+                    and row["reschain"] is not None
+                ):
+                    row["binding_site_residue_id"] = (
+                        f"{row['restype']}{row['resnr']}:{row['reschain']}"
+                    )
 
                 rows.append(row)
 
     return protein, rows
 
-def main():
+def main_ucr2():
 
     pdb_files = sorted(
         f for f in os.listdir(pdb_folder)
-        if f.endswith(".pdb")
+        if f.endswith(".pdb") and "dimer" in f
     )
-
-    # Count how many PDBs belong to each protein
-    total_per_protein = {protein: 0 for protein in proteins}
-
-    for pdb_file in pdb_files:
-        basename = os.path.splitext(pdb_file)[0]
-
-        for protein in proteins:
-            if basename.startswith(protein + "_"):
-                total_per_protein[protein] += 1
-                break
-
-    # Track completed PDBs
-    completed_per_protein = {protein: 0 for protein in proteins}
-
-    # Start a new log
-    with open(log_file, "w") as log:
-        log.write("PLIP interaction analysis\n")
-        log.write("=========================\n")
 
     all_rows = []
 
-    # Parallel processing
     with ProcessPoolExecutor(max_workers=12) as executor:
 
-        for protein, rows in executor.map(process_pdb, pdb_files):
-
+        for protein, rows in executor.map(
+            process_ucr2_pdb,
+            pdb_files
+        ):
             if protein is None:
                 continue
 
             all_rows.extend(rows)
 
-            completed_per_protein[protein] += 1
-
-            # Protein is finished when all its PDBs are done
-            if completed_per_protein[protein] == total_per_protein[protein]:
-
-                with open(log_file, "a") as log:
-                    log.write(
-                        f"Finished: {protein} "
-                        f"({completed_per_protein[protein]}/"
-                        f"{total_per_protein[protein]} PDBs)\n"
-                    )
-
-    # Convert to DataFrame
     df = pd.DataFrame(all_rows)
 
-    # Create residue ID
-    df["residue_id"] = (
-        df["restype"].astype(str) +
-        df["resnr"].astype("Int64").astype(str) +
-        ":" +
-        df["reschain"].astype(str)
+    df.to_csv("ucr2_interactions.csv", index=False)
+
+    print(
+        f"Done. {len(df)} UCR2 interactions written "
+        f"to ucr2_interactions.csv"
     )
 
-    # Save
-    df.to_csv("protein_interactions.csv", index=False)
-
-    with open(log_file, "a") as log:
-        log.write(
-            f"\nDone. {len(df)} interactions written "
-            f"to protein_interactions.csv\n"
-        )
-
 if __name__ == "__main__":
-    main()
+    main_ucr2()
