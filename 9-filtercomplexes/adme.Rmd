@@ -1,0 +1,212 @@
+---
+title: "admet"
+output: html_document
+---
+
+```{R}
+admetlab_m5 <- read.csv("m5_admetlab.csv")
+admetlab_m5$Molecule <- "m5"
+admetlab_10176710 <- read.csv("10176710_admetlab.csv")
+admetlab_10176710$Molecule <- "10176710"
+admetlab_348154 <- read.csv("348154_admetlab.csv")
+admetlab_348154$Molecule <- "348154"
+admetlab_10394 <- read.csv("10394_admetlab.csv")
+admetlab_10394$Molecule <- "10394"
+
+all_admetlab <- rbind(admetlab_m5, admetlab_10176710, admetlab_348154, admetlab_10394)
+
+swissadme_m5 <- read.csv("m5_swissadme.csv")
+swissadme_10176710 <- read.csv("10176710_swissadme.csv")
+swissadme_348154 <- read.csv("348154_swissadme.csv")
+swissadme_10394 <- read.csv("10394_swissadme.csv")
+
+
+all_swissadme <- rbind(swissadme_m5, swissadme_10176710, swissadme_348154, swissadme_10394)
+
+```
+
+### BBB
+
+```{R}
+bbb_data <- merge(
+  all_admetlab[, c("Molecule", "BBB")],
+  all_swissadme[, c("Molecule", "BBB.permeant")],
+  by = "Molecule"
+)
+
+colnames(bbb_data) <- c("Molecule", "ADMETlab", "SwissADME")
+
+print(bbb_data)
+```
+
+
+### GI absorption
+
+```{R}
+gi_data <- merge(
+  all_admetlab[, c("Molecule", "hia")],
+  all_swissadme[, c("Molecule", "GI.absorption")],
+  by = "Molecule"
+)
+
+colnames(gi_data) <- c("Molecule", "ADMETlab", "SwissADME")
+
+print(gi_data)
+```
+
+### Molecular weight
+
+```{R}
+mw_data <- merge(
+  all_admetlab[, c("Molecule", "MW")],
+  all_swissadme[, c("Molecule", "MW")],
+  by = "Molecule"
+)
+
+colnames(mw_data) <- c("Molecule", "ADMETlab", "SwissADME")
+
+print(mw_data)
+```
+```{R}
+print(all_swissadme[,c("Molecule", "MW")])
+```
+
+### TPSA 
+
+```{R}
+TPSA_data <- merge(
+  all_admetlab[, c("Molecule", "TPSA")],
+  all_swissadme[, c("Molecule", "TPSA")],
+  by = "Molecule"
+)
+
+colnames(TPSA_data) <- c("Molecule", "ADMETlab", "SwissADME")
+
+print(TPSA_data)
+```
+
+```{R}
+print(all_swissadme[,c("Molecule", "TPSA")])
+```
+
+### n Rotatable bonds
+
+```{R}
+nrot_data <- merge(
+  all_admetlab[, c("Molecule", "nRot")],
+  all_swissadme[, c("Molecule", "X.Rotatable.bonds")],
+  by = "Molecule"
+)
+
+colnames(nrot_data) <- c("Molecule", "ADMETlab", "SwissADME")
+
+print(nrot_data)
+```
+
+### Fraction C sp3
+
+```{R}
+fsp3_data <- merge(
+  all_admetlab[, c("Molecule", "Fsp3")],
+  all_swissadme[, c("Molecule", "Fraction.Csp3")],
+  by = "Molecule"
+)
+
+colnames(fsp3_data) <- c("Molecule", "ADMETlab", "SwissADME")
+
+print(fsp3_data)
+```
+
+### Lipophilicity
+
+```{R}
+logp_data <- merge(
+  all_admetlab[, c("Molecule", "logP")],
+  all_swissadme[, c("Molecule", "Consensus.Log.P")],
+  by = "Molecule"
+)
+
+colnames(logp_data) <- c("Molecule", "ADMETlab", "SwissADME")
+
+print(logp_data)
+```
+
+### Solubility
+
+```{R}
+logs_data <- merge(
+  all_admetlab[, c("Molecule", "logS")],
+  all_swissadme[, c("Molecule", "ESOL.Log.S")],
+  by = "Molecule"
+)
+
+colnames(logs_data) <- c("Molecule", "ADMETlab", "SwissADME")
+
+print(logs_data)
+```
+
+### P-gp substrate
+
+```{R}
+pgp_data <- merge(
+  all_admetlab[, c("Molecule", "pgp_sub")],
+  all_swissadme[, c("Molecule", "Pgp.substrate")],
+  by = "Molecule"
+)
+
+colnames(pgp_data) <- c("Molecule", "ADMETlab", "SwissADME")
+
+print(pgp_data)
+```
+
+
+### CYP inhibition
+
+```{R}
+cyp1a2_data <- merge(
+  all_admetlab[, c("Molecule", "CYP1A2.inh")],
+  all_swissadme[, c("Molecule", "CYP1A2.inhibitor")],
+  by = "Molecule"
+)
+
+colnames(cyp1a2_data) <- c("Molecule", "ADMETlab", "SwissADME")
+
+print(cyp1a2_data)
+```
+
+```{R}
+cyp_admet <- all_admetlab[, c(
+  "Molecule",
+  "CYP1A2.inh",
+  "CYP2C19.inh",
+  "CYP2C9.inh",
+  "CYP2D6.inh",
+  "CYP3A4.inh"
+)]
+
+cyp_swiss <- all_swissadme[, c(
+  "Molecule",
+  "CYP1A2.inhibitor",
+  "CYP2C19.inhibitor",
+  "CYP2C9.inhibitor",
+  "CYP2D6.inhibitor",
+  "CYP3A4.inhibitor"
+)]
+
+# garantir mesma ordem
+cyp_swiss <- cyp_swiss[match(cyp_admet$Molecule, cyp_swiss$Molecule), ]
+
+cyp_data <- data.frame(
+  Molecule = rep(cyp_admet$Molecule, each = 5),
+  CYP = rep(c("CYP1A2", "CYP2C19", "CYP2C9", "CYP2D6", "CYP3A4"),
+            times = nrow(cyp_admet)),
+  ADMETlab = c(
+    t(cyp_admet[, -1])
+  ),
+  SwissADME = c(
+    t(cyp_swiss[, -1])
+  )
+)
+
+print(cyp_data)
+```
