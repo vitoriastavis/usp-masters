@@ -1,0 +1,75 @@
+---
+title: "jad_discussion"
+output: html_document
+---
+
+```{R}
+library(dplyr)
+df_name_cid <- read.csv("/home/gbiuser/Documents/vitoria/usp-masters/1-gutmgene/data/all_name_cid.csv", header=FALSE)
+# df_name_cid <- read.csv("~/usp/usp-masters/1-gutmgene/data/all_name_cid.csv", header=FALSE)
+load("~/Documents/vitoria/usp-masters/1-gutmgene/data/gutmgenem_processed.RData")
+# load("~/usp/usp-masters/1-gutmgene/data/gutmgenem_processed.RData")
+
+# Get the row indices where CID is NA
+na_rows <- is.na(gutmgene_m$Metabolite_CID)
+
+# Look up the CID from the other dataframe using the metabolite name
+gutmgene_m$Metabolite_CID[na_rows] <- 
+  df_name_cid$V2[match(gutmgene_m$Metabolite_Name[na_rows], df_name_cid$V1)]
+
+gutmgene_m <- gutmgene_m[gutmgene_m$Microbe_Species != "uncultured",]
+gutmgene_m <- gutmgene_m[gutmgene_m$Microbe_Species != "unclassified",]
+
+gutmgene_m$Genus <- sub(" .*", "", gutmgene_m$Gut_Microbe_Name)
+gutmgene_m$Genus <- gsub("\\[|\\]", "", gutmgene_m$Genus)
+gutmgene_m$Genus <- gsub("\\.|\\]", "", gutmgene_m$Genus)
+```
+
+```{R}
+mets <- c("10559720", "104775", "348154", "107", "10394", "6047")
+
+genus_mets <- list()
+for (met in mets){
+  genus <- unique(na.omit(gutmgene_m[
+                            gutmgene_m$Metabolite_CID == met,
+                            "Genus"]
+                          ))
+  genus_mets[[met]] <- genus
+}
+
+all_species <- unique(unname(unlist(genus_mets)))
+
+library(ggplot2)
+freq_df <- as.data.frame(table(unlist(genus_mets)))
+freq_df <- freq_df[order(freq_df$Freq, decreasing = TRUE), ]
+rownames(freq_df) <- NULL
+
+freq_df$Var1 <- factor(freq_df$Var1, levels = freq_df$Var1)
+
+p_genus_mets <- ggplot(freq_df, aes(x = Var1, y = Freq)) +
+  geom_col(fill = "#6FAF9C") +
+  scale_y_continuous(
+    breaks = seq(1, max(freq_df$Freq), by = 1),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "Frequency of gut microbiota genera associated with the identified metabolites",
+    x = "Gut microbiota genus",
+    y = "Frequency"
+  ) +
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size=10),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+ggsave(
+  "p_genus_mets.png",
+  plot = p_genus_mets,
+  width = 8,
+  height = 3,
+  units = "in",
+  dpi = 300
+)
+
+```

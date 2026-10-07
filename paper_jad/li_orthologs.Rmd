@@ -1,0 +1,56 @@
+---
+title: "li_orthologs"
+output: html_document
+---
+
+```{R}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("biomaRt")
+
+library(biomaRt)
+
+# human_mart <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+
+intro_papers <- read_xlsx("intro_papers.xlsx")
+li_genes <- intro_papers$Li
+
+zebrafish_mart <- useEnsembl(
+  biomart = "genes",
+  dataset = "drerio_gene_ensembl"
+)
+mapped_genes <- getBM(
+  attributes = c(
+    "external_gene_name",
+    "ensembl_gene_id",
+    "hsapiens_homolog_associated_gene_name",
+    "hsapiens_homolog_ensembl_gene",
+    "hsapiens_homolog_orthology_type"
+  ),
+  filters = "external_gene_name",
+  values = li_genes,
+  mart = zebrafish_mart
+)
+
+# Genes with no human homolog returned
+no_human_homolog <- mapped_genes$external_gene_name[
+  is.na(mapped_genes$hsapiens_homolog_associated_gene_name) |
+  mapped_genes$hsapiens_homolog_associated_gene_name == ""
+]
+
+# Genes not found by the mart
+not_found <- setdiff(
+  tolower(li_genes),
+  tolower(mapped_genes$external_gene_name)
+)
+
+human_orthologs <- unique(mapped_genes$hsapiens_homolog_associated_gene_name)
+
+manually <- c("PKM","ep300", "HSPA9", "XIAP", "ACTB", "ATF4", "VAMP8", "BHLHE41", "ALAS2", "CDC6", "TNNC2", "RSPH1", "ALDH1L1")
+
+## nao colocados
+# ccl35.1 - sem ortologia zfin
+# irata - nao encontrado na zfin
+# ugt1a2 - sem ortologia zfin
+# ngo1 - nao encontrado na zfin
+```
