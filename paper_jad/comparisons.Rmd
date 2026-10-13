@@ -45,16 +45,201 @@ for (subdir in subdirs) {
 }
 ```
 
+
 ```{R}
+library(readxl)
+library(dplyr)
+
 all_targets <- read.csv("all_targets.csv", header = FALSE)$V1
 
-for (target in all_targets){
-  for (twas_paper in names(all_twas)){
-    twas_genes <- all_twas[[twas_paper]]
-    if (target %in% twas_genes){
-      print(paste0(target, " in ", twas_paper))
-    }  
-  }
-  cat("\n")
+intro_papers <- read_xlsx("intro_papers.xlsx")
+
+comparisons <- list()
+# Create table
+target_table <- data.frame(
+  target = all_targets,
+  intro_papers = NA_character_,
+  twas_papers = NA_character_
+)
+
+# Search intro papers
+for (i in seq_along(all_targets)) {
+  
+  target <- all_targets[i]
+  
+  matching_papers <- names(intro_papers)[
+    sapply(intro_papers, function(x) target %in% x)
+  ]
+  
+  comparisons[[target]] <- matching_papers
+  
+  target_table$intro_papers[i] <- paste(matching_papers, collapse = "; ")
 }
+
+# Search TWAS papers
+for (i in seq_along(all_targets)) {
+  
+  target <- all_targets[i]
+  
+  matching_papers <- names(all_twas)[
+    sapply(all_twas, function(x) target %in% x)
+  ]
+  
+  target_table$twas_papers[i] <- paste(matching_papers, collapse = "; ")
+  
+  comparisons[[target]] <- c(comparisons[[target]], matching_papers)
+}
+
+# PPIA, ALDH2, FADS1, FOLH1, GRIA1, GRIK3, and LRRK2. GRM5 and GRIK2. PDE4B, NR4A1, FOS, NOS1, NOS2, RHOA, EPHB2, ACE and SNCA, THRA, and ESR2. EP300. SLC1A2 and DRD2
+
+```
+```{R}
+library(readxl)
+library(dplyr)
+library(purrr)
+
+# 1. Load DEG RData objects
+load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_novo/degs_f.RData")
+load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE213982_celltype_f.RData")
+load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
+
+# Ensure rownames are gene names for pseudobulk data frames if needed
+rownames(degs_GSE144136_f) <- degs_GSE144136_f$X
+rownames(degs_GSE213982_f) <- degs_GSE213982_f$X
+
+# Load target genes
+all_targets <- read.csv("all_targets.csv", header = FALSE)$V1
+intro_papers <- read_xlsx("intro_papers.xlsx")
+
+# 2. Build base target table
+target_table <- data.frame(
+  target = all_targets,
+  intro_papers = NA_character_,
+  twas_papers = NA_character_,
+  stringsAsFactors = FALSE
+)
+
+# Search Intro Papers
+for (i in seq_along(all_targets)) {
+  target <- all_targets[i]
+  matching_papers <- names(intro_papers)[sapply(intro_papers, function(x) target %in% x)]
+  target_table$intro_papers[i] <- paste(matching_papers, collapse = "; ")
+}
+
+# Search TWAS Papers (assuming all_twas is present in your session)
+for (i in seq_along(all_targets)) {
+  target <- all_targets[i]
+  matching_papers <- names(all_twas)[sapply(all_twas, function(x) target %in% x)]
+  target_table$twas_papers[i] <- paste(matching_papers, collapse = "; ")
+}
+
+# -------------------------------------------------------------------
+# 3. Add DEG Information (Pseudobulk & Cell Types)
+# -------------------------------------------------------------------
+
+# Helper function to query fold change from a list or dataframe safely
+get_log2fc <- function(deg_obj, gene) {
+  if (is.data.frame(deg_obj)) {
+    if (gene %in% rownames(deg_obj)) return(deg_obj[gene, "avg_log2FC"])
+  } else if (is.list(deg_obj)) {
+    # If cell type list, return named vector of fold changes per cell type
+    res <- sapply(deg_obj, function(df) {
+      if (gene %in% rownames(df)) return(df[gene, "avg_log2FC"]) else return(NA)
+    })
+    return(res[!is.na(res)])
+  }
+  return(numeric(0))
+}
+
+# Add empty columns to store DEG results
+target_table$DEGs_GSE144136 <- NA_character_
+target_table$DEGs_GSE213982 <- NA_character_
+target_table$consistent_degs       <- NA_character_
+
+for (i in seq_along(all_targets)) {
+  gene <- all_targets[i]
+  
+  # --- Process GSE144136 ---
+  deg_144136 <- c()
+  fc_144136  <- c() # Store fold changes to evaluate consistency later
+  
+  # Check pseudobulk
+  fc_pb <- get_log2fc(degs_GSE144136_f, gene)
+  if (length(fc_pb) > 0) {
+    dir <- ifelse(fc_pb > 0, "up", "down")
+    deg_144136 <- c(deg_144136, paste0("pb(", dir, ")"))
+    fc_144136["pb"] <- fc_pb
+  }
+  
+  # Check cell types
+  fc_ct <- get_log2fc(GSE144136_celltype_filtered, gene)
+  if (length(fc_ct) > 0) {
+    for (ct in names(fc_ct)) {
+      dir <- ifelse(fc_ct[ct] > 0, "up", "down")
+      deg_144136 <- c(deg_144136, paste0(ct, "(", dir, ")"))
+      fc_144136[ct] <- fc_ct[ct]
+    }
+  }
+  
+  # --- Process GSE213982 ---
+  deg_213982 <- c()
+  fc_213982  <- c()
+  
+  # Check pseudobulk
+  fc_pb <- get_log2fc(degs_GSE213982_f, gene)
+  if (length(fc_pb) > 0) {
+    dir <- ifelse(fc_pb > 0, "up", "down")
+    deg_213982 <- c(deg_213982, paste0("pb(", dir, ")"))
+    fc_213982["pb"] <- fc_pb
+  }
+  
+  # Check cell types
+  fc_ct <- get_log2fc(GSE213982_celltype_filtered, gene)
+  if (length(fc_ct) > 0) {
+    for (ct in names(fc_ct)) {
+      dir <- ifelse(fc_ct[ct] > 0, "up", "down")
+      deg_213982 <- c(deg_213982, paste0(ct, "(", dir, ")"))
+      fc_213982[ct] <- fc_ct[ct]
+    }
+  }
+  
+  # --- Evaluate Concordance/Consistency across datasets ---
+  common_contexts <- intersect(names(fc_144136), names(fc_213982))
+  consistent_list <- c()
+  
+  for (ctx in common_contexts) {
+    # Check if signs are the same
+    if (sign(fc_144136[ctx]) == sign(fc_213982[ctx])) {
+      dir <- ifelse(fc_144136[ctx] > 0, "up", "down")
+      consistent_list <- c(consistent_list, paste0(ctx, "(", dir, ")"))
+    }
+  }
+  
+  # --- Populate row data ---
+  target_table$DEGs_GSE144136[i] <- paste(deg_144136, collapse = "; ")
+  target_table$DEGs_GSE213982[i] <- paste(deg_213982, collapse = "; ")
+  target_table$consistent_degs[i]       <- paste(consistent_list, collapse = "; ")
+}
+
+```
+
+```{R}
+# Add DEG information to comparisons
+for (i in seq_along(all_targets)) {
+  
+  target <- all_targets[i]
+  
+  # Check whether the target was found as a DEG in either dataset
+  is_deg <- nzchar(target_table$DEGs_GSE144136[i]) ||
+            nzchar(target_table$DEGs_GSE213982[i])
+  
+  if (is_deg) {
+    comparisons[[target]] <- c(comparisons[[target]], "DEG")
+  }
+}
+
+comparisons <- comparisons[order(
+  lengths(comparisons),
+  decreasing = TRUE
+)]
 ```

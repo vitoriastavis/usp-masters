@@ -120,15 +120,6 @@ genes_autores <- gene_author %>%
 genes_autores_filtrado <- genes_autores %>%
   filter(n_autores > 1) %>%
   arrange(desc(n_autores), gene)
-
-# intersecao alvos
-# all_intersects <- unique(unname(unlist(intersection_results)))
-# genes_autores_alvos <- genes_autores %>%
-#   filter(gene %in% all_intersects) %>%
-#   arrange(desc(n_autores), gene)
-# 
-# genes_autores_alvos_filtrado <- genes_autores_alvos %>%
-#   filter(n_autores > 1)
 ```
 
 ```{r}
@@ -248,7 +239,7 @@ degs_targets <- intersect(degs_2plus, targets_2plus)
 # 47
 final <- union(twas_targets, degs_targets)
 length(final)
-write.table(final, "jad/targets_both.csv", row.names = FALSE, col.names = FALSE)
+# write.table(final, "jad/targets_both.csv", row.names = FALSE, col.names = FALSE)
 ```
 
 ```{r}
@@ -309,14 +300,14 @@ multi_analysis_genes <- gene_analyses_df %>%
 # Getting the predicted metabolites/ligands for the intersection genes
 
 ```{r}
-# load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_novo/degs_f.RData")
-# load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE213982_celltype_f.RData")
-# load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
+load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_novo/degs_f.RData")
+load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE213982_celltype_f.RData")
+load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
 # 
-# gene <- "GAPDH"
+gene <- "GAPDH"
 # 
-# rownames(degs_GSE144136_f) <- degs_GSE144136_f$X
-# all_targets <- read.table("data/targets.txt")$V1
+rownames(degs_GSE144136_f) <- degs_GSE144136_f$X
+all_targets <- read.table("/home/gbiuser/Documents/vitoria/usp-masters/targets.txt")$V1
 
 all_targets <- c("PPIA")
 
