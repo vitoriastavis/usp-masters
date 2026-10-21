@@ -1,0 +1,387 @@
+                     :-) GROMACS - gmx pdb2gmx, 2025.4 (-:
+
+Executable:   /home/gbiuser/Downloads/gromacs-2025.4/build/bin/gmx
+Data prefix:  /usr/local/gromacs
+Working dir:  /home/gbiuser/Documents/vitoria/usp-masters/8-md/md_simulation
+Command line:
+  gmx pdb2gmx -f protein_ions.pdb -o protein.gro -p topol.top -ff charmm36-50 -water tip3p -ignh
+
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/aminoacids.r2b
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/carb.r2b
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/cgenff.r2b
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/ethers.r2b
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/lipid.r2b
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/metals.r2b
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/na.r2b
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/silicates.r2b
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/solvent.r2b
+WARNING: all CONECT records are ignored
+there were 202 atoms with zero occupancy and 3760 atoms with          occupancy unequal to one (out of 3965 atoms). Check your pdb file.
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/atomtypes.atp
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/aminoacids.rtp
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/carb.rtp
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/cgenff.rtp
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/ethers.rtp
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/lipid.rtp
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/metals.rtp
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/na.rtp
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/silicates.rtp
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/solvent.rtp
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/aminoacids.hdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/carb.hdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/cgenff.hdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/ethers.hdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/lipid.hdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/metals.hdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/na.hdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/silicates.hdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/solvent.hdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/aminoacids.n.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/carb.n.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/cgenff.n.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/ethers.n.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/lipid.n.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/metals.n.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/na.n.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/silicates.n.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/solvent.n.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/aminoacids.c.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/carb.c.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/cgenff.c.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/ethers.c.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/lipid.c.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/metals.c.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/na.c.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/silicates.c.tdb
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/solvent.c.tdb
+Analysing hydrogen-bonding network for automated assignment of histidine
+ protonation. 774 donors and 771 acceptors were found.
+There are 955 hydrogen bonds
+Will use HISE for residue 190
+Will use HISE for residue 260
+Will use HISE for residue 316
+Will use HISE for residue 337
+Will use HISE for residue 360
+Will use HISD for residue 398
+Will use HISE for residue 400
+Will use HISD for residue 406
+Will use HISE for residue 410
+Will use HISE for residue 419
+Will use HISE for residue 446
+Will use HISE for residue 450
+Will use HISE for residue 478
+Will use HISE for residue 479
+Will use HISE for residue 491
+Will use HISE for residue 522
+Will use HISE for residue 561
+Will use HISE for residue 607
+Will use HISE for residue 624
+9 out of 9 lines of specbond.dat converted successfully
+Special Atom Distance matrix:
+                  HIS190  MET220  CYS229  MET245  MET253  HIS260  MET264
+                  NE2198   SD424   SG503   SD634   SD701  NE2763   SD793
+  MET220   SD424   1.932
+  CYS229   SG503   3.323   1.604
+  MET245   SD634   4.465   3.102   1.684
+  MET253   SD701   4.908   3.988   2.888   1.404
+  HIS260  NE2763   5.916   5.279   4.265   2.762   1.421
+  MET264   SD793   6.320   5.681   4.645   3.103   1.777   0.419
+  MET305  SD1128   8.569   7.174   5.734   5.039   5.627   5.974   6.083
+  MET315  SD1203   8.596   7.022   5.752   5.638   6.641   7.373   7.558
+  HIS316 NE21214   9.101   7.566   6.411   6.458   7.508   8.266   8.463
+  HIS337 NE21375   7.392   6.228   5.061   4.804   5.534   6.041   6.258
+  HIS360 NE21561   7.710   6.271   4.872   4.385   5.165   5.726   5.897
+  CYS366  SG1608   6.531   5.317   4.007   3.486   4.146   4.681   4.908
+  MET368  SD1623   6.070   4.850   3.439   2.559   3.075   3.612   3.843
+  MET392  SD1831   6.835   5.561   4.076   3.006   3.372   3.720   3.871
+  MET393  SD1839   7.409   6.012   4.487   3.518   4.010   4.399   4.521
+  HIS398 NE21882   7.154   5.605   4.005   2.896   3.452   4.024   4.136
+  HIS400 NE21904   6.881   5.237   3.654   2.849   3.691   4.471   4.636
+  HIS406 NE21952   5.633   3.979   2.458   2.168   3.361   4.427   4.699
+  HIS410 NE21984   5.526   3.985   2.540   2.324   3.452   4.451   4.739
+  HIS419 NE22046   5.604   4.572   3.323   2.615   3.058   3.575   3.850
+  HIS446 NE22243   5.645   4.111   2.586   2.047   3.096   4.058   4.326
+  HIS450 NE22276   5.980   4.317   2.747   2.181   3.272   4.276   4.514
+  MET468  SD2410   6.687   5.069   3.533   2.352   2.879   3.690   3.805
+  HIS478 NE22496   6.558   4.943   3.340   2.301   3.053   3.867   4.029
+  HIS479 NE22506   5.906   4.323   2.727   1.841   2.799   3.750   3.981
+  HIS491 NE22603   8.055   6.803   5.276   3.878   3.799   3.684   3.657
+  CYS492  SG2609   7.396   6.053   4.502   3.202   3.385   3.589   3.652
+  MET496  SD2643   7.353   6.236   4.783   3.374   3.191   3.040   3.067
+  MET509  SD2756   5.088   4.062   2.765   1.458   1.493   2.186   2.512
+  MET513  SD2787   5.017   3.789   2.370   1.292   1.937   2.844   3.162
+  MET519  SD2830   4.844   3.182   1.617   1.499   2.838   4.066   4.382
+  HIS522 NE22856   4.219   2.589   1.089   1.523   2.867   4.147   4.501
+  MET523  SD2863   4.036   2.268   0.716   1.448   2.815   4.199   4.548
+  MET532  SD2930   3.747   2.748   1.714   1.428   2.067   3.132   3.531
+  MET559  SD3145   4.525   3.437   2.215   1.682   2.359   3.252   3.608
+  HIS561 NE23163   4.582   3.014   1.472   1.329   2.633   3.851   4.187
+  CYS562  SG3169   4.357   3.020   1.700   1.650   2.721   3.814   4.172
+  MET583  SD3345   5.664   3.904   2.626   2.991   4.323   5.494   5.786
+  MET598  SD3476   6.468   4.602   3.177   2.969   4.127   5.252   5.463
+  MET603  SD3514   5.361   3.544   2.250   2.705   4.077   5.316   5.617
+  CYS604  SG3521   6.007   4.164   2.776   2.870   4.162   5.335   5.593
+  HIS607 NE23548   6.472   4.623   3.639   4.262   5.626   6.860   7.137
+  HIS624 NE23681   3.711   2.294   1.481   2.505   3.689   4.890   5.273
+  MET655  SD3945   5.407   3.837   2.946   3.718   5.032   6.189   6.518
+                  MET305  MET315  HIS316  HIS337  HIS360  CYS366  MET368
+                  SD1128  SD1203 NE21214 NE21375 NE21561  SG1608  SD1623
+  MET315  SD1203   2.224
+  HIS316 NE21214   2.997   0.955
+  HIS337 NE21375   1.986   2.561   3.047
+  HIS360 NE21561   1.011   1.811   2.659   1.507
+  CYS366  SG1608   2.141   3.146   3.886   1.398   1.524
+  MET368  SD1623   2.761   3.921   4.753   2.500   2.253   1.104
+  MET392  SD1831   2.291   3.788   4.676   2.639   2.043   1.410   0.830
+  MET393  SD1839   1.649   3.176   4.093   2.506   1.506   1.586   1.467
+  HIS398 NE21882   2.723   3.722   4.673   3.603   2.439   2.532   1.978
+  HIS400 NE21904   2.715   3.247   4.176   3.375   2.191   2.403   2.039
+  HIS406 NE21952   3.400   3.512   4.315   3.228   2.561   2.208   1.874
+  HIS410 NE21984   3.214   3.406   4.177   2.767   2.333   1.746   1.552
+  HIS419 NE22046   3.290   4.369   5.125   2.584   2.752   1.308   0.765
+  HIS446 NE22243   3.179   3.612   4.441   2.976   2.397   1.805   1.334
+  HIS450 NE22276   3.280   3.549   4.406   3.403   2.541   2.335   1.887
+  MET468  SD2410   4.357   4.988   5.900   5.042   3.959   3.852   3.052
+  HIS478 NE22496   3.334   3.996   4.918   3.916   2.856   2.768   2.102
+  HIS479 NE22506   3.378   3.938   4.821   3.549   2.734   2.336   1.649
+  HIS491 NE22603   2.826   4.694   5.609   3.918   3.084   2.932   2.378
+  CYS492  SG2609   2.574   4.165   5.100   3.468   2.559   2.354   1.720
+  MET496  SD2643   3.119   4.936   5.834   3.738   3.192   2.596   1.865
+  MET509  SD2756   4.358   5.443   6.281   4.076   3.870   2.701   1.662
+  MET513  SD2787   3.994   4.854   5.679   3.649   3.386   2.288   1.323
+  MET519  SD2830   4.195   4.333   5.095   3.840   3.365   2.731   2.193
+  HIS522 NE22856   4.649   4.726   5.426   4.040   3.784   2.979   2.483
+  MET523  SD2863   5.252   5.256   5.958   4.782   4.406   3.701   3.116
+  MET532  SD2930   5.086   5.690   6.416   4.322   4.373   3.123   2.402
+  MET559  SD3145   4.234   4.956   5.702   3.497   3.547   2.257   1.558
+  HIS561 NE23163   4.284   4.533   5.286   3.803   3.464   2.652   2.064
+  CYS562  SG3169   4.259   4.632   5.344   3.488   3.446   2.358   1.847
+  MET583  SD3345   3.864   3.259   3.896   3.475   2.912   2.850   2.860
+  MET598  SD3476   4.272   3.953   4.720   4.638   3.576   3.790   3.437
+  MET603  SD3514   4.258   3.738   4.382   3.904   3.330   3.162   3.014
+  CYS604  SG3521   3.999   3.514   4.230   4.013   3.157   3.256   3.065
+  HIS607 NE23548   4.778   3.500   3.906   4.572   3.889   4.239   4.359
+  HIS624 NE23681   5.025   4.890   5.441   3.950   4.093   3.161   2.976
+  MET655  SD3945   4.258   3.375   3.774   3.294   3.248   3.030   3.339
+                  MET392  MET393  HIS398  HIS400  HIS406  HIS410  HIS419
+                  SD1831  SD1839 NE21882 NE21904 NE21952 NE21984 NE22046
+  MET393  SD1839   0.801
+  HIS398 NE21882   1.520   1.301
+  HIS400 NE21904   1.816   1.531   0.762
+  HIS406 NE21952   2.221   2.298   1.937   1.376
+  HIS410 NE21984   2.046   2.201   2.171   1.685   0.578
+  HIS419 NE22046   1.520   2.184   2.721   2.740   2.271   1.843
+  HIS446 NE22243   1.742   1.950   1.764   1.378   0.548   0.494   1.754
+  HIS450 NE22276   2.055   2.067   1.483   0.932   0.509   0.983   2.414
+  MET468  SD2410   2.881   2.919   1.655   1.800   2.363   2.828   3.626
+  HIS478 NE22496   1.939   1.911   0.784   0.753   1.490   1.876   2.753
+  HIS479 NE22506   1.795   1.960   1.290   1.032   0.877   1.202   2.188
+  HIS491 NE22603   1.613   1.655   1.873   2.569   3.498   3.500   2.964
+  CYS492  SG2609   0.984   1.055   1.111   1.762   2.637   2.663   2.405
+  MET496  SD2643   1.308   1.773   2.091   2.704   3.294   3.208   2.299
+  MET509  SD2756   2.120   2.845   2.697   2.879   2.469   2.356   1.568
+  MET513  SD2787   1.903   2.532   2.364   2.378   1.781   1.657   1.339
+  MET519  SD2830   2.692   2.960   2.484   2.062   0.865   1.091   2.384
+  HIS522 NE22856   3.109   3.460   3.095   2.695   1.421   1.451   2.477
+  MET523  SD2863   3.663   3.992   3.402   3.018   1.888   2.097   3.157
+  MET532  SD2930   3.122   3.759   3.618   3.513   2.530   2.350   2.037
+  MET559  SD3145   2.326   2.961   3.017   2.924   2.047   1.747   1.189
+  HIS561 NE23163   2.654   3.021   2.651   2.305   1.122   1.164   2.141
+  CYS562  SG3169   2.594   3.074   3.001   2.722   1.567   1.304   1.663
+  MET583  SD3345   3.234   3.165   2.884   2.173   1.152   1.325   3.145
+  MET598  SD3476   3.490   3.310   2.377   1.795   1.761   2.320   3.956
+  MET603  SD3514   3.412   3.411   2.969   2.295   1.204   1.491   3.276
+  CYS604  SG3521   3.281   3.149   2.531   1.825   1.221   1.687   3.487
+  HIS607 NE23548   4.618   4.380   3.967   3.214   2.602   2.863   4.688
+  HIS624 NE23681   3.727   4.092   4.023   3.574   2.215   1.988   2.724
+  MET655  SD3945   3.864   3.856   3.907   3.234   2.115   1.945   3.390
+                  HIS446  HIS450  MET468  HIS478  HIS479  HIS491  CYS492
+                 NE22243 NE22276  SD2410 NE22496 NE22506 NE22603  SG2609
+  HIS450 NE22276   0.703
+  MET468  SD2410   2.403   1.917
+  HIS478 NE22496   1.447   0.994   1.130
+  HIS479 NE22506   0.745   0.537   1.661   0.765
+  HIS491 NE22603   3.104   3.155   3.025   2.517   2.814
+  CYS492  SG2609   2.258   2.295   2.422   1.726   1.967   0.863
+  MET496  SD2643   2.818   3.039   3.109   2.556   2.628   0.896   1.034
+  MET509  SD2756   2.039   2.464   2.879   2.473   2.013   3.007   2.481
+  MET513  SD2787   1.363   1.838   2.640   2.060   1.457   3.065   2.383
+  MET519  SD2830   1.042   1.142   2.433   1.878   1.202   3.929   3.093
+  HIS522 NE22856   1.528   1.774   2.993   2.508   1.810   4.417   3.604
+  MET523  SD2863   2.092   2.124   2.901   2.704   2.139   4.811   4.009
+  MET532  SD2930   2.281   2.767   3.602   3.193   2.521   4.323   3.680
+  MET559  SD3145   1.669   2.276   3.371   2.728   2.034   3.660   3.001
+  HIS561 NE23163   1.123   1.416   2.651   2.095   1.373   3.938   3.127
+  CYS562  SG3169   1.369   1.916   3.252   2.590   1.833   4.008   3.249
+  MET583  SD3345   1.635   1.503   3.184   2.445   1.986   4.540   3.685
+  MET598  SD3476   2.214   1.555   1.978   1.788   1.887   4.242   3.451
+  MET603  SD3514   1.717   1.525   3.004   2.417   1.953   4.666   3.803
+  CYS604  SG3521   1.761   1.283   2.537   1.993   1.761   4.344   3.499
+  HIS607 NE23548   3.125   2.791   4.034   3.531   3.303   5.757   4.926
+  HIS624 NE23681   2.281   2.683   4.144   3.539   2.798   5.209   4.418
+  MET655  SD3945   2.415   2.573   4.373   3.562   2.990   5.354   4.527
+                  MET496  MET509  MET513  MET519  HIS522  MET523  MET532
+                  SD2643  SD2756  SD2787  SD2830 NE22856  SD2863  SD2930
+  MET509  SD2756   2.282
+  MET513  SD2787   2.456   0.712
+  MET519  SD2830   3.587   2.178   1.524
+  HIS522 NE22856   3.978   2.260   1.663   0.651
+  MET523  SD2863   4.411   2.619   2.129   1.058   0.776
+  MET532  SD2930   3.630   1.430   1.303   1.911   1.557   1.907
+  MET559  SD3145   2.987   1.145   0.789   1.711   1.579   2.173   0.875
+  HIS561 NE23163   3.509   1.906   1.262   0.404   0.479   1.065   1.515
+  CYS562  SG3169   3.456   1.728   1.141   1.124   0.884   1.592   1.099
+  MET583  SD3345   4.397   3.508   2.801   1.500   1.774   2.119   3.207
+  MET598  SD3476   4.325   3.765   3.193   2.022   2.555   2.472   3.883
+  MET603  SD3514   4.493   3.418   2.729   1.274   1.517   1.709   3.040
+  CYS604  SG3521   4.309   3.560   2.898   1.561   2.020   2.128   3.465
+  HIS607 NE23548   5.762   4.996   4.301   2.877   3.094   3.157   4.629
+  HIS624 NE23681   4.695   2.930   2.392   1.725   1.172   1.663   1.830
+  MET655  SD3945   5.106   4.072   3.381   2.298   2.246   2.711   3.461
+                  MET559  HIS561  CYS562  MET583  MET598  MET603  CYS604
+                  SD3145 NE23163  SG3169  SD3345  SD3476  SD3514  SG3521
+  HIS561 NE23163   1.343
+  CYS562  SG3169   0.771   0.756
+  MET583  SD3345   2.854   1.786   2.181
+  MET598  SD3476   3.628   2.421   3.116   1.776
+  MET603  SD3514   2.811   1.595   2.105   0.503   1.599
+  CYS604  SG3521   3.162   1.950   2.552   0.870   0.908   0.764
+  HIS607 NE23548   4.379   3.206   3.669   1.555   2.105   1.612   1.582
+  HIS624 NE23681   1.905   1.521   1.262   2.158   3.472   2.041   2.745
+  MET655  SD3945   3.136   2.407   2.456   1.251   3.005   1.524   2.100
+                  HIS607  HIS624
+                 NE23548 NE23681
+  HIS624 NE23681   3.345
+  MET655  SD3945   1.974   1.908
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/aminoacids.arn
+Before cleaning: 20747 pairs
+Before cleaning: 20947 dihedrals
+9 out of 9 lines of specbond.dat converted successfully
+Opening force field file /usr/local/gromacs/share/gromacs/top/charmm36-50.ff/aminoacids.arn
+
+GROMACS reminds you: "Computer system analysis is like child-rearing; you can do grievous damage, but you cannot ensure success." (Tom DeMarcho)
+
+Using the Charmm36-50 force field in directory charmm36-50.ff
+
+going to rename charmm36-50.ff/aminoacids.r2b
+
+going to rename charmm36-50.ff/carb.r2b
+
+going to rename charmm36-50.ff/cgenff.r2b
+
+going to rename charmm36-50.ff/ethers.r2b
+
+going to rename charmm36-50.ff/lipid.r2b
+
+going to rename charmm36-50.ff/metals.r2b
+
+going to rename charmm36-50.ff/na.r2b
+
+going to rename charmm36-50.ff/silicates.r2b
+
+going to rename charmm36-50.ff/solvent.r2b
+Reading protein_ions.pdb...
+Read '', 3965 atoms
+
+Analyzing pdb file
+Splitting chemical chains based on TER records or chain id changing.
+
+There are 2 chains and 0 blocks of water and 495 residues with 3965 atoms
+
+  chain  #res #atoms
+
+  1 ' '   492   3962  
+
+  2 'A'     3      3  
+
+there were 202 atoms with zero occupancy and 3760 atoms with          occupancy unequal to one (out of 3965 atoms). Check your pdb file.
+
+Reading residue database... (Charmm36-50)
+
+Processing chain 1 (3962 atoms, 492 residues)
+
+Identified residue VAL166 as a starting terminus.
+
+Identified residue PRO657 as a ending terminus.
+Start terminus VAL-166: NH3+
+End terminus PRO-657: COO-
+
+Checking for duplicate atoms....
+
+Generating any missing hydrogen atoms and/or adding termini.
+
+Now there are 492 residues with 7859 atoms
+Chain time...
+
+Making bonds...
+
+Number of bonds was 7934, now 7934
+
+Generating angles, dihedrals and pairs...
+
+Making cmap torsions...
+
+There are  490 cmap torsion pairs
+
+There are 20947 dihedrals, 1454 impropers, 14324 angles
+          20639 pairs,     7934 bonds and     0 virtual sites
+
+Total mass 56483.336 a.m.u.
+
+Total charge -18.000 e
+
+Writing topology
+
+Processing chain 2 'A' (3 atoms, 3 residues)
+
+Residue ZN1131 has type 'Ion', assuming it is not linked into a chain.
+
+Residue ZN1132 has type 'Ion', assuming it is not linked into a chain.
+
+Residue MG1135 has type 'Ion', assuming it is not linked into a chain.
+
+Problem with chain definition, or missing terminal residues. This chain does not appear to contain a recognized chain molecule. If this is incorrect, you can edit residuetypes.dat to modify the behavior.
+
+Checking for duplicate atoms....
+
+Generating any missing hydrogen atoms and/or adding termini.
+
+Now there are 3 residues with 3 atoms
+Chain time...
+
+Making bonds...
+
+No bonds
+
+Generating angles, dihedrals and pairs...
+
+Making cmap torsions...
+
+There are    0 dihedrals,    0 impropers,    0 angles
+             0 pairs,        0 bonds and     0 virtual sites
+
+Total mass 155.045 a.m.u.
+
+Total charge 6.000 e
+
+Writing topology
+
+Including chain 1 in system: 7859 atoms 492 residues
+
+Including chain 2 in system: 3 atoms 3 residues
+
+Now there are 7862 atoms and 495 residues
+
+Total mass in system 56638.381 a.m.u.
+
+Total charge in system -12.000 e
+
+Writing coordinate file...
+
+		--------- PLEASE NOTE ------------
+
+You have successfully generated a topology from: protein_ions.pdb.
+
+The Charmm36-50 force field and the tip3p water model are used.
+
+		--------- ETON ESAELP ------------

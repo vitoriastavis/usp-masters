@@ -1,0 +1,68 @@
+                      :-) GROMACS - gmx grompp, 2025.4 (-:
+
+Executable:   /home/gbiuser/Downloads/gromacs-2025.4/build/bin/gmx
+Data prefix:  /usr/local/gromacs
+Working dir:  /home/gbiuser/Documents/vitoria/usp-masters/8-md/md_simulation
+Command line:
+  gmx grompp -f inputs/ions.mdp -c solv.gro -p topol.top -o ions.tpr
+
+
+NOTE 1 [file inputs/ions.mdp]:
+  With Verlet lists the optimal nstlist is >= 10, with GPUs >= 20. Note
+  that with the Verlet scheme, nstlist has no effect on the accuracy of
+  your simulation.
+
+Generating 1-4 interactions: fudge = 1
+
+NOTE 2 [file topol.top, line 50]:
+  System has non-zero total charge: -12.000000
+  Total charge should normally be an integer. See
+  https://manual.gromacs.org/current/user-guide/floating-point.html
+  for discussion on how close it should be to an integer.
+
+
+
+
+NOTE 3 [file topol.top, line 50]:
+  In moleculetype 'Ion_chain_A' 3 atoms are not bound by a potential or
+  constraint to any other atom in the same moleculetype. Although
+  technically this might not cause issues in a simulation, this often means
+  that the user forgot to add a bond/potential/constraint or put multiple
+  molecules in the same moleculetype definition by mistake. Run with -v to
+  get information for each atom.
+
+Number of degrees of freedom in T-Coupling group rest is 427269.00
+The integrator does not provide a ensemble temperature, there is no system ensemble temperature
+
+NOTE 4 [file inputs/ions.mdp]:
+  You are using a plain Coulomb cut-off, which might produce artifacts.
+  You might want to consider using PME electrostatics.
+
+
+
+There were 4 NOTEs
+
+GROMACS reminds you: "You Should Sleep Late Man, It's Much Easier On Your Constitution" (Beastie Boys)
+
+Setting the LD random seed to 2147220351
+
+Generated 169542 of the 169653 non-bonded parameter combinations
+
+Generated 118878 of the 169653 1-4 parameter combinations
+
+Excluding 3 bonded neighbours molecule type 'Protein'
+
+Excluding 3 bonded neighbours molecule type 'Ion_chain_A'
+
+Excluding 2 bonded neighbours molecule type 'CRW'
+
+Excluding 2 bonded neighbours molecule type 'SOL'
+Analysing residue names:
+There are:   492    Protein residues
+There are:     3        Ion residues
+There are:     6      Other residues
+There are: 67275      Water residues
+Analysing Protein...
+Analysing residues not classified as Protein/DNA/RNA/Water and splitting into groups...
+
+This run will generate roughly 16 Mb of data
