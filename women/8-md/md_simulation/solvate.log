@@ -1,0 +1,56 @@
+                     :-) GROMACS - gmx solvate, 2025.4 (-:
+
+Executable:   /home/gbiuser/Downloads/gromacs-2025.4/build/bin/gmx
+Data prefix:  /usr/local/gromacs
+Working dir:  /home/gbiuser/Documents/vitoria/usp-masters/8-md/md_simulation
+Command line:
+  gmx solvate -cp boxed.gro -cs spc216.gro -o solv.gro -p topol.top
+
+Reading solute configuration
+Reading solvent configuration
+
+Initialising inter-atomic distances...
+
+WARNING: Masses and atomic (Van der Waals) radii will be guessed
+         based on residue and atom names, since they could not be
+         definitively assigned from the information in your input
+         files. These guessed numbers might deviate from the mass
+         and radius of the atom type. Please check the output
+         files if necessary. Note, that this functionality may
+         be removed in a future GROMACS version. Please, consider
+         using another file format for your input.
+
+NOTE: From version 5.0 gmx solvate uses the Van der Waals radii
+from the source below. This means the results may be different
+compared to previous GROMACS versions.
+
+++++ PLEASE READ AND CITE THE FOLLOWING REFERENCE ++++
+A. Bondi
+van der Waals Volumes and Radii
+J. Phys. Chem. (1964)
+DOI: 10.1021/j100785a001
+-------- -------- --- Thank You --- -------- --------
+
+Generating solvent configuration
+Will generate new solvent configuration of 8x8x6 boxes
+Solvent box contains 229578 atoms in 76526 residues
+Removed 20169 solvent atoms due to solvent-solvent overlap
+Removed 7584 solvent atoms due to solute-solvent overlap
+Sorting configuration
+Found 1 molecule type:
+    SOL (   3 atoms): 67275 residues
+Generated solvent containing 201825 atoms in 67275 residues
+Writing generated configuration to solv.gro
+
+Output configuration contains 209705 atoms in 67776 residues
+Volume                 :      2134.1 (nm^3)
+Density                :     990.146 (g/l)
+Number of solvent molecules:  67275   
+
+Processing topology
+
+Back Off! I just backed up topol.top to ./#topol.top.1#
+
+GROMACS reminds you: "Everybody Lie Down On the Floor and Keep Calm" (KLF)
+
+Adding line for 67275 solvent molecules with resname (SOL) to topology file (topol.top)

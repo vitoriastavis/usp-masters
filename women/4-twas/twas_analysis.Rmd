@@ -1,0 +1,399 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-05-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Comparing the predicted targets with significant genes in the TWAS paper
+
+```{r message=FALSE, warning=FALSE}
+twas_path <- "."
+
+all_unique  <- list()
+all_analyses <- list()
+
+# List all subdirectories inside the main directory
+subdirs <- list.dirs(twas_path, recursive = FALSE)
+subdirs <- subdirs[subdirs != "./bsb2026"]
+subdirs <- subdirs[subdirs != "./jad"]
+
+# Loop through each subdirectory
+for (subdir in subdirs) {
+
+  analyses_genes <- list()
+  unique_genes <- c()
+  
+  # Find the CSV file in the subdirectory
+  csv_files <- list.files(subdir, pattern = "\\.csv$", full.names = TRUE)
+  
+  # If there's at least one CSV file, read it
+  if (length(csv_files) > 0) {
+    csv_path <- csv_files[1]  # Assuming there's only one CSV per folder
+    
+    # Extract the file name without extension
+    file_name <- tools::file_path_sans_ext(basename(csv_path))
+    
+    data <- read.csv(csv_path, header = TRUE)
+    
+    for (col in colnames(data)){
+      genes <- unique(data[[col]])
+      analyses_genes[[col]] <- genes
+      unique_genes <- unique(c(unique_genes, genes))
+    }
+    
+    all_analyses[[file_name]] <- analyses_genes
+    all_unique[[file_name]] <- unique_genes
+    
+  } else {
+    warning(paste("No CSV file found in", subdir))
+  }
+}
+
+# for (i in names(all_unique)){
+#   print(i)
+#   print(length(all_unique[[i]]))
+# }
+```
+
+
+```{r}
+library(ggplot2)
+sizes <- lengths(intersection_results)
+df_sizes <- data.frame(N_alvos = sizes)
+
+p_dist_twas <- ggplot(df_sizes, aes(x = N_alvos)) +
+  geom_histogram(binwidth = 1, fill = "#6FAF9C", color = "white") +
+  theme_classic() +
+  labs(
+    x = "Número de alvos",
+    y = "Frequência"
+  ) +
+  theme(
+    legend.position = "top",
+    plot.subtitle = element_text(size = 14L),
+    axis.title.y = element_text(size = 14L),
+    axis.title.x = element_text(size = 14L),
+    axis.text.y = element_text(size = 14L),
+    axis.text.x = element_text(size = 14L),
+    legend.text = element_text(size = 14L),
+    legend.title = element_text(size = 14L)
+    )
+
+# ggsave("dist.png", width = 3, height = 2)
+
+library(patchwork)
+
+# p_dist <- (p_dist_degs | p_dist_twas) + plot_annotation(tag_levels = "a")
+ggsave("dist_alvos_2.png", width = 6, height = 3)
+```
+
+
+```{r}
+library(dplyr)
+
+gene_author <- bind_rows(
+  lapply(names(all_unique), function(auth) {
+    data.frame(
+      gene   = all_unique[[auth]],
+      author = auth,
+      stringsAsFactors = FALSE
+    )
+  })
+)
+
+# remover NAs ou strings vazias se existirem
+gene_author <- gene_author %>%
+  filter(!is.na(gene), gene != "")
+
+genes_autores <- gene_author %>%
+  group_by(gene) %>%
+  summarise(
+    n_autores = n_distinct(author),
+    autores   = paste(sort(unique(author)), collapse = ", ")
+  ) 
+
+genes_autores_filtrado <- genes_autores %>%
+  filter(n_autores > 1) %>%
+  arrange(desc(n_autores), gene)
+```
+
+```{r}
+# pegando o mais liberal, sem intersecao
+library(readr)
+all_sea <- read_csv("../2-targetprediction/data/sea/sea_targets_mapped.csv", show_col_types = FALSE)$x
+all_stp <- read_csv("../2-targetprediction/data/stp/stp_targets_mapped.csv", show_col_types = FALSE)$x
+all_ppb <- read_csv("../2-targetprediction/data/ppb2/ppb_targets_mapped.csv", show_col_types = FALSE)$x
+all_multitask <- read_csv("../2-targetprediction/data/multitask/multitask_targets_mapped.csv", show_col_types = FALSE)$x
+all_targets <- unique(c(all_sea, all_stp, all_ppb, all_multitask))
+
+all_twas <- unique(unname(unlist(all_unique)))
+#write.table(all_twas, file = "all_twas_targets.txt", row.names = FALSE, col.names=FALSE)
+
+load("../3-snrnaseq/sct/degs_sct_celltype/GSE213982_celltype_f.RData")
+load("../3-snrnaseq/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
+cell_types <- names(GSE144136_celltype_filtered)
+intersection_celltypes <- list()
+for (ct in cell_types) {
+  intersection_celltypes[[ct]] <- intersect(rownames(GSE144136_celltype_filtered[[ct]]),
+                                            rownames(GSE213982_celltype_filtered[[ct]]))
+}
+snrnaseq_intersection_celltype <- unique(unname(unlist(intersection_celltypes)))
+degs_celltype_14 <-  unique(unname(unlist(lapply(GSE144136_celltype_filtered, rownames))) )
+degs_celltype_21 <-  unique(unname(unlist(lapply(GSE213982_celltype_filtered, rownames))) )
+
+load("../3-snrnaseq/sct/degs_sct_novo/degs_f.RData")
+degs_GSE213982 <- degs_GSE213982_f$X
+degs_GSE144136 <- degs_GSE144136_f$X
+snrnaseq_intersection <- intersect(degs_GSE144136, degs_GSE213982)
+
+all_degs <- Reduce(union, list(degs_GSE144136, degs_GSE213982, degs_celltype_14, degs_celltype_21))
+
+targets_nofilter <- Reduce(intersect, list(
+  (all_targets),
+  (all_twas),
+  (all_degs)
+))
+
+length(targets_nofilter)
+```
+
+```{r}
+# add intersecao targets
+all_list <- list(toupper(all_sea), toupper(all_stp), toupper(all_ppb), toupper(all_multitask))
+targets_2plus <- names(which(table(unlist(all_list)) >= 2))
+
+targets_filtertargets <- Reduce(intersect, list(
+  (targets_2plus),
+  (all_twas),
+  (all_degs)
+))
+
+length(targets_filtertargets)
+```
+
+```{r}
+# intersecao targets e twas
+targets_2plus <- names(which(table(unlist(all_list)) >= 2))
+twas_2plus <- unique(genes_autores_filtrado$gene)
+
+targets_filtertargetstwas <- Reduce(intersect, list(
+  (targets_2plus),
+  (twas_2plus),
+  (all_degs)
+))
+
+length(targets_filtertargetstwas)
+
+# write.table(targets_filtertargetstwas, "bsb2026/targets_inter.csv", row.names = FALSE, col.names = FALSE)
+```
+
+```{r}
+# intersecao targets e twas e degs -> nao deu nada
+targets_2plus <- names(which(table(unlist(all_list)) >= 2))
+twas_2plus <- unique(genes_autores_filtrado$gene)
+
+degs_2plus <- union(snrnaseq_intersection, snrnaseq_intersection_celltype)
+
+targets_filtertargetstwasdegs <- Reduce(intersect, list(
+  (targets_2plus),
+  (twas_2plus),
+  (degs_2plus)
+))
+
+length(targets_filtertargetstwasdegs)
+```
+
+
+```{r}
+# intersecao targets e degs
+targets_2plus <- names(which(table(unlist(all_list)) >= 2))
+twas_2plus <- unique(genes_autores_filtrado$gene)
+
+targets_filtertargetsdegs <- Reduce(intersect, list(
+  (targets_2plus),
+  (degs_2plus),
+  (all_twas)
+))
+
+length(targets_filtertargetsdegs)
+
+# write.table(targets_filtertargetstwas, "bsb2026/targets_inter.csv", row.names = FALSE, col.names = FALSE)
+```
+
+
+
+```{r}
+# intersecao de cada com targets e depois soma
+
+# 28
+twas_targets <- intersect(targets_2plus, twas_2plus)
+
+# 19
+degs_targets <- intersect(degs_2plus, targets_2plus)
+
+# 47
+final <- union(twas_targets, degs_targets)
+length(final)
+# write.table(final, "jad/targets_both.csv", row.names = FALSE, col.names = FALSE)
+```
+
+```{r}
+# library(readr)
+# all_sea <- read_csv("../2-targetprediction/data/sea/sea_targets_mapped.csv", show_col_types = FALSE)$x
+# all_stp <- read_csv("../2-targetprediction/data/stp/stp_targets_mapped.csv", show_col_types = FALSE)$x
+# all_ppb <- read_csv("../2-targetprediction/data/ppb2/ppb_targets_mapped.csv", show_col_types = FALSE)$x
+# all_multitask <- read_csv("../2-targetprediction/data/multitask/multitask_targets_mapped.csv", show_col_types = FALSE)$x
+# targets_2plus <- names(which(table(unlist(all_list)) >= 2))
+# 
+# degs_2plus <- union(intersect(degs_GSE213982, degs_GSE144136), intersect(degs_celltype_14, degs_celltype_21))
+# degs_targets <- intersect(degs_2plus, targets_2plus)
+
+# 4 a mais, tudo bem
+```
+
+# Comparing with previous analyses
+
+```{r}
+load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_celltype/results_sct_celltype.RData")
+load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_novo/results_sct.RData")
+load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/logn/results_logn.RData")
+load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/logn/results_logn_celltype.RData")
+
+all_sct_celltype <- unique(unlist(unname(results_sct_celltype)))
+all_sct <- unique(unlist(unname(results_sct)))
+all_logn <- unique(unlist(unname(results_logn)))
+all_logn_celltype <- unique(unlist(unname(results_logn_celltype)))
+all_twas <- genes_autores_alvos_filtrado$gene
+
+all_results <- list(all_sct, all_sct_celltype, all_logn, all_logn_celltype, all_214951, all_twas)
+
+# Define names for the analyses
+analysis_names <- c("SCT-pseudobulk", "SCT-celltype", "logn-pseudobulk", "logn-celltype", "214951", "TWAS")
+names(all_results) <- analysis_names
+
+# Create a named list of all genes with their corresponding analysis
+gene_to_analyses <- list()
+
+for (i in seq_along(all_results)) {
+  genes <- all_results[[i]]
+  analysis <- analysis_names[i]
+  
+  for (gene in genes) {
+    gene_to_analyses[[gene]] <- unique(c(gene_to_analyses[[gene]], analysis))
+  }
+}
+
+gene_analyses_df <- tibble::tibble(
+  gene = names(gene_to_analyses),
+  analyses = sapply(gene_to_analyses, function(x) paste(sort(x), collapse = ","))
+)
+
+multi_analysis_genes <- gene_analyses_df %>% 
+  filter(lengths(gene_to_analyses) > 1)
+```
+
+# Getting the predicted metabolites/ligands for the intersection genes
+
+```{r}
+load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_novo/degs_f.RData")
+load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE213982_celltype_f.RData")
+load("/home/gbiuser/Documents/vitoria/usp-masters/3-snrnaseq/sct/degs_sct_celltype/GSE144136_celltype_f.RData")
+# 
+gene <- "GAPDH"
+# 
+rownames(degs_GSE144136_f) <- degs_GSE144136_f$X
+all_targets <- read.table("/home/gbiuser/Documents/vitoria/usp-masters/targets.txt")$V1
+
+all_targets <- c("PPIA")
+
+for (gene in all_targets){
+  # cat (gene %in% all_degs & gene %in% all_twas)
+  # cat("\t",gene, "\n")
+  if (gene %in% rownames(GSE144136_celltype_filtered$InN) & gene %in% rownames(GSE213982_celltype_filtered$InN)){
+    cat("inn ",GSE144136_celltype_filtered$InN[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$ExN) & gene %in% rownames(GSE213982_celltype_filtered$ExN)){
+    cat("exn ",GSE144136_celltype_filtered$ExN[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$Oli) & gene %in% rownames(GSE213982_celltype_filtered$Oli)){
+    cat("oli ",GSE144136_celltype_filtered$Oli[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$Ast) & gene %in% rownames(GSE213982_celltype_filtered$Ast)){
+    cat("ast ",GSE144136_celltype_filtered$Ast[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$Mic) & gene %in% rownames(GSE144136_celltype_filtered$Mic)){
+    cat("mic ",GSE144136_celltype_filtered$Mic[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$OPC) & gene %in% rownames(GSE213982_celltype_filtered$OPC)){
+    cat("opc ",GSE144136_celltype_filtered$OPC[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$End) & gene %in% rownames(GSE213982_celltype_filtered$End)){
+    cat("end ",GSE144136_celltype_filtered$End[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% degs_GSE144136_f$X & gene %in% degs_GSE213982_f$X){
+    cat("geral ",degs_GSE144136_f[gene, "avg_log2FC"], '\n')
+  }
+}
+
+```
+
+```{R}
+for (gene in targets_filtertargetstwas){
+  cat (gene %in% all_degs & gene %in% all_twas)
+  cat("\t",gene, "\n")
+  if (gene %in% rownames(GSE144136_celltype_filtered$InN)){
+    cat("inn 14",GSE144136_celltype_filtered$InN[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE213982_celltype_filtered$InN)){
+    cat("inn 21 ",GSE213982_celltype_filtered$InN[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$ExN)){
+    cat("exn 14",GSE144136_celltype_filtered$ExN[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE213982_celltype_filtered$ExN)){
+    cat("exn 21",GSE213982_celltype_filtered$ExN[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$Oli)){
+    cat("oli 14",GSE144136_celltype_filtered$Oli[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE213982_celltype_filtered$Oli)){
+    cat("oli 21",GSE213982_celltype_filtered$Oli[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$Ast)){
+    cat("ast 14",GSE144136_celltype_filtered$Ast[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE213982_celltype_filtered$Ast)){
+    cat("ast 21",GSE213982_celltype_filtered$Ast[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE213982_celltype_filtered$Mic)){
+    cat("mic 21",GSE213982_celltype_filtered$Mic[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$Mic)){
+    cat("mic 14",GSE144136_celltype_filtered$Mic[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE213982_celltype_filtered$OPC)){
+    cat("opc 21",GSE213982_celltype_filtered$OPC[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$OPC)){
+    cat("opc 14",GSE144136_celltype_filtered$OPC[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE144136_celltype_filtered$End)){
+    cat("end 14",GSE144136_celltype_filtered$End[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% rownames(GSE213982_celltype_filtered$End)){
+    cat("end 21",GSE213982_celltype_filtered$End[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% degs_GSE144136_f$X){
+    cat("geral ",degs_GSE144136_f[gene, "avg_log2FC"], '\n')
+  }
+  if (gene %in% degs_GSE213982_f$X){
+    cat("geral ",degs_GSE213982_f[gene, "avg_log2FC"], '\n')
+  }
+}
+```
+

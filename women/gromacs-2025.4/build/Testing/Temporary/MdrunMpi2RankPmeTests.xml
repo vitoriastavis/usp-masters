@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="19" failures="0" disabled="0" errors="0" time="1.087" timestamp="2025-11-28T23:27:03.626" name="AllTests">
+  <testsuite name="ReproducesEnergies/PmeTest" tests="19" failures="0" disabled="0" skipped="12" errors="0" time="1.081" timestamp="2025-11-28T23:27:03.632">
+    <testcase name="Runs/basic__notunepme__npme_0__pme_cpu" value_param="(4-byte object &lt;00-00 00-00&gt;, &quot;-notunepme -npme 0 -pme cpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="completed" time="0.146" timestamp="2025-11-28T23:27:03.632" classname="ReproducesEnergies/PmeTest" />
+    <testcase name="Runs/basic__notunepme__npme_0__pme_auto" value_param="(4-byte object &lt;00-00 00-00&gt;, &quot;-notunepme -npme 0 -pme auto&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="completed" time="0.029" timestamp="2025-11-28T23:27:03.779" classname="ReproducesEnergies/PmeTest" />
+    <testcase name="Runs/basic__notunepme__npme_0__pme_gpu__pmefft_cpu" value_param="(4-byte object &lt;00-00 00-00&gt;, &quot;-notunepme -npme 0 -pme gpu -pmefft cpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="skipped" time="0" timestamp="2025-11-28T23:27:03.808" classname="ReproducesEnergies/PmeTest">
+      <skipped message="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309&#x0A;Test is being skipped because:&#x0A;  it targets GPU execution, but no compatible devices were detected&#x0A;  it targets PME decomposition, but that is not supported&#x0A;  PME GPU does not support:&#x0A;    Non-GPU build of GROMACS.&#x0A;"><![CDATA[/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309
+Test is being skipped because:
+  it targets GPU execution, but no compatible devices were detected
+  it targets PME decomposition, but that is not supported
+  PME GPU does not support:
+    Non-GPU build of GROMACS.
+]]></skipped>
+    </testcase>
+    <testcase name="Runs/basic__notunepme__npme_0__pme_gpu__pmefft_gpu" value_param="(4-byte object &lt;00-00 00-00&gt;, &quot;-notunepme -npme 0 -pme gpu -pmefft gpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="skipped" time="0" timestamp="2025-11-28T23:27:03.808" classname="ReproducesEnergies/PmeTest">
+      <skipped message="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309&#x0A;Test is being skipped because:&#x0A;  it targets GPU execution, but no compatible devices were detected&#x0A;  it targets PME decomposition, but that is not supported&#x0A;  PME GPU does not support:&#x0A;    Non-GPU build of GROMACS.&#x0A;"><![CDATA[/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309
+Test is being skipped because:
+  it targets GPU execution, but no compatible devices were detected
+  it targets PME decomposition, but that is not supported
+  PME GPU does not support:
+    Non-GPU build of GROMACS.
+]]></skipped>
+    </testcase>
+    <testcase name="Runs/basic__notunepme__npme_0__pme_gpu__pmefft_auto" value_param="(4-byte object &lt;00-00 00-00&gt;, &quot;-notunepme -npme 0 -pme gpu -pmefft auto&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="skipped" time="0" timestamp="2025-11-28T23:27:03.808" classname="ReproducesEnergies/PmeTest">
+      <skipped message="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309&#x0A;Test is being skipped because:&#x0A;  it targets GPU execution, but no compatible devices were detected&#x0A;  it targets PME decomposition, but that is not supported&#x0A;  PME GPU does not support:&#x0A;    Non-GPU build of GROMACS.&#x0A;"><![CDATA[/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309
+Test is being skipped because:
+  it targets GPU execution, but no compatible devices were detected
+  it targets PME decomposition, but that is not supported
+  PME GPU does not support:
+    Non-GPU build of GROMACS.
+]]></skipped>
+    </testcase>
+    <testcase name="Runs/with_walls__notunepme__npme_0__pme_cpu" value_param="(4-byte object &lt;01-00 00-00&gt;, &quot;-notunepme -npme 0 -pme cpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="completed" time="0.428" timestamp="2025-11-28T23:27:03.808" classname="ReproducesEnergies/PmeTest" />
+    <testcase name="Runs/with_walls__notunepme__npme_0__pme_gpu__pmefft_cpu" value_param="(4-byte object &lt;01-00 00-00&gt;, &quot;-notunepme -npme 0 -pme gpu -pmefft cpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="skipped" time="0" timestamp="2025-11-28T23:27:04.237" classname="ReproducesEnergies/PmeTest">
+      <skipped message="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309&#x0A;Test is being skipped because:&#x0A;  it targets GPU execution, but no compatible devices were detected&#x0A;  it targets PME decomposition, but that is not supported&#x0A;  PME GPU does not support:&#x0A;    Non-GPU build of GROMACS.&#x0A;"><![CDATA[/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309
+Test is being skipped because:
+  it targets GPU execution, but no compatible devices were detected
+  it targets PME decomposition, but that is not supported
+  PME GPU does not support:
+    Non-GPU build of GROMACS.
+]]></skipped>
+    </testcase>
+    <testcase name="Runs/with_walls__notunepme__npme_0__pme_gpu__pmefft_gpu" value_param="(4-byte object &lt;01-00 00-00&gt;, &quot;-notunepme -npme 0 -pme gpu -pmefft gpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="skipped" time="0" timestamp="2025-11-28T23:27:04.237" classname="ReproducesEnergies/PmeTest">
+      <skipped message="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309&#x0A;Test is being skipped because:&#x0A;  it targets GPU execution, but no compatible devices were detected&#x0A;  it targets PME decomposition, but that is not supported&#x0A;  PME GPU does not support:&#x0A;    Non-GPU build of GROMACS.&#x0A;"><![CDATA[/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309
+Test is being skipped because:
+  it targets GPU execution, but no compatible devices were detected
+  it targets PME decomposition, but that is not supported
+  PME GPU does not support:
+    Non-GPU build of GROMACS.
+]]></skipped>
+    </testcase>
+    <testcase name="Runs/basic__notunepme__npme_1__pme_cpu" value_param="(4-byte object &lt;00-00 00-00&gt;, &quot;-notunepme -npme 1 -pme cpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="completed" time="0.099" timestamp="2025-11-28T23:27:04.237" classname="ReproducesEnergies/PmeTest" />
+    <testcase name="Runs/basic__notunepme__npme_1__pme_auto" value_param="(4-byte object &lt;00-00 00-00&gt;, &quot;-notunepme -npme 1 -pme auto&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="completed" time="0.024" timestamp="2025-11-28T23:27:04.336" classname="ReproducesEnergies/PmeTest" />
+    <testcase name="Runs/basic__notunepme__npme_1__pme_gpu__pmefft_cpu" value_param="(4-byte object &lt;00-00 00-00&gt;, &quot;-notunepme -npme 1 -pme gpu -pmefft cpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="skipped" time="0" timestamp="2025-11-28T23:27:04.361" classname="ReproducesEnergies/PmeTest">
+      <skipped message="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309&#x0A;Test is being skipped because:&#x0A;  it targets GPU execution, but no compatible devices were detected&#x0A;  PME GPU does not support:&#x0A;    Non-GPU build of GROMACS.&#x0A;"><![CDATA[/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309
+Test is being skipped because:
+  it targets GPU execution, but no compatible devices were detected
+  PME GPU does not support:
+    Non-GPU build of GROMACS.
+]]></skipped>
+    </testcase>
+    <testcase name="Runs/basic__notunepme__npme_1__pme_gpu__pmefft_gpu" value_param="(4-byte object &lt;00-00 00-00&gt;, &quot;-notunepme -npme 1 -pme gpu -pmefft gpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="skipped" time="0" timestamp="2025-11-28T23:27:04.361" classname="ReproducesEnergies/PmeTest">
+      <skipped message="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309&#x0A;Test is being skipped because:&#x0A;  it targets GPU execution, but no compatible devices were detected&#x0A;  PME GPU does not support:&#x0A;    Non-GPU build of GROMACS.&#x0A;"><![CDATA[/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309
+Test is being skipped because:
+  it targets GPU execution, but no compatible devices were detected
+  PME GPU does not support:
+    Non-GPU build of GROMACS.
+]]></skipped>
+    </testcase>
+    <testcase name="Runs/basic__notunepme__npme_1__pme_gpu__pmefft_auto" value_param="(4-byte object &lt;00-00 00-00&gt;, &quot;-notunepme -npme 1 -pme gpu -pmefft auto&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="skipped" time="0" timestamp="2025-11-28T23:27:04.361" classname="ReproducesEnergies/PmeTest">
+      <skipped message="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309&#x0A;Test is being skipped because:&#x0A;  it targets GPU execution, but no compatible devices were detected&#x0A;  PME GPU does not support:&#x0A;    Non-GPU build of GROMACS.&#x0A;"><![CDATA[/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309
+Test is being skipped because:
+  it targets GPU execution, but no compatible devices were detected
+  PME GPU does not support:
+    Non-GPU build of GROMACS.
+]]></skipped>
+    </testcase>
+    <testcase name="Runs/with_walls__notunepme__npme_1__pme_cpu" value_param="(4-byte object &lt;01-00 00-00&gt;, &quot;-notunepme -npme 1 -pme cpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="completed" time="0.326" timestamp="2025-11-28T23:27:04.361" classname="ReproducesEnergies/PmeTest" />
+    <testcase name="Runs/with_walls__notunepme__npme_1__pme_gpu__pmefft_cpu" value_param="(4-byte object &lt;01-00 00-00&gt;, &quot;-notunepme -npme 1 -pme gpu -pmefft cpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="skipped" time="0" timestamp="2025-11-28T23:27:04.688" classname="ReproducesEnergies/PmeTest">
+      <skipped message="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309&#x0A;Test is being skipped because:&#x0A;  it targets GPU execution, but no compatible devices were detected&#x0A;  PME GPU does not support:&#x0A;    Non-GPU build of GROMACS.&#x0A;"><![CDATA[/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309
+Test is being skipped because:
+  it targets GPU execution, but no compatible devices were detected
+  PME GPU does not support:
+    Non-GPU build of GROMACS.
+]]></skipped>
+    </testcase>
+    <testcase name="Runs/with_walls__notunepme__npme_1__pme_gpu__pmefft_gpu" value_param="(4-byte object &lt;01-00 00-00&gt;, &quot;-notunepme -npme 1 -pme gpu -pmefft gpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="skipped" time="0" timestamp="2025-11-28T23:27:04.688" classname="ReproducesEnergies/PmeTest">
+      <skipped message="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309&#x0A;Test is being skipped because:&#x0A;  it targets GPU execution, but no compatible devices were detected&#x0A;  PME GPU does not support:&#x0A;    Non-GPU build of GROMACS.&#x0A;"><![CDATA[/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309
+Test is being skipped because:
+  it targets GPU execution, but no compatible devices were detected
+  PME GPU does not support:
+    Non-GPU build of GROMACS.
+]]></skipped>
+    </testcase>
+    <testcase name="Runs/basic__tunepme__npme_0__pme_cpu" value_param="(4-byte object &lt;00-00 00-00&gt;, &quot;-tunepme -npme 0 -pme cpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="completed" time="0.025" timestamp="2025-11-28T23:27:04.688" classname="ReproducesEnergies/PmeTest" />
+    <testcase name="Runs/basic__tunepme__npme_0__pme_gpu__pmefft_cpu" value_param="(4-byte object &lt;00-00 00-00&gt;, &quot;-tunepme -npme 0 -pme gpu -pmefft cpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="skipped" time="0" timestamp="2025-11-28T23:27:04.713" classname="ReproducesEnergies/PmeTest">
+      <skipped message="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309&#x0A;Test is being skipped because:&#x0A;  it targets GPU execution, but no compatible devices were detected&#x0A;  it targets PME decomposition, but that is not supported&#x0A;  PME GPU does not support:&#x0A;    Non-GPU build of GROMACS.&#x0A;"><![CDATA[/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309
+Test is being skipped because:
+  it targets GPU execution, but no compatible devices were detected
+  it targets PME decomposition, but that is not supported
+  PME GPU does not support:
+    Non-GPU build of GROMACS.
+]]></skipped>
+    </testcase>
+    <testcase name="Runs/basic__tunepme__npme_0__pme_gpu__pmefft_gpu" value_param="(4-byte object &lt;00-00 00-00&gt;, &quot;-tunepme -npme 0 -pme gpu -pmefft gpu&quot;)" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp" line="283" status="run" result="skipped" time="0" timestamp="2025-11-28T23:27:04.713" classname="ReproducesEnergies/PmeTest">
+      <skipped message="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309&#x0A;Test is being skipped because:&#x0A;  it targets GPU execution, but no compatible devices were detected&#x0A;  it targets PME decomposition, but that is not supported&#x0A;  PME GPU does not support:&#x0A;    Non-GPU build of GROMACS.&#x0A;"><![CDATA[/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/programs/mdrun/tests/pmetest.cpp:309
+Test is being skipped because:
+  it targets GPU execution, but no compatible devices were detected
+  it targets PME decomposition, but that is not supported
+  PME GPU does not support:
+    Non-GPU build of GROMACS.
+]]></skipped>
+    </testcase>
+  </testsuite>
+</testsuites>

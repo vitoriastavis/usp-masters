@@ -1,0 +1,654 @@
+********  (C) Copyright Rosetta Commons Member Institutions.  ***************
+* Use of Rosetta for commercial purposes may require purchase of a license. *
+********  See LICENSE.md or email license@uw.edu for more details. **********
+core.init: Checking for fconfig files in pwd and ./rosetta/flags 
+core.init: Rosetta version: rosetta.binary.ubuntu.release-408 r408 2025.37+release.df75a9c48e df75a9c48e763e52a7aa3f5dfba077f4da88dbf5 https://www.rosettacommons.org 2025-09-10T02:14:08.564791
+core.init: Rosetta extras: []
+core.init: command: /home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/bin/relax.default.linuxgccrelease -s ../PDE4D_dimer_prerelax.pdb -relax:thorough -relax:constrain_relax_to_start_coords -constraints:cst_file cst.cst -nstruct 1 -out:suffix _11 -out:file:silent relax_11.silent -out:file:silent_struct_type binary
+basic.random.init_random_generator: 'RNG device' seed mode, using '/dev/urandom', seed=752261389 seed_offset=0 real_seed=752261389
+basic.random.init_random_generator: RandomGenerator:init: Normal mode, seed=752261389 RG_type=mt19937
+core.init: Resolved executable path: /home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/source/build/src/release/linux/6.8/64/x86/gcc/11/default/relax.default.linuxgccrelease
+core.init: Looking for database based on location of executable: /home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/database/
+core.scoring.ScoreFunctionFactory: SCOREFUNCTION: ref2015
+core.scoring.etable: Starting energy table calculation
+core.scoring.etable: smooth_etable: changing atr/rep split to bottom of energy well
+core.scoring.etable: smooth_etable: spline smoothing lj etables (maxdis = 6)
+core.scoring.etable: smooth_etable: spline smoothing solvation etables (max_dis = 6)
+core.scoring.etable: Finished calculating energy tables.
+basic.io.database: Database file opened: scoring/score_functions/hbonds/ref2015_params/HBPoly1D.csv
+basic.io.database: Database file opened: scoring/score_functions/hbonds/ref2015_params/HBFadeIntervals.csv
+basic.io.database: Database file opened: scoring/score_functions/hbonds/ref2015_params/HBEval.csv
+basic.io.database: Database file opened: scoring/score_functions/hbonds/ref2015_params/DonStrength.csv
+basic.io.database: Database file opened: scoring/score_functions/hbonds/ref2015_params/AccStrength.csv
+core.chemical.GlobalResidueTypeSet: Finished initializing fa_standard residue type set.  Created 985 residue types
+core.chemical.GlobalResidueTypeSet: Total time to initialize 1.22305 seconds.
+basic.io.database: Database file opened: scoring/score_functions/rama/fd/all.ramaProb
+basic.io.database: Database file opened: scoring/score_functions/rama/fd/prepro.ramaProb
+basic.io.database: Database file opened: scoring/score_functions/omega/omega_ppdep.all.txt
+basic.io.database: Database file opened: scoring/score_functions/omega/omega_ppdep.gly.txt
+basic.io.database: Database file opened: scoring/score_functions/omega/omega_ppdep.pro.txt
+basic.io.database: Database file opened: scoring/score_functions/omega/omega_ppdep.valile.txt
+basic.io.database: Database file opened: scoring/score_functions/P_AA_pp/P_AA
+basic.io.database: Database file opened: scoring/score_functions/P_AA_pp/P_AA_n
+core.scoring.P_AA: shapovalov_lib::shap_p_aa_pp_smooth_level of 1( aka low_smooth ) got activated.
+basic.io.database: Database file opened: scoring/score_functions/P_AA_pp/shapovalov/10deg/kappa131/a20.prop
+protocols.relax.RelaxScriptManager: Reading relax scripts list from database.
+protocols.relax.RelaxScriptManager: Looking for MonomerRelax2019.txt
+protocols.relax.RelaxScriptManager: ================== Reading script file: /home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/database/sampling/relax_scripts/MonomerRelax2019.txt ==================
+protocols.relax.RelaxScriptManager: repeat %%nrepeats%%
+protocols.relax.RelaxScriptManager: coord_cst_weight 1.0
+protocols.relax.RelaxScriptManager: scale:fa_rep 0.040
+protocols.relax.RelaxScriptManager: repack
+protocols.relax.RelaxScriptManager: scale:fa_rep 0.051
+protocols.relax.RelaxScriptManager: min 0.01
+protocols.relax.RelaxScriptManager: coord_cst_weight 0.5
+protocols.relax.RelaxScriptManager: scale:fa_rep 0.265
+protocols.relax.RelaxScriptManager: repack
+protocols.relax.RelaxScriptManager: scale:fa_rep 0.280
+protocols.relax.RelaxScriptManager: min 0.01
+protocols.relax.RelaxScriptManager: coord_cst_weight 0.0
+protocols.relax.RelaxScriptManager: scale:fa_rep 0.559
+protocols.relax.RelaxScriptManager: repack
+protocols.relax.RelaxScriptManager: scale:fa_rep 0.581
+protocols.relax.RelaxScriptManager: min 0.01
+protocols.relax.RelaxScriptManager: coord_cst_weight 0.0
+protocols.relax.RelaxScriptManager: scale:fa_rep 1
+protocols.relax.RelaxScriptManager: repack
+protocols.relax.RelaxScriptManager: min 0.00001
+protocols.relax.RelaxScriptManager: accept_to_best
+protocols.relax.RelaxScriptManager: endrepeat
+core.scoring.constraints.util: Constraint choice: cst.cst
+protocols.jd2.PDBJobInputter: Instantiate PDBJobInputter
+protocols.jd2.PDBJobInputter: PDBJobInputter::fill_jobs
+protocols.jd2.PDBJobInputter: pushed ../PDE4D_dimer_prerelax.pdb nstruct index 1
+protocols.evaluation.ChiWellRmsdEvaluatorCreator: Evaluation Creator active ... 
+protocols.jd2.PDBJobInputter: PDBJobInputter::pose_from_job
+protocols.jd2.PDBJobInputter: filling pose from PDB ../PDE4D_dimer_prerelax.pdb
+core.import_pose.import_pose: File '../PDE4D_dimer_prerelax.pdb' automatically determined to be of type PDB from contents.
+core.io.pose_from_sfr.PoseFromSFRBuilder: [ WARNING ] discarding 3 atoms at position 1 in file ../PDE4D_dimer_prerelax.pdb. Best match rsd_type:  VAL:NtermProteinFull
+core.io.pose_from_sfr.PoseFromSFRBuilder: [ WARNING ] discarding 3 atoms at position 492 in file ../PDE4D_dimer_prerelax.pdb. Best match rsd_type:  VAL:NtermProteinFull
+core.scoring.constraints.ConstraintsIO: read constraints from cst.cst
+core.scoring.constraints.ConstraintsIO: Read in 28 constraints
+basic.io.database: Database file opened: scoring/score_functions/elec_cp_reps.dat
+core.scoring.elec.util: Read 40 countpair representative atoms
+core.pack.dunbrack.RotamerLibrary: shapovalov_lib_fixes_enable option is true.
+core.pack.dunbrack.RotamerLibrary: shapovalov_lib::shap_dun10_smooth_level of 1( aka lowest_smooth ) got activated.
+core.pack.dunbrack.RotamerLibrary: Binary rotamer library selected: /home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/database/rotamer/shapovalov/StpDwn_0-0-0/Dunbrack10.lib.bin
+core.pack.dunbrack.RotamerLibrary: Using Dunbrack library binary file '/home/gbiuser/Downloads/rosetta.binary.ubuntu.release-408/main/database/rotamer/shapovalov/StpDwn_0-0-0/Dunbrack10.lib.bin'.
+core.pack.dunbrack.RotamerLibrary: Dunbrack 2010 library took 0.297338 seconds to load from binary
+protocols.relax.FastRelax: CMD: repeat  112488  0  0  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  112488  0  0  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  1645.59  0  0  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 14937 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -152.401  0  0  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  655.791  0  0  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -1716.05  0.300839  0.300839  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2039.08  0.300839  0.300839  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  1368.4  0.300839  0.300839  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13817 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  1230.88  0.300839  0.300839  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  1458.63  0.300839  0.300839  0.154
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -1199.38  0.47588  0.47588  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2038.66  0.47588  0.47588  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1229.26  0.47588  0.47588  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13569 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1247.56  0.47588  0.47588  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1184.82  0.47588  0.47588  0.31955
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2300.59  3.4443  3.4443  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2300.59  3.4443  3.4443  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1846.34  3.4443  3.4443  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13644 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1833.45  3.4443  3.4443  0.55
+protocols.relax.FastRelax: CMD: min  -2033.59  3.15739  3.15739  0.55
+protocols.relax.FastRelax: MRP: 0  -2033.59  -2033.59  3.15739  3.15739  
+protocols.relax.FastRelax: CMD: accept_to_best  -2033.59  3.15739  3.15739  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -2033.59  3.15739  3.15739  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  1.1937e+06  3.15739  3.15739  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  1.19299e+06  3.15739  3.15739  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 15388 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  1.19293e+06  3.15739  3.15739  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  1.19296e+06  3.15739  3.15739  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  3562.43  0.785372  0.785372  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  1639.51  0.785372  0.785372  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  11951.5  0.785372  0.785372  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13912 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  7885.15  0.785372  0.785372  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  8375.98  0.785372  0.785372  0.154
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  108.008  0.783022  0.783022  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -1828.23  0.783022  0.783022  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -989.069  0.783022  0.783022  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13495 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1059.91  0.783022  0.783022  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -995.575  0.783022  0.783022  0.31955
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2312.45  3.86355  3.86355  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2312.45  3.86355  3.86355  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1878.93  3.86355  3.86355  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13639 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1911.44  3.86355  3.86355  0.55
+protocols.relax.FastRelax: CMD: min  -2067.05  3.77641  3.77641  0.55
+protocols.relax.FastRelax: MRP: 1  -2067.05  -2067.05  3.77641  3.77641  
+protocols.relax.FastRelax: CMD: accept_to_best  -2067.05  3.77641  3.77641  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -2067.05  3.77641  3.77641  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  311871  3.77641  3.77641  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  311193  3.77641  3.77641  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 15552 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  311157  3.77641  3.77641  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  311181  3.77641  3.77641  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  1784.57  0.529725  0.529725  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  824.23  0.529725  0.529725  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  12608.4  0.529725  0.529725  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13910 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  8758.97  0.529725  0.529725  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  9362.25  0.529725  0.529725  0.154
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -572.984  0.615335  0.615335  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -1888.85  0.615335  0.615335  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1089.8  0.615335  0.615335  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13784 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1141.8  0.615335  0.615335  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1079.74  0.615335  0.615335  0.31955
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2308.11  4.52949  4.52949  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2308.11  4.52949  4.52949  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1875.47  4.52949  4.52949  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13673 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1903.23  4.52949  4.52949  0.55
+protocols.relax.FastRelax: CMD: min  -2036.25  4.32822  4.32822  0.55
+protocols.relax.FastRelax: MRP: 2  -2036.25  -2067.05  3.77641  3.77641  
+protocols.relax.FastRelax: CMD: accept_to_best  -2036.25  4.32822  4.32822  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -2036.25  4.32822  4.32822  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  610221  4.32822  4.32822  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  609535  4.32822  4.32822  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 15415 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  609503  4.32822  4.32822  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  609530  4.32822  4.32822  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  271.267  0.485752  0.485752  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  -547.571  0.485752  0.485752  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  6031.34  0.485752  0.485752  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13820 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  4336.26  0.485752  0.485752  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  4699.84  0.485752  0.485752  0.154
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -858.97  0.572863  0.572863  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2003.72  0.572863  0.572863  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1239.32  0.572863  0.572863  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13718 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1273.15  0.572863  0.572863  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1213.94  0.572863  0.572863  0.31955
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2318.88  4.23244  4.23244  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2318.88  4.23244  4.23244  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1884.5  4.23244  4.23244  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13791 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1912.64  4.23244  4.23244  0.55
+protocols.relax.FastRelax: CMD: min  -2037.72  4.43341  4.43341  0.55
+protocols.relax.FastRelax: MRP: 3  -2037.72  -2067.05  3.77641  3.77641  
+protocols.relax.FastRelax: CMD: accept_to_best  -2037.72  4.43341  4.43341  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -2037.72  4.43341  4.43341  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  576335  4.43341  4.43341  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  575652  4.43341  4.43341  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 15563 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  575617  4.43341  4.43341  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  575640  4.43341  4.43341  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  297.754  0.512748  0.512748  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  -613.531  0.512748  0.512748  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  5495.99  0.512748  0.512748  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 14018 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  3563.43  0.512748  0.512748  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  3878.63  0.512748  0.512748  0.154
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -886.403  0.578039  0.578039  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2065.26  0.578039  0.578039  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1302.08  0.578039  0.578039  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13920 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1324.61  0.578039  0.578039  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1265.35  0.578039  0.578039  0.31955
+protocols.relax.FastRelax: CMD: min  -2356.29  3.07854  3.07854  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2356.29  3.07854  3.07854  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1922.81  3.07854  3.07854  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13737 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1944.07  3.07854  3.07854  0.55
+protocols.relax.FastRelax: CMD: min  -2076.76  3.21768  3.21768  0.55
+protocols.relax.FastRelax: MRP: 4  -2076.76  -2076.76  3.21768  3.21768  
+protocols.relax.FastRelax: CMD: accept_to_best  -2076.76  3.21768  3.21768  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -2076.76  3.21768  3.21768  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  201553  3.21768  3.21768  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  200868  3.21768  3.21768  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 15455 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  200822  3.21768  3.21768  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  200841  3.21768  3.21768  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -513.596  0.435658  0.435658  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  -1194.61  0.435658  0.435658  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  3389.62  0.435658  0.435658  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13889 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  2584.06  0.435658  0.435658  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  2856.41  0.435658  0.435658  0.154
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -943.82  0.547059  0.547059  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2040.17  0.547059  0.547059  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1265.02  0.547059  0.547059  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13613 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1281.02  0.547059  0.547059  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1220.45  0.547059  0.547059  0.31955
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2280.05  4.00779  4.00779  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2280.05  4.00779  4.00779  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1843.36  4.00779  4.00779  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13690 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1872.95  4.00779  4.00779  0.55
+protocols.relax.FastRelax: CMD: min  -2011.68  4.04214  4.04214  0.55
+protocols.relax.FastRelax: MRP: 5  -2011.68  -2076.76  3.21768  3.21768  
+protocols.relax.FastRelax: CMD: accept_to_best  -2011.68  4.04214  4.04214  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -2011.68  4.04214  4.04214  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  1.00329e+06  4.04214  4.04214  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  1.0026e+06  4.04214  4.04214  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 15494 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  1.00258e+06  4.04214  4.04214  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  1.0026e+06  4.04214  4.04214  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -10.6034  0.507141  0.507141  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  -929.69  0.507141  0.507141  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  3813.08  0.507141  0.507141  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13944 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  2645.12  0.507141  0.507141  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  2905.9  0.507141  0.507141  0.154
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -888.373  0.576301  0.576301  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2059.19  0.576301  0.576301  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1313  0.576301  0.576301  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13831 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1336.87  0.576301  0.576301  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1278.75  0.576301  0.576301  0.31955
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2296.59  3.55408  3.55408  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2296.59  3.55408  3.55408  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1857.46  3.55408  3.55408  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13645 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1888.69  3.55408  3.55408  0.55
+protocols.relax.FastRelax: CMD: min  -2020.14  3.62002  3.62002  0.55
+protocols.relax.FastRelax: MRP: 6  -2020.14  -2076.76  3.21768  3.21768  
+protocols.relax.FastRelax: CMD: accept_to_best  -2020.14  3.62002  3.62002  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -2020.14  3.62002  3.62002  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  196337  3.62002  3.62002  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  195647  3.62002  3.62002  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 15470 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  195588  3.62002  3.62002  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  195610  3.62002  3.62002  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -500.34  0.450064  0.450064  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  -1205.38  0.450064  0.450064  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  3537.27  0.450064  0.450064  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13947 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  2506.14  0.450064  0.450064  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  2776.08  0.450064  0.450064  0.154
+core.optimization.LineMinimizer: Inaccurate G in step= 9.53674e-09 Deriv= -6281.96 Finite Diff= 4.11687e+08
+core.optimization.LineMinimizer: Inaccurate G in step= 6.75544e-09 Deriv= -195.584 Finite Diff= 6.16145e+08
+core.optimization.LineMinimizer: Inaccurate G in step= 3.49825e-09 Deriv= -352413 Finite Diff= 1.18889e+09
+core.optimization.LineMinimizer: Inaccurate G in step= 7.06525e-09 Deriv= -10204.2 Finite Diff= 5.89052e+08
+core.optimization.LineMinimizer: Inaccurate G in step= 2.854e-08 Deriv= -71461.4 Finite Diff= 1.45755e+08
+core.optimization.Minimizer: Line search failed even after resetting Hessian; aborting at iter#1300
+protocols.relax.FastRelax: CMD: min  -819.298  0.575486  0.575486  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -1984.08  0.575486  0.575486  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1167.75  0.575486  0.575486  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13676 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1180.34  0.575486  0.575486  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1116.66  0.575486  0.575486  0.31955
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2301.27  4.12018  4.12018  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2301.27  4.12018  4.12018  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1858.53  4.12018  4.12018  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13668 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1883.26  4.12018  4.12018  0.55
+protocols.relax.FastRelax: CMD: min  -2026.03  4.81386  4.81386  0.55
+protocols.relax.FastRelax: MRP: 7  -2026.03  -2076.76  3.21768  3.21768  
+protocols.relax.FastRelax: CMD: accept_to_best  -2026.03  4.81386  4.81386  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -2026.03  4.81386  4.81386  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  411037  4.81386  4.81386  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  410341  4.81386  4.81386  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 15560 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  410304  4.81386  4.81386  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  410327  4.81386  4.81386  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  269.504  0.514758  0.514758  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  -657.562  0.514758  0.514758  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  5051.84  0.514758  0.514758  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13987 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  3437.54  0.514758  0.514758  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  3742.46  0.514758  0.514758  0.154
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -885.859  0.576742  0.576742  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2031.57  0.576742  0.576742  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1297.14  0.576742  0.576742  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13785 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1328.12  0.576742  0.576742  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1271.12  0.576742  0.576742  0.31955
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2328.06  3.13731  3.13731  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2328.06  3.13731  3.13731  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1883.17  3.13731  3.13731  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13732 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1899.12  3.13731  3.13731  0.55
+protocols.relax.FastRelax: CMD: min  -2030.04  3.44119  3.44119  0.55
+protocols.relax.FastRelax: MRP: 8  -2030.04  -2076.76  3.21768  3.21768  
+protocols.relax.FastRelax: CMD: accept_to_best  -2030.04  3.44119  3.44119  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -2030.04  3.44119  3.44119  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  430110  3.44119  3.44119  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  429410  3.44119  3.44119  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 15429 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  429357  3.44119  3.44119  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  429375  3.44119  3.44119  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  0.576289  0.490151  0.490151  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  -827.051  0.490151  0.490151  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  4531.28  0.490151  0.490151  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13913 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  3007.88  0.490151  0.490151  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  3295.38  0.490151  0.490151  0.154
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -809.473  0.574971  0.574971  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -1979.55  0.574971  0.574971  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1180.33  0.574971  0.574971  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13651 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1195.51  0.574971  0.574971  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1133.07  0.574971  0.574971  0.31955
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2300.95  4.2122  4.2122  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2300.95  4.2122  4.2122  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1862.15  4.2122  4.2122  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13768 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1899.28  4.2122  4.2122  0.55
+protocols.relax.FastRelax: CMD: min  -2028.59  4.78377  4.78377  0.55
+protocols.relax.FastRelax: MRP: 9  -2028.59  -2076.76  3.21768  3.21768  
+protocols.relax.FastRelax: CMD: accept_to_best  -2028.59  4.78377  4.78377  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -2028.59  4.78377  4.78377  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  280028  4.78377  4.78377  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  279337  4.78377  4.78377  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 15369 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  279284  4.78377  4.78377  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  279300  4.78377  4.78377  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -221.253  0.416567  0.416567  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  -829.234  0.416567  0.416567  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  5887.33  0.416567  0.416567  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13910 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  4359.92  0.416567  0.416567  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  4739.11  0.416567  0.416567  0.154
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -983.51  0.541146  0.541146  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2029.72  0.541146  0.541146  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1232.61  0.541146  0.541146  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13627 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1246.69  0.541146  0.541146  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1184.34  0.541146  0.541146  0.31955
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2326.01  3.71431  3.71431  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2326.01  3.71431  3.71431  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1888.7  3.71431  3.71431  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13674 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1920.31  3.71431  3.71431  0.55
+protocols.relax.FastRelax: CMD: min  -2057.96  3.69086  3.69086  0.55
+protocols.relax.FastRelax: MRP: 10  -2057.96  -2076.76  3.21768  3.21768  
+protocols.relax.FastRelax: CMD: accept_to_best  -2057.96  3.69086  3.69086  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -2057.96  3.69086  3.69086  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  205293  3.69086  3.69086  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  204608  3.69086  3.69086  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 15414 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  204560  3.69086  3.69086  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  204577  3.69086  3.69086  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -867.78  0.423838  0.423838  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  -1503.34  0.423838  0.423838  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  2317.31  0.423838  0.423838  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13881 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  1425.12  0.423838  0.423838  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  1638.55  0.423838  0.423838  0.154
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -1026.83  0.530718  0.530718  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2050.54  0.530718  0.530718  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1267.12  0.530718  0.530718  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13627 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1306.35  0.530718  0.530718  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1245.73  0.530718  0.530718  0.31955
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2323.6  2.46214  2.46214  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2323.6  2.46214  2.46214  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1878.2  2.46214  2.46214  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13784 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1902.44  2.46214  2.46214  0.55
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2068.45  2.55822  2.55822  0.55
+protocols.relax.FastRelax: MRP: 11  -2068.45  -2076.76  3.21768  3.21768  
+protocols.relax.FastRelax: CMD: accept_to_best  -2068.45  2.55822  2.55822  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -2068.45  2.55822  2.55822  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  1.00442e+06  2.55822  2.55822  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  1.00373e+06  2.55822  2.55822  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 15504 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  1.00368e+06  2.55822  2.55822  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  1.0037e+06  2.55822  2.55822  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  475.046  0.546649  0.546649  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  -576.158  0.546649  0.546649  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  4731.19  0.546649  0.546649  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 14026 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  2848.23  0.546649  0.546649  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  3110.78  0.546649  0.546649  0.154
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -800.935  0.570934  0.570934  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -1952.81  0.570934  0.570934  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1144  0.570934  0.570934  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13659 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1187.25  0.570934  0.570934  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1124.83  0.570934  0.570934  0.31955
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2300.85  3.78778  3.78778  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2300.85  3.78778  3.78778  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1863.38  3.78778  3.78778  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13682 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1896.87  3.78778  3.78778  0.55
+protocols.relax.FastRelax: CMD: min  -2023.82  3.93563  3.93563  0.55
+protocols.relax.FastRelax: MRP: 12  -2023.82  -2076.76  3.21768  3.21768  
+protocols.relax.FastRelax: CMD: accept_to_best  -2023.82  3.93563  3.93563  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -2023.82  3.93563  3.93563  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  194582  3.93563  3.93563  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  193901  3.93563  3.93563  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 15446 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  193834  3.93563  3.93563  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  193858  3.93563  3.93563  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -764.922  0.444157  0.444157  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  -1477.5  0.444157  0.444157  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  1912.19  0.444157  0.444157  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13842 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  1509.23  0.444157  0.444157  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  1721.64  0.444157  0.444157  0.154
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -962.791  0.545034  0.545034  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2037.47  0.545034  0.545034  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1256.31  0.545034  0.545034  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13535 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1295.49  0.545034  0.545034  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1235.49  0.545034  0.545034  0.31955
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2368.68  3.95923  3.95923  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2368.68  3.95923  3.95923  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1934.68  3.95923  3.95923  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13652 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1956.34  3.95923  3.95923  0.55
+protocols.relax.FastRelax: CMD: min  -2091.77  4.09449  4.09449  0.55
+protocols.relax.FastRelax: MRP: 13  -2091.77  -2091.77  4.09449  4.09449  
+protocols.relax.FastRelax: CMD: accept_to_best  -2091.77  4.09449  4.09449  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -2091.77  4.09449  4.09449  0.55
+protocols.relax.FastRelax: CMD: coord_cst_weight  2.04165e+06  4.09449  4.09449  0.55
+protocols.relax.FastRelax: CMD: scale:fa_rep  2.04096e+06  4.09449  4.09449  0.022
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 15442 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  2.04092e+06  4.09449  4.09449  0.022
+protocols.relax.FastRelax: CMD: scale:fa_rep  2.04093e+06  4.09449  4.09449  0.02805
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  4106.94  0.741015  0.741015  0.02805
+protocols.relax.FastRelax: CMD: coord_cst_weight  2146.64  0.741015  0.741015  0.02805
+protocols.relax.FastRelax: CMD: scale:fa_rep  13245  0.741015  0.741015  0.14575
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13776 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  8178.64  0.741015  0.741015  0.14575
+protocols.relax.FastRelax: CMD: scale:fa_rep  8667.64  0.741015  0.741015  0.154
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  187.522  0.693575  0.693575  0.154
+protocols.relax.FastRelax: CMD: coord_cst_weight  -1547.92  0.693575  0.693575  0.154
+protocols.relax.FastRelax: CMD: scale:fa_rep  -692.863  0.693575  0.693575  0.30745
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13720 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -779.864  0.693575  0.693575  0.30745
+protocols.relax.FastRelax: CMD: scale:fa_rep  -714.17  0.693575  0.693575  0.31955
+core.optimization.Minimizer: [ WARNING ] LBFGS MAX CYCLES 2000 EXCEEDED, BUT FUNC NOT CONVERGED!
+protocols.relax.FastRelax: CMD: min  -2208.24  3.24976  3.24976  0.31955
+protocols.relax.FastRelax: CMD: coord_cst_weight  -2208.24  3.24976  3.24976  0.31955
+protocols.relax.FastRelax: CMD: scale:fa_rep  -1780.02  3.24976  3.24976  0.55
+core.pack.task: Packer task: initialize from command line() 
+core.pack.pack_rotamers: built 13765 rotamers at 983 positions.
+core.pack.interaction_graph.interaction_graph_factory: Instantiating DensePDInteractionGraph
+protocols.relax.FastRelax: CMD: repack  -1825.97  3.24976  3.24976  0.55
+protocols.relax.FastRelax: CMD: min  -1972.76  3.51068  3.51068  0.55
+protocols.relax.FastRelax: MRP: 14  -1972.76  -2091.77  4.09449  4.09449  
+protocols.relax.FastRelax: CMD: accept_to_best  -1972.76  3.51068  3.51068  0.55
+protocols.relax.FastRelax: CMD: endrepeat  -1972.76  3.51068  3.51068  0.55
+protocols::checkpoint: Deleting checkpoints of FastRelax
+protocols.jd2.JobDistributor: PDE4D_dimer_prerelax_11_0001 reported success in 60077 seconds
+protocols.jd2.JobDistributor: no more batches to process... 
+protocols.jd2.JobDistributor: 1 jobs considered, 1 jobs attempted in 60077 seconds
+basic.citation_manager.CitationManager: 
+The following Rosetta modules were used during this run of Rosetta, and should be cited:
+
+FastRelax Mover's citation(s):
+*Tyka MD, *Keedy DA, André I, Dimaio F, Song Y, Richardson DC, Richardson JS, and Baker D.  (2011).  Alternate states of proteins revealed by detailed energy landscape mapping.  J Mol Biol 405(2):607-18.  doi: 10.1016/j.jmb.2010.11.008.  (*Co-primary authors.)
+
+Khatib F, Cooper S, Tyka MD, Xu K, Makedon I, Popovic Z, Baker D, and Players F.  (2011).  Algorithm discovery by protein folding game players.  Proc Natl Acad Sci USA 108(47):18949-53.  doi: 10.1073/pnas.1115898108.
+
+Maguire JB, Haddox HK, Strickland D, Halabiya SF, Coventry B, Griffin JR, Pulavarti SVSRK, Cummins M, Thieker DF, Klavins E, Szyperski T, DiMaio F, Baker D, and Kuhlman B.  (2021).  Perturbing the energy landscape for improved packing during computational protein design.  Proteins 89(4):436-449.  doi: 10.1002/prot.26030.
+
+

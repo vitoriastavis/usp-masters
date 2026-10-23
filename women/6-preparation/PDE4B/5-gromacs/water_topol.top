@@ -1,0 +1,42 @@
+;
+;	File 'water_topol.top' was generated
+;	By user: gbiuser (1000)
+;	On host: gbi017039525
+;	At date: Thu Jul 16 15:46:06 2026
+;
+;	This is a standalone topology file
+;
+;	Created by:
+;	                    :-) GROMACS - gmx pdb2gmx, 2025.4 (-:
+;	
+;	Executable:   /home/gbiuser/Downloads/gromacs-2025.4/build/bin/gmx
+;	Data prefix:  /usr/local/gromacs
+;	Working dir:  /home/gbiuser/Documents/vitoria/usp-masters/6-preparation/target/5-gromacs
+;	Command line:
+;	  gmx pdb2gmx -f water.pdb -o water_processed.gro -p water_topol.top -water tip3p
+;	Force field was read from the standard GROMACS share directory.
+;
+
+; Include forcefield parameters
+#include "amber99sb-ildn.ff/forcefield.itp"
+
+; Include water topology
+#include "amber99sb-ildn.ff/tip3p.itp"
+
+#ifdef POSRES_WATER
+; Position restraint for each water oxygen
+[ position_restraints ]
+;  i funct       fcx        fcy        fcz
+   1    1       1000       1000       1000
+#endif
+
+; Include topology for ions
+#include "amber99sb-ildn.ff/ions.itp"
+
+[ system ]
+; Name
+Protein
+
+[ molecules ]
+; Compound        #mols
+SOL                 6

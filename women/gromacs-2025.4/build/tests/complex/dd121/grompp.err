@@ -1,0 +1,44 @@
+                      :-) GROMACS - gmx grompp, 2025.4 (-:
+
+Executable:   /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/bin/gmx
+Data prefix:  /home/gbiuser/Documents/vitoria/gromacs-2025.4 (source tree)
+Working dir:  /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/tests/complex/dd121
+Command line:
+  gmx grompp -f /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/tests/regressiontests-2025.4/complex/dd121/grompp.mdp -c /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/tests/regressiontests-2025.4/complex/dd121/conf -r /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/tests/regressiontests-2025.4/complex/dd121/conf -p /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/tests/regressiontests-2025.4/complex/dd121/topol -maxwarn 10
+
+Ignoring obsolete mdp entry 'optimize-fft'
+Ignoring obsolete mdp entry 'rlistlong'
+Ignoring obsolete mdp entry 'nstcalclr'
+Ignoring obsolete mdp entry 'gb-algorithm'
+Ignoring obsolete mdp entry 'nstgbradii'
+Ignoring obsolete mdp entry 'rgbradii'
+Ignoring obsolete mdp entry 'gb-epsilon-solvent'
+Ignoring obsolete mdp entry 'gb-saltconc'
+Ignoring obsolete mdp entry 'gb-obc-alpha'
+Ignoring obsolete mdp entry 'gb-obc-beta'
+Ignoring obsolete mdp entry 'gb-obc-gamma'
+Ignoring obsolete mdp entry 'gb-dielectric-offset'
+Ignoring obsolete mdp entry 'sa-algorithm'
+Ignoring obsolete mdp entry 'sa-surface-tension'
+Ignoring obsolete mdp entry 'ns-type'
+Replacing old mdp entry 'verlet-buffer-drift' by 'verlet-buffer-tolerance'
+Replacing old mdp entry 'nstxtcout' by 'nstxout-compressed'
+Replacing old mdp entry 'xtc-precision' by 'compressed-x-precision'
+
+WARNING 1 [file /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/tests/regressiontests-2025.4/complex/dd121/grompp.mdp]:
+  The Berendsen barostat does not generate any strictly correct ensemble,
+  and should not be used for new production simulations (in our opinion).
+  We recommend using the C-rescale barostat instead.
+
+
+WARNING 2 [file /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/tests/regressiontests-2025.4/complex/dd121/grompp.mdp]:
+  For proper integration of the Berendsen barostat, tau-p (1) should be at
+  least 25 times larger than nstpcouple*dt (0.05)
+
+Generating 1-4 interactions: fudge = 0.5
+Number of degrees of freedom in T-Coupling group System is 3511.00
+
+There were 2 WARNINGs
+
+Thanx for Using GROMACS - Have a Nice Day
+

@@ -1,0 +1,27 @@
+                      :-) GROMACS - gmx grompp, 2025.4 (-:
+
+Executable:   /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/bin/gmx
+Data prefix:  /home/gbiuser/Documents/vitoria/gromacs-2025.4 (source tree)
+Working dir:  /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/tests/complex/sw
+Command line:
+  gmx grompp -f /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/tests/regressiontests-2025.4/complex/sw/grompp.mdp -c /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/tests/regressiontests-2025.4/complex/sw/conf -r /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/tests/regressiontests-2025.4/complex/sw/conf -p /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/tests/regressiontests-2025.4/complex/sw/topol -maxwarn 10
+
+Ignoring obsolete mdp entry 'optimize_fft'
+Ignoring obsolete mdp entry 'rlistlong'
+Ignoring obsolete mdp entry 'nstcalclr'
+Ignoring obsolete mdp entry 'ns_type'
+
+NOTE 1 [file topol.top, line 162]:
+  In moleculetype 'SW' 1 atoms are not bound by a potential or constraint
+  to any other atom in the same moleculetype. Although technically this
+  might not cause issues in a simulation, this often means that the user
+  forgot to add a bond/potential/constraint or put multiple molecules in
+  the same moleculetype definition by mistake. Run with -v to get
+  information for each atom.
+
+Number of degrees of freedom in T-Coupling group System is 1509.00
+
+There was 1 NOTE
+
+Thanx for Using GROMACS - Have a Nice Day
+

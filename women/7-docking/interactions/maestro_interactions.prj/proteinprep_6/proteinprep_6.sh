@@ -1,0 +1,1 @@
+"${SCHRODINGER}/utilities/prepwizard" proteinprep_6.maegz proteinprep_6-out.maegz -nopreprocess -noprotassign -norefine -keepfarwat -JOBNAME proteinprep_6 -HOST localhost:4

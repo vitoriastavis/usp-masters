@@ -1,0 +1,58 @@
+
+Executable:   /home/gbiuser/Downloads/gromacs-2025.4/build/bin/gmx
+Data prefix:  /usr/local/gromacs
+Working dir:  /home/gbiuser/Documents/vitoria/usp-masters/8-md/md_simulation
+Command line:
+  gmx genion -s ions.tpr -o solv.gro -p topol.top -pname NA -nname CL -neutral
+
+Reading file ions.tpr, VERSION 2025.4 (single precision)
+Reading file ions.tpr, VERSION 2025.4 (single precision)
+Will try to add 12 NA ions and 0 CL ions.
+Select a continuous group of solvent molecules
+Group     0 (         System) has 209705 elements
+Group     1 (        Protein) has  7859 elements
+Group     2 (      Protein-H) has  3962 elements
+Group     3 (        C-alpha) has   492 elements
+Group     4 (       Backbone) has  1476 elements
+Group     5 (      MainChain) has  1967 elements
+Group     6 (   MainChain+Cb) has  2447 elements
+Group     7 (    MainChain+H) has  2446 elements
+Group     8 (      SideChain) has  5413 elements
+Group     9 (    SideChain-H) has  1995 elements
+Group    10 (    Prot-Masses) has  7859 elements
+Group    11 (    non-Protein) has 201846 elements
+Group    12 (            Ion) has     3 elements
+Group    13 (          Other) has    18 elements
+Group    14 (             ZN) has     2 elements
+Group    15 (             MG) has     1 elements
+Group    16 (            CRW) has    18 elements
+Group    17 (          Water) has 201825 elements
+Group    18 (            SOL) has 201825 elements
+Group    19 (      non-Water) has  7880 elements
+Group    20 ( Water_and_ions) has 201828 elements
+Select a group: 18
+Selected 18: 'SOL'
+Number of (3-atomic) solvent molecules: 67275
+
+Processing topology
+Replacing 12 solute molecules in topology file (topol.top)  by 12 NA and 0 CL ions.
+
+Back Off! I just backed up topol.top to ./#topol.top.2#
+Using random seed -18939995.
+Replacing solvent molecule 62227 (atom 194561) with NA
+Replacing solvent molecule 6084 (atom 26132) with NA
+Replacing solvent molecule 52447 (atom 165221) with NA
+Replacing solvent molecule 46302 (atom 146786) with NA
+Replacing solvent molecule 9982 (atom 37826) with NA
+Replacing solvent molecule 5096 (atom 23168) with NA
+Replacing solvent molecule 4841 (atom 22403) with NA
+Replacing solvent molecule 27401 (atom 90083) with NA
+Replacing solvent molecule 54527 (atom 171461) with NA
+Replacing solvent molecule 19637 (atom 66791) with NA
+Replacing solvent molecule 19092 (atom 65156) with NA
+Replacing solvent molecule 44685 (atom 141935) with NA
+
+
+Back Off! I just backed up solv.gro to ./#solv.gro.1#
+
+GROMACS reminds you: "You Fill Your Space So Sweet" (F. Apple)

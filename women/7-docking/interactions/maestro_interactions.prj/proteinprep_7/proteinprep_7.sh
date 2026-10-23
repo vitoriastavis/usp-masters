@@ -1,0 +1,1 @@
+"${SCHRODINGER}/utilities/prepwizard" proteinprep_7.maegz proteinprep_7-out.maegz -noepik -antibody_cdr_scheme Kabat -tcr_cdr_scheme IMGT -use_picked_epik_state -propka_pH 2.0 -f OPLS_2005 -rmsd 0.3 -watdist 5.0 -JOBNAME proteinprep_7 -HOST localhost:4

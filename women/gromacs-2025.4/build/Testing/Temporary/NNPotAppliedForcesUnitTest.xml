@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="12" failures="0" disabled="0" errors="0" time="0.022" timestamp="2025-11-28T23:26:27.770" name="AllTests">
+  <testsuite name="NNPotTest" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.770">
+    <testcase name="ForceProviderLackingInputThrows" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/gromacs/applied_forces/nnpot/tests/nnpot.cpp" line="105" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.770" classname="NNPotTest" />
+  </testsuite>
+  <testsuite name="NNPotOptionsTest" tests="5" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.770">
+    <testcase name="DefaultParameters" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/gromacs/applied_forces/nnpot/tests/nnpotoptions.cpp" line="136" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.770" classname="NNPotOptionsTest" />
+    <testcase name="OptionSetsActive" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/gromacs/applied_forces/nnpot/tests/nnpotoptions.cpp" line="151" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.771" classname="NNPotOptionsTest" />
+    <testcase name="OutputNoDefaultValuesWhenInactive" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/gromacs/applied_forces/nnpot/tests/nnpotoptions.cpp" line="158" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.771" classname="NNPotOptionsTest" />
+    <testcase name="OutputDefaultValuesWhenActive" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/gromacs/applied_forces/nnpot/tests/nnpotoptions.cpp" line="178" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.771" classname="NNPotOptionsTest" />
+    <testcase name="InternalsToKvtAndBack" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/gromacs/applied_forces/nnpot/tests/nnpotoptions.cpp" line="202" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.771" classname="NNPotOptionsTest" />
+  </testsuite>
+  <testsuite name="NNPotTopologyPreprocessorTest" tests="5" failures="0" disabled="0" skipped="0" errors="0" time="0.021" timestamp="2025-11-28T23:26:27.771">
+    <testcase name="CanConstruct" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/gromacs/applied_forces/nnpot/tests/nnpottopologypreprocessor.cpp" line="153" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.771" classname="NNPotTopologyPreprocessorTest" />
+    <testcase name="FourWatersFirstInQMRegion" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/gromacs/applied_forces/nnpot/tests/nnpottopologypreprocessor.cpp" line="159" status="run" result="completed" time="0.003" timestamp="2025-11-28T23:26:27.771" classname="NNPotTopologyPreprocessorTest" />
+    <testcase name="FourWatersSecondAndFourthInQMRegion" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/gromacs/applied_forces/nnpot/tests/nnpottopologypreprocessor.cpp" line="178" status="run" result="completed" time="0.002" timestamp="2025-11-28T23:26:27.775" classname="NNPotTopologyPreprocessorTest" />
+    <testcase name="AlanineDipeptideWithLinkAtomsNoConstraints" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/gromacs/applied_forces/nnpot/tests/nnpottopologypreprocessor.cpp" line="197" status="run" result="completed" time="0.007" timestamp="2025-11-28T23:26:27.777" classname="NNPotTopologyPreprocessorTest" />
+    <testcase name="AlanineDipeptideWithLinkAtomsWithConstraints" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/gromacs/applied_forces/nnpot/tests/nnpottopologypreprocessor.cpp" line="215" status="run" result="completed" time="0.007" timestamp="2025-11-28T23:26:27.785" classname="NNPotTopologyPreprocessorTest" />
+  </testsuite>
+  <testsuite name="NNPotForceProviderTest" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.793">
+    <testcase name="CanConstruct" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/src/gromacs/applied_forces/nnpot/tests/nnpotforceprovider.cpp" line="175" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.793" classname="NNPotForceProviderTest" />
+  </testsuite>
+</testsuites>

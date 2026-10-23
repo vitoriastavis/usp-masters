@@ -1,0 +1,82 @@
+library(readxl)
+
+get_metabolites <- function(analysis_targets, place) {
+  if (place=="lab"){
+    tp <- "/home/gbiuser/Documents/vitoria/usp-masters/2-targetprediction/data/"
+  }
+  else{
+    tp <- "~/usp/usp-masters/2-targetprediction/data/"
+  }
+  
+  load(paste0(tp, "stp/target_metabolites_stp.RData"))
+  stp_mappings <- read.csv(paste0(tp, "stp/stp_mappings.csv"))
+  # target_metabolites_stp <- target_metabolites_stp[names(target_metabolites_stp) %in% analysis_targets]
+  
+  sea_result <- read_excel(paste0(tp, "sea/sea-results.xlsx"))
+  sea_mappings <- read.csv(paste0(tp, "sea/sea_mappings.csv"))
+  colnames(sea_result) <- c("Query_ID", "Target_ID", "Affinity_Threshold", "P_Value",
+                            "Max_Tc", "Cut_Sum", "Z_Score", "Name", "Description", "Query_Smiles")
+  sea_result <- sea_result[grepl("_HUMAN$", sea_result$Target_ID), ]
+  # sea_result <- sea_result[sea_result$Name %in% analysis_targets, ]
+  target_metabolites_sea <- split(sea_result$Query_ID, sea_result$Name)
+  
+  multitask_mappings <- read.csv(paste0(tp, "multitask/multitask_mappings.csv"))
+  multitask_mappings <- multitask_mappings[!is.na(multitask_mappings$HGNC_ID),]
+  load(paste0(tp, "/multitask/target_metabolites_multitask.RData"))
+  # target_metabolites_multitask <- target_metabolites_multitask[names(target_metabolites_multitask) %in% analysis_targets]
+  
+  ppb_mappings <- read.csv(paste0(tp, "ppb2/ppb_mappings.csv"))
+  ppb_mappings <- ppb_mappings[!is.na(ppb_mappings$HGNC_ID),]
+  load(paste0(tp, "ppb2/target_metabolites_ppb.RData"))
+  # target_metabolites_ppb <- target_metabolites_ppb[names(target_metabolites_ppb) %in% analysis_targets]
+  
+  targets_metabolites <- list()
+  for (target in analysis_targets){
+    all_metabolites <- c()
+    
+    # Get SEA metabolites
+    sea_metabolites <- target_metabolites_sea[[target]]
+    sea_metabolites <- gsub("^cid", "", sea_metabolites)
+
+    all_metabolites <- c(sea_metabolites,
+                         target_metabolites_stp[[target]],
+                         target_metabolites_multitask[[target]],
+                         target_metabolites_ppb[[target]])
+    
+    original_queries <- sea_mappings[!is.na(sea_mappings$HGNC_ID) & sea_mappings$HGNC_ID == target, ]
+    for (query in original_queries$Query) {
+      metabolites <- target_metabolites_sea[[query]]
+      metabolites <- gsub("^cid", "", metabolites)
+      all_metabolites <- c(all_metabolites, metabolites)
+    }
+    
+    # print(length(all_metabolites))
+
+    original_queries <- stp_mappings[!is.na(stp_mappings$HGNC_ID) & stp_mappings$HGNC_ID == target, ]
+    for (query in original_queries$Query) {
+      all_metabolites <- c(all_metabolites, target_metabolites_stp[[query]])
+    }
+    
+    # print(length(all_metabolites))
+
+    original_queries <- multitask_mappings[!is.na(multitask_mappings$HGNC_ID) & multitask_mappings$HGNC_ID == target, ]
+    for (query in original_queries$Query) {
+      all_metabolites <- c(all_metabolites, target_metabolites_multitask[[query]])
+    }
+    
+    # print(length(all_metabolites))
+    
+    original_queries <- ppb_mappings[!is.na(ppb_mappings$HGNC_ID) & ppb_mappings$HGNC_ID == target, ]
+    for (query in original_queries$Query) {
+      all_metabolites <- c(all_metabolites, target_metabolites_ppb[[query]])
+    }
+    
+    # print(length(all_metabolites))
+    
+    targets_metabolites[[target]] <- unique(all_metabolites)
+    
+    # print(length(all_metabolites))
+  }
+  
+  return(targets_metabolites)
+}

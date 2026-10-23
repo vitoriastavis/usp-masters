@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="44" failures="0" disabled="0" errors="0" time="0.014" timestamp="2025-11-28T23:26:26.995" name="AllTests">
+  <testsuite name="NBlibTest" tests="8" failures="0" disabled="0" skipped="0" errors="0" time="0.012" timestamp="2025-11-28T23:26:26.995">
+    <testcase name="BondTypesOperatorEqualWorks" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/bondtypes.cpp" line="117" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:26.995" classname="NBlibTest" />
+    <testcase name="BondTypesLessThanWorks" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/bondtypes.cpp" line="127" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:26.995" classname="NBlibTest" />
+    <testcase name="CanSplitListedWork" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/helpers.cpp" line="75" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:26.995" classname="NBlibTest" />
+    <testcase name="ListedForceBuffer" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/helpers.cpp" line="115" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:26.995" classname="NBlibTest" />
+    <testcase name="ListedForceCalculatorCanConstruct" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/calculator.cpp" line="88" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:26.995" classname="NBlibTest" />
+    <testcase name="GmxToNblibConversionAllTypes" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="233" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:26.996" classname="NBlibTest" />
+    <testcase name="EndToEndListedComparison" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="278" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:26.996" classname="NBlibTest" />
+    <testcase name="shiftForcesAreCorrect" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/shiftforces.cpp" line="126" status="run" result="completed" time="0.012" timestamp="2025-11-28T23:26:26.996" classname="NBlibTest" />
+  </testsuite>
+  <testsuite name="Kernels" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.008">
+    <testcase name="HarmonicScalarKernelCanCompute" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/kernels.cpp" line="54" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.008" classname="Kernels" />
+  </testsuite>
+  <testsuite name="FourCenter" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.008">
+    <testcase name="ListedForcesProperDihedralTest" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/typetests.cpp" line="145" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.008" classname="FourCenter" />
+  </testsuite>
+  <testsuite name="ThreeCenter" tests="7" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.008">
+    <testcase name="ListedForcesG96AngleTest" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/typetests.cpp" line="150" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.008" classname="ThreeCenter" />
+    <testcase name="ListedForcesHarmonicAngleTest" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/typetests.cpp" line="155" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.008" classname="ThreeCenter" />
+    <testcase name="ListedForcesLinearAngleTest" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/typetests.cpp" line="160" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.008" classname="ThreeCenter" />
+    <testcase name="ListedForcesCrossBondBondTest" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/typetests.cpp" line="165" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.008" classname="ThreeCenter" />
+    <testcase name="ListedForcesCrossBondAngleTest" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/typetests.cpp" line="170" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.008" classname="ThreeCenter" />
+    <testcase name="ListedForcesQuarticAngleTest" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/typetests.cpp" line="175" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.008" classname="ThreeCenter" />
+    <testcase name="ListedForcesRestrictedAngleTest" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/typetests.cpp" line="180" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.008" classname="ThreeCenter" />
+  </testsuite>
+  <testsuite name="TwoCenter" tests="5" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.008">
+    <testcase name="ListedForcesHarmonicBondTest" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/typetests.cpp" line="185" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.008" classname="TwoCenter" />
+    <testcase name="ListedForcesG96BondTest" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/typetests.cpp" line="190" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.008" classname="TwoCenter" />
+    <testcase name="ListedForcesCubicBondTest" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/typetests.cpp" line="195" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.008" classname="TwoCenter" />
+    <testcase name="ListedForcesMorseBondTest" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/typetests.cpp" line="200" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="TwoCenter" />
+    <testcase name="ListedForcesFeneBondTest" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/typetests.cpp" line="205" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="TwoCenter" />
+  </testsuite>
+  <testsuite name="ListedExampleData" tests="5" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.009">
+    <testcase name="ComputeHarmonicBondForces" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/calculator.cpp" line="153" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="ListedExampleData" />
+    <testcase name="ComputeHarmonicBondEnergies" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/calculator.cpp" line="164" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="ListedExampleData" />
+    <testcase name="ComputeHarmonicAngleForces" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/calculator.cpp" line="175" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="ListedExampleData" />
+    <testcase name="CanReduceForces" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/calculator.cpp" line="186" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="ListedExampleData" />
+    <testcase name="CanReduceEnergies" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/calculator.cpp" line="194" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="ListedExampleData" />
+  </testsuite>
+  <testsuite name="LinearChainDataFixture" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.009">
+    <testcase name="Multithreading" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/calculator.cpp" line="251" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="LinearChainDataFixture" />
+  </testsuite>
+  <testsuite name="ListedShims" tests="2" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.009">
+    <testcase name="ParameterConversion" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="104" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="ListedShims" />
+    <testcase name="GmxToNblibConversion" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="131" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="ListedShims" />
+  </testsuite>
+  <testsuite name="CompareEachTypeInNblibAndGmx/NblibGmxListed/0" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.009">
+    <testcase name="SameForcesOnBoth" type_param="nblib::TwoParameterInteraction&lt;nblib::HarmonicBondTypeParameter&gt;" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="313" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="CompareEachTypeInNblibAndGmx/NblibGmxListed/0" />
+  </testsuite>
+  <testsuite name="CompareEachTypeInNblibAndGmx/NblibGmxListed/1" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.009">
+    <testcase name="SameForcesOnBoth" type_param="nblib::G96BondType" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="313" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="CompareEachTypeInNblibAndGmx/NblibGmxListed/1" />
+  </testsuite>
+  <testsuite name="CompareEachTypeInNblibAndGmx/NblibGmxListed/2" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.009">
+    <testcase name="SameForcesOnBoth" type_param="nblib::CubicBondType" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="313" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="CompareEachTypeInNblibAndGmx/NblibGmxListed/2" />
+  </testsuite>
+  <testsuite name="CompareEachTypeInNblibAndGmx/NblibGmxListed/3" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.009">
+    <testcase name="SameForcesOnBoth" type_param="nblib::MorseBondType" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="313" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="CompareEachTypeInNblibAndGmx/NblibGmxListed/3" />
+  </testsuite>
+  <testsuite name="CompareEachTypeInNblibAndGmx/NblibGmxListed/4" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.009">
+    <testcase name="SameForcesOnBoth" type_param="nblib::TwoParameterInteraction&lt;nblib::FENEBondTypeParameter&gt;" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="313" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="CompareEachTypeInNblibAndGmx/NblibGmxListed/4" />
+  </testsuite>
+  <testsuite name="CompareEachTypeInNblibAndGmx/NblibGmxListed/5" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.009">
+    <testcase name="SameForcesOnBoth" type_param="nblib::AngleInteractionType&lt;nblib::HarmonicAngleParameter&gt;" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="313" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.009" classname="CompareEachTypeInNblibAndGmx/NblibGmxListed/5" />
+  </testsuite>
+  <testsuite name="CompareEachTypeInNblibAndGmx/NblibGmxListed/6" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.010">
+    <testcase name="SameForcesOnBoth" type_param="nblib::CosineParamAngle&lt;nblib::G96AngleParameter&gt;" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="313" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.010" classname="CompareEachTypeInNblibAndGmx/NblibGmxListed/6" />
+  </testsuite>
+  <testsuite name="CompareEachTypeInNblibAndGmx/NblibGmxListed/7" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.010">
+    <testcase name="SameForcesOnBoth" type_param="nblib::CosineParamAngle&lt;nblib::RestrictedAngleParameter&gt;" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="313" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.010" classname="CompareEachTypeInNblibAndGmx/NblibGmxListed/7" />
+  </testsuite>
+  <testsuite name="CompareEachTypeInNblibAndGmx/NblibGmxListed/8" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.010">
+    <testcase name="SameForcesOnBoth" type_param="nblib::TwoParameterInteraction&lt;nblib::LinearAngleParameter&gt;" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="313" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.010" classname="CompareEachTypeInNblibAndGmx/NblibGmxListed/8" />
+  </testsuite>
+  <testsuite name="CompareEachTypeInNblibAndGmx/NblibGmxListed/9" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.010">
+    <testcase name="SameForcesOnBoth" type_param="nblib::QuarticAngle" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="313" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.010" classname="CompareEachTypeInNblibAndGmx/NblibGmxListed/9" />
+  </testsuite>
+  <testsuite name="CompareEachTypeInNblibAndGmx/NblibGmxListed/10" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.010">
+    <testcase name="SameForcesOnBoth" type_param="nblib::CrossBondBond" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="313" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.010" classname="CompareEachTypeInNblibAndGmx/NblibGmxListed/10" />
+  </testsuite>
+  <testsuite name="CompareEachTypeInNblibAndGmx/NblibGmxListed/11" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.010">
+    <testcase name="SameForcesOnBoth" type_param="nblib::CrossBondAngle" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="313" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.010" classname="CompareEachTypeInNblibAndGmx/NblibGmxListed/11" />
+  </testsuite>
+  <testsuite name="CompareEachTypeInNblibAndGmx/NblibGmxListed/12" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.010">
+    <testcase name="SameForcesOnBoth" type_param="nblib::ProperDihedral" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/conversions.cpp" line="313" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.010" classname="CompareEachTypeInNblibAndGmx/NblibGmxListed/12" />
+  </testsuite>
+  <testsuite name="ListedTransformations" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0" timestamp="2025-11-28T23:26:27.010">
+    <testcase name="SortInteractionIndices" file="/home/gbiuser/Documents/vitoria/gromacs-2025.4/api/nblib/listed_forces/tests/transformations.cpp" line="83" status="run" result="completed" time="0" timestamp="2025-11-28T23:26:27.010" classname="ListedTransformations" />
+  </testsuite>
+</testsuites>

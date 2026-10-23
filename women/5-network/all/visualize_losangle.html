@@ -1,0 +1,269 @@
+<html>
+<head>
+    <!-- 1. Cytoscape import is missing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        #cy {
+            width: 100%;
+            height: 100vh; /* 2. The canvas needs explicit dimensions */
+        }
+
+
+    </style>
+
+</head>
+<body>
+    <div id="cy"></div>
+    <script>
+        let cy;
+
+        function initializeCytoscape(data) {
+            console.log("=== Inicializando Cytoscape ===");
+            console.log("Dados recebidos:", data);
+            console.log("Elementos:", data.elements ? data.elements.length : 'N/A');
+            
+            cy = cytoscape({
+                container: document.getElementById('cy'),
+                elements: data.elements,
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'label': function(ele) {
+                                return ele.data('name') ? ele.data('name').replace(/"/g, '') : '';
+                            },
+                            'shape': 'round-rectangle',
+                            'background-color': function(ele) {
+                                var type = ele.data('type') ? ele.data('type').replace(/"/g, '').toLowerCase() : '';
+                                
+                                switch(type) {
+                                    case 'disorder': return '#c4f5e6'; 
+                                    case 'gene': return '#e0f9ff';    
+                                    case 'pathway': return '#eeffed'; 
+                                    case 'species': return '#d1d8ff';
+                                    case 'metabolite': return '#e6c7ff';       
+                                }
+                            },
+                            'color': function(ele) {
+                                var type = ele.data('type') ? ele.data('type').replace(/"/g, '').toLowerCase() : '';
+                                
+                                switch(type) {
+                                    case 'disorder': return '#6FAF9C'; 
+                                    case 'gene': return '#87CEE0';    
+                                    case 'pathway': return '#b6e8b3'; 
+                                    case 'species': return '#8e83de';
+                                    case 'metabolite': return '#A665B5';       
+                                }
+                            },
+                            'font-size': function(ele) {
+                                var type = ele.data('type') ? ele.data('type').replace(/"/g, '').toLowerCase() : '';
+                                
+                                switch(type) {
+                                    case 'disorder': return 50; 
+                                    case 'gene': return 50;    
+                                    case 'pathway': return 40; 
+                                    case 'species': return 40;
+                                    case 'metabolite': return 40;       
+                                }
+                            },
+                            'font-weight': 'bold',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'width': function(ele) {
+                                var type = ele.data('type') ? ele.data('type').replace(/"/g, '').toLowerCase() : '';
+                                
+                                switch(type) {
+                                    case 'disorder': return 200; 
+                                    case 'gene': return 200;    
+                                    case 'pathway': return 400; 
+                                    case 'species': return 500;
+                                    case 'metabolite': return 200;       
+                                }
+                            },
+                            'height': 50,                 
+                            'padding': '1px',
+                            'border-width': 0,
+                            'background-opacity': 1,
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'curve-style': 'bezier',
+                            'width': 1.5,
+                            'line-color': '#9e9e9e',
+                            'target-arrow-shape': 'none',
+                            'opacity': 1
+                        }
+                    }
+                ]
+                
+            });
+            
+            // Agrupar nós por camada
+            const layers = {};
+            cy.nodes().forEach(node => {
+                const layer = node.data('_layer_') || 1;
+                if (!layers[layer]) layers[layer] = [];
+                layers[layer].push(node);
+                        });
+            // ── 1. Ordenar nós por type dentro de cada layer ─────────────────────────────
+            const typeOrder = ['disorder', 'gene', 'pathway', 'species', 'metabolite'];
+            const sortedLayers = Object.keys(layers).map(Number).sort((a, b) => a - b);
+            sortedLayers.forEach(layerNum => {
+                layers[layerNum].sort((a, b) => {
+                    const typeA = (a.data('type') || '').replace(/"/g, '').toLowerCase();
+                    const typeB = (b.data('type') || '').replace(/"/g, '').toLowerCase();
+                    const ia = typeOrder.indexOf(typeA);
+                    const ib = typeOrder.indexOf(typeB);
+                    // tipos conhecidos primeiro, depois alfabético
+                    const orderA = ia === -1 ? 999 : ia;
+                    const orderB = ib === -1 ? 999 : ib;
+                    return orderA !== orderB ? orderA - orderB : typeA.localeCompare(typeB);
+                });
+            });
+
+            // ── Helpers ───────────────────────────────────────────────────────────────────
+            function getNodeWidth(node) {
+                const type = (node.data('type') || '').replace(/"/g, '').toLowerCase();
+                switch (type) {
+                    case 'disorder':   return 100;
+                    case 'gene':       return 100;
+                    case 'pathway':    return 100;
+                    case 'species':    return 100;
+                    case 'metabolite': return 100;
+                    default:           return 100;
+                }
+            }
+
+            function getDiamondArcPoint(t, radius, roundness = 0.5) {
+                const cosT = Math.cos(t);
+                const sinT = Math.sin(t);
+                const inflate = 1 + 0.2 * Math.pow(Math.abs(sinT), 3);
+                const a = radius * inflate;
+                const b = radius;
+                return {
+                    x: a * Math.sign(cosT) * Math.pow(Math.abs(cosT), 2 / roundness),
+                    y: b * Math.sign(sinT) * Math.pow(Math.abs(sinT), 2 / roundness)
+                };
+            }
+
+            // ── 2. curvatureWeight corrigido: peso maior nas pontas do losango ────────────
+            // Nas pontas (t ≈ 0, π/2, π, 3π/2), |cosT*sinT| → 0, então a versão antiga
+            // dava peso MÍNIMO ali — agora invertemos para dar espaço onde a curva dobra.
+            const curvatureWeight = (cosT, sinT) =>
+                1 + 3 * Math.pow(1 - Math.abs(cosT * sinT), 2);
+
+            // ── 3. Layout com espaçamento proporcional à largura real do nó ───────────────
+            const nodeMargin  = 30;   // px de margem extra entre nós
+            const baseRadius  = 1000;
+            const layerStep   = 0.2;
+            const squashFactor = 1.5;
+            const positions   = {};
+
+            sortedLayers.forEach((layerNum, index) => {
+                const nodes = layers[layerNum];
+                const count = nodes.length;
+
+                if (count === 1) {
+                    positions[nodes[0].id()] = { x: 0, y: 0 };
+                    return;
+                }
+
+                // Circunferência mínima baseada na soma real das larguras dos nós
+                const totalNodeWidth = nodes.reduce((sum, n) => sum + getNodeWidth(n) + nodeMargin, 0);
+                const minRadius = totalNodeWidth / (2 * Math.PI);
+                const radius = Math.max(baseRadius + layerStep * index, minRadius);
+
+                // Amostrar a curva e acumular comprimento de arco ponderado
+                const samples = 2000;
+                const points = [];
+                let totalLength = 0;
+
+                for (let i = 0; i <= samples; i++) {
+                    const t = (2 * Math.PI * i) / samples;
+                    const p = getDiamondArcPoint(t, radius, 1);
+                    points.push({ t, x: p.x, y: p.y, arcLength: 0 });
+
+                    if (i > 0) {
+                        const prev = points[i - 1];
+                        const dx = p.x - prev.x;
+                        const dy = p.y - prev.y;
+                        const w = curvatureWeight(Math.cos(t), Math.sin(t));
+                        totalLength += Math.hypot(dx, dy) * w;
+                        points[i].arcLength = totalLength;
+                    }
+                }
+
+                // ── 4. Espaçamento proporcional à largura de cada nó ─────────────────────
+                // Em vez de distribuir uniformemente (target = totalLength * j / count),
+                // cada nó ocupa um "slot" proporcional à sua largura.
+                const totalSlot = nodes.reduce((s, n) => s + getNodeWidth(n) + nodeMargin, 0);
+                let accumulated = 0;
+
+                nodes.forEach((node, j) => {
+                    const halfWidth = (getNodeWidth(node) + nodeMargin) / 2;
+                    // Centro do slot deste nó
+                    const target = (totalLength * (accumulated + halfWidth)) / totalSlot;
+                    accumulated += getNodeWidth(node) + nodeMargin;
+
+                    // Busca binária no array de pontos amostrados
+                    let lo = 0, hi = points.length - 1;
+                    while (lo < hi) {
+                        const mid = (lo + hi) >> 1;
+                        if (points[mid].arcLength < target) lo = mid + 1;
+                        else hi = mid;
+                    }
+
+                    positions[node.id()] = {
+                        x: points[lo].x * squashFactor,
+                        y: points[lo].y
+                    };
+                });
+            });
+
+            const layout = cy.layout({
+                name: 'preset',
+                positions: node => positions[node.id()],
+                fit: true,
+                //padding: 250,
+                //spacingFactor: 0.5,
+                avoidOverlap: true
+            });
+
+            layout.run();
+
+        }
+
+        // Load the file and initialize
+        fetch("network.cyjs")
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Arquivo não encontrado.');
+                }
+                return res.json();
+            })
+            .then(data => {
+                data.elements.nodes.forEach(n => {
+                    if (n.data.name) {
+                        n.data.name = n.data.name.replace(/"/g, '');
+                    }
+                    if (n.data.shared_name) {
+                        n.data.shared_name = n.data.shared_name.replace(/"/g, '');
+                    }
+                });
+                initializeCytoscape(data);
+                console.log("Nós:", cy.elements('node').length);
+                console.log("Arestas:", cy.elements('edge').length);
+            })
+            .catch(error => {
+                console.error('Error loading data:', error);
+                document.getElementById('centrality-results').innerHTML = 
+                    '<div class="centrality-results"><h3>Error</h3><p>Could not load network data. Make sure file exists.</p></div>';
+            });
+    </script>
+ 
+</body>
+</html>

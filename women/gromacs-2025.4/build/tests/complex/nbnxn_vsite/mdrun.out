@@ -1,0 +1,41 @@
+                      :-) GROMACS - gmx mdrun, 2025.4 (-:
+
+Executable:   /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/bin/gmx
+Data prefix:  /home/gbiuser/Documents/vitoria/gromacs-2025.4 (source tree)
+Working dir:  /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/tests/complex/nbnxn_vsite
+Command line:
+  gmx mdrun -ntmpi 6 -notunepme
+
+Reading file topol.tpr, VERSION 2025.4 (single precision)
+Can not increase nstlist because verlet-buffer-tolerance is not set or used
+Update groups can not be used for this system because an incompatible virtual site type is used
+
+Using 6 MPI threads
+Using 2 OpenMP threads per tMPI thread
+
+starting mdrun 'Protein'
+20 steps,      0.1 ps.
+
+Writing final coordinates.
+
+
+Dynamic load balancing report:
+ DLB was turned on during the run due to measured imbalance.
+ Average load imbalance: 80.2%.
+ The balanceable part of the MD step is 22%, load imbalance is computed from this.
+ Part of the total run time spent waiting due to load imbalance: 17.7%.
+ Steps where the load balancing was limited by -rdd, -rcon and/or -dds: X 0 % Y 0 %
+
+NOTE: 17.7 % of the available CPU time was lost due to load imbalance
+      in the domain decomposition.
+      You can consider manually changing the decomposition (option -dd);
+      e.g. by using fewer domains along the box dimension in which there is
+      considerable inhomogeneity in the simulated system.
+
+               Core t (s)   Wall t (s)        (%)
+       Time:        0.648        0.054     1197.3
+                 (ns/day)    (hour/ns)
+Performance:      167.627        0.143
+
+Thanx for Using GROMACS - Have a Nice Day
+

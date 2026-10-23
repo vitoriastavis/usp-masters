@@ -1,0 +1,25 @@
+---
+title: "other_targets"
+output: html_document
+---
+
+```{R}
+source("../get_metabolites.R")  
+
+final_47 <- read.csv("../4-twas/jad/targets_both.csv", header = FALSE)$V1
+targets_to_metabolites_all <- get_metabolites(final_47, "lab" )
+targets_to_metabolites_all <- lapply(targets_to_metabolites_all, unique)
+
+metabolites <- c("10176710", "no3", "348154", "10394")
+
+metabolite_to_targets <- lapply(metabolites, function(met) {
+  names(targets_to_metabolites_all)[
+    sapply(targets_to_metabolites_all, function(x) met %in% x)
+  ]
+})
+
+names(metabolite_to_targets) <- c("10176710", "m5", "348154", "10394")
+
+targets_m5 <- metabolite_to_targets$m5
+
+```

@@ -1,0 +1,21 @@
+; ions.mdp - parameter file for generating ions.tpr 
+
+integrator      = steep        ; simple steepest descent
+emtol           = 500.0        ; stop if Fmax < 500 kJ/mol/nm
+emstep          = 0.01
+nsteps          = 50000          
+
+; Neighborsearching and cutoffs
+cutoff-scheme   = Verlet
+nstlist         = 1
+rcoulomb        = 1.0
+rvdw            = 1.0
+
+; Electrostatics
+coulombtype     = Cut-off
+
+; Constraints 
+constraints     = none
+
+; Periodic boundary conditions
+pbc             = xyz
