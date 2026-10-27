@@ -1,6 +1,0 @@
-# CMake generated Testfile for 
-# Source directory: /home/gbiuser/Documents/vitoria/gromacs-2025.4/api/docs
-# Build directory: /home/gbiuser/Documents/vitoria/gromacs-2025.4/build/api/docs
-# 
-# This file includes the relevant testing commands required for 
-# testing this directory and lists subdirectories to be tested as well.

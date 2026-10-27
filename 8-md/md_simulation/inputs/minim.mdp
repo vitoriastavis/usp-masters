@@ -3,29 +3,20 @@
 integrator      = steep         ; Steepest descent minimization
 emtol           = 500.0         ; Stop when Fmax < 500 kJ/mol/nm
 emstep          = 0.01          ; Energy step size
-nsteps          = 50000         
-
-; Output control
-nstenergy       = 100
-energygrps      = System
+nsteps          = 50000         ; Maximum number of (minimization) steps to perform
 
 ; Neighbor searching
-cutoff-scheme   = Verlet
-nstlist         = 10
-rlist           = 1.0
+cutoff-scheme   = Verlet	; Buffered neighbor searching
+nstlist         = 1		; Frequency to update the neighbor list and long range forces
+ns_type         = grid		; Method to determine neighbor list (simple, grid)
 
 ; Electrostatics / VDW
-coulombtype     = PME
+coulombtype     = PME		; Treatment of long range electrostatic interactions
 rcoulomb        = 1.0
 rvdw            = 1.0
-pme_order       = 4
-fourierspacing  = 0.12
 
 ; Constraints
-constraints           = h-bonds
-constraint_algorithm  = lincs
-lincs_iter            = 1
-lincs_order           = 4
+constraints     = none
 
 ; Boundary conditions
 pbc             = xyz
