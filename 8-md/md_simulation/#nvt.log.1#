@@ -1,0 +1,32 @@
+                      :-) GROMACS - gmx mdrun, 2025.4 (-:
+
+Executable:   /home/lovelace/proj/proj1141/vistavis/gromacs-2025.4/build/bin/gmx
+Data prefix:  /home/lovelace/proj/proj1141/vistavis/gromacs-2025.4 (source tree)
+Working dir:  /home/lovelace/proj/proj1141/vistavis/usp-masters/8-md/md_simulation
+Command line:
+  gmx mdrun -deffnm nvt -ntmpi 1 -ntomp 16
+
+
+Back Off! I just backed up nvt.log to ./#nvt.log.1#
+Reading file nvt.tpr, VERSION 2025.4 (single precision)
+Changing nstlist from 20 to 80, rlist from 1.225 to 1.326
+
+Using 1 MPI thread
+
+Non-default thread affinity set, disabling internal thread affinity
+
+Using 16 OpenMP threads 
+
+starting mdrun 'Protein in water'
+50000 steps,    100.0 ps.
+
+Writing final coordinates.
+
+               Core t (s)   Wall t (s)        (%)
+       Time:    37720.564     2357.535     1600.0
+                         39:17
+                 (ns/day)    (hour/ns)
+Performance:        3.665        6.549
+
+GROMACS reminds you: "Not everyone is capable of madness; and of those lucky enough to be capable, not many have the courage for it." (August Strindberg)
+

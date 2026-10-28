@@ -1,0 +1,63 @@
+nohup: ignoring input
+                      :-) GROMACS - gmx grompp, 2025.4 (-:
+
+Executable:   /home/lovelace/proj/proj1141/vistavis/gromacs-2025.4/build/bin/gmx
+Data prefix:  /home/lovelace/proj/proj1141/vistavis/gromacs-2025.4 (source tree)
+Working dir:  /home/lovelace/proj/proj1141/vistavis/usp-masters/8-md/md_simulation
+Command line:
+  gmx grompp -f inputs/minim.mdp -c solv.gro -p topol.top -o minim.tpr
+
+Ignoring obsolete mdp entry 'ns_type'
+
+NOTE 1 [file inputs/minim.mdp]:
+  With Verlet lists the optimal nstlist is >= 10, with GPUs >= 20. Note
+  that with the Verlet scheme, nstlist has no effect on the accuracy of
+  your simulation.
+
+Generating 1-4 interactions: fudge = 1
+
+NOTE 2 [file topol.top, line 51]:
+  In moleculetype 'Ion_chain_A' 3 atoms are not bound by a potential or
+  constraint to any other atom in the same moleculetype. Although
+  technically this might not cause issues in a simulation, this often means
+  that the user forgot to add a bond/potential/constraint or put multiple
+  molecules in the same moleculetype definition by mistake. Run with -v to
+  get information for each atom.
+
+Number of degrees of freedom in T-Coupling group rest is 427233.00
+The integrator does not provide a ensemble temperature, there is no system ensemble temperature
+
+There were 2 NOTEs
+
+GROMACS reminds you: "I Am a Poor Lonesome Cowboy" (Lucky Luke)
+
+Setting the LD random seed to -1087154665
+
+Generated 169542 of the 169653 non-bonded parameter combinations
+
+Generated 118878 of the 169653 1-4 parameter combinations
+
+Excluding 3 bonded neighbours molecule type 'Protein'
+
+Excluding 3 bonded neighbours molecule type 'Ion_chain_A'
+
+Excluding 2 bonded neighbours molecule type 'CRW'
+
+Excluding 2 bonded neighbours molecule type 'SOL'
+
+Excluding 3 bonded neighbours molecule type 'NA'
+Analysing residue names:
+There are:   492    Protein residues
+There are:    15        Ion residues
+There are:     6      Other residues
+There are: 67263      Water residues
+Analysing Protein...
+Analysing residues not classified as Protein/DNA/RNA/Water and splitting into groups...
+
+The largest distance between excluded atoms is 0.429 nm between atom 6266 and 6274
+Calculating fourier grid dimensions for X Y Z
+Using a fourier grid of 128x128x128, spacing 0.113 0.113 0.113
+
+Estimate for the relative computational load of the PME mesh part: 0.29
+
+This run will generate roughly 16 Mb of data

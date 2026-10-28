@@ -1,0 +1,11 @@
+#PBS -N em
+#PBS -q par16
+#PBS -l select=1:ncpus=16
+#PBS -l walltime=04:00:00
+
+cd "$PBS_O_WORKDIR"
+
+export OMP_NUM_THREADS=16
+
+gmx mdrun -v -deffnm minim -ntmpi 1 -ntomp 16 > minim_run.log 2>&1
+
