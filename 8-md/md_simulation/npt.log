@@ -4,11 +4,9 @@ Executable:   /home/lovelace/proj/proj1141/vistavis/gromacs-2025.4/build/bin/gmx
 Data prefix:  /home/lovelace/proj/proj1141/vistavis/gromacs-2025.4 (source tree)
 Working dir:  /home/lovelace/proj/proj1141/vistavis/usp-masters/8-md/md_simulation
 Command line:
-  gmx mdrun -deffnm nvt -ntmpi 1 -ntomp 16
+  gmx mdrun -deffnm npt -ntmpi 1 -ntomp 16
 
-
-Back Off! I just backed up nvt.log to ./#nvt.log.1#
-Reading file nvt.tpr, VERSION 2025.4 (single precision)
+Reading file npt.tpr, VERSION 2025.4 (single precision)
 Changing nstlist from 20 to 80, rlist from 1.225 to 1.326
 
 Using 1 MPI thread
@@ -23,10 +21,10 @@ starting mdrun 'Protein in water'
 Writing final coordinates.
 
                Core t (s)   Wall t (s)        (%)
-       Time:    37720.564     2357.535     1600.0
-                         39:17
+       Time:    35835.077     2239.693     1600.0
+                         37:19
                  (ns/day)    (hour/ns)
-Performance:        3.665        6.549
+Performance:        3.858        6.221
 
-GROMACS reminds you: "Not everyone is capable of madness; and of those lucky enough to be capable, not many have the courage for it." (August Strindberg)
+GROMACS reminds you: "As Always Your Logic Is Impeccable" (Tuvok)
 

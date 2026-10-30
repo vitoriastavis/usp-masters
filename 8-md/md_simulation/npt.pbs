@@ -1,0 +1,13 @@
+#PBS -N gmx_npt
+#PBS -q par16
+#PBS -l select=1:ncpus=16
+#PBS -l walltime=04:00:00
+#PBS -j oe
+#PBS -e npt.log
+#PBS -o npt.log
+
+cd "$PBS_O_WORKDIR"
+
+export OMP_NUM_THREADS=16
+
+gmx mdrun -deffnm npt -ntmpi 1 -ntomp 16 

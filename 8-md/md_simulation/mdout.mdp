@@ -2,7 +2,7 @@
 ;	File 'mdout.mdp' was generated
 ;	By user: vistavis (7833)
 ;	On host: lovelace.ada.cenapad.unicamp.br
-;	At date: Tue Oct 27 16:14:16 2026
+;	At date: Wed Oct 28 16:03:32 2026
 ;
 ;	Created by:
 ;	                     :-) GROMACS - gmx grompp, 2025.4 (-:
@@ -11,7 +11,7 @@
 ;	Data prefix:  /home/lovelace/proj/proj1141/vistavis/gromacs-2025.4 (source tree)
 ;	Working dir:  /home/lovelace/proj/proj1141/vistavis/usp-masters/8-md/md_simulation
 ;	Command line:
-;	  gmx grompp -f inputs/nvt.mdp -c minim.gro -r minim.gro -p topol.top -o nvt.tpr
+;	  gmx grompp -f inputs/npt.mdp -c nvt.gro -r minim.gro -t nvt.cpt -p topol.top -o npt.tpr
 
 ; VARIOUS PREPROCESSING OPTIONS
 ; Preprocessor information: use cpp syntax.
@@ -147,15 +147,15 @@ tc-grps                  = System
 tau-t                    = 0.1
 ref-t                    = 310
 ; pressure coupling     
-pcoupl                   = no
-pcoupltype               = Isotropic
+pcoupl                   = C-rescale
+pcoupltype               = isotropic
 nstpcouple               = -1
 ; Time constant (ps), compressibility (1/bar) and reference P (bar)
-tau-p                    = 5
-compressibility          = 
-ref-p                    = 
+tau-p                    = 5.0
+compressibility          = 4.5e-5
+ref-p                    = 1.0
 ; Scaling of reference coordinates, No, All or COM
-refcoord-scaling         = No
+refcoord-scaling         = com
 
 ; OPTIONS FOR QMMM calculations
 QMMM                     = no
@@ -173,16 +173,16 @@ annealing-time           =
 annealing-temp           = 
 
 ; GENERATE VELOCITIES FOR STARTUP RUN
-gen_vel                  = yes
-gen_temp                 = 310
-gen_seed                 = 1944836415
+gen_vel                  = no
+gen-temp                 = 300
+gen-seed                 = -33612289
 
 ; OPTIONS FOR BONDS    
 constraints              = h-bonds
 ; Type of constraint algorithm
 constraint_algorithm     = lincs
 ; Do not constrain the start configuration
-continuation             = no
+continuation             = yes
 ; Use successive overrelaxation to reduce the number of shake iterations
 Shake-SOR                = no
 ; Relative tolerance of shake

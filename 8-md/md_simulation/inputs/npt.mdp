@@ -2,38 +2,42 @@
 
 ; Run settings
 integrator      = md
-nsteps          = 50000        
+nsteps          = 50000        ; 100 ps at 2 fs
 dt              = 0.002
 
 ; Output control
-nstxout             = 0
-nstvout             = 0
-nstenergy           = 100
-nstlog              = 100
+nstenergy           = 1000
+nstlog              = 1000
 nstxout-compressed  = 5000
+compressed-x-grps   = System
 
 ; Neighbor searching and cutoffs
 cutoff-scheme   = Verlet
-nstlist         = 10
-rlist           = 1.0
-rcoulomb        = 1.0
-rvdw            = 1.0
+nstlist         = 20
+rcoulomb        = 1.2
 
 ; Electrostatics
 coulombtype     = PME
 pme_order       = 4
 fourierspacing  = 0.12
 
+; van der Waals (LJ-PME)
+vdwtype          = PME
+vdw-modifier     = Potential-shift
+rvdw		 = 1.2
+lj-pme-comb-rule = Geometric
+DispCorr	 = no
+
 ; Temperature coupling
 tcoupl          = V-rescale
-tc-grps         = Protein  Water_and_ions
-tau-t           = 0.1      0.1
-ref-t           = 310      310
+tc-grps         = System
+tau-t		= 0.1
+ref-t		= 310
 
 ; Pressure coupling
 pcoupl          = C-rescale
 pcoupltype      = isotropic
-tau-p           = 2.0
+tau-p           = 5.0
 ref-p           = 1.0
 compressibility = 4.5e-5
 
@@ -42,9 +46,10 @@ constraints           = h-bonds
 constraint_algorithm  = lincs
 lincs_iter            = 1
 lincs_order           = 4
+continuation	      = yes
 
-define          = -DPOSRES
-refcoord_scaling = com
+define          = -DPOSRES -DPOSRES_CRYWAT
+refcoord-scaling      = com
 
 ; Periodic boundaries
 pbc             = xyz

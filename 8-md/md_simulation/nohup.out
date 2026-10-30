@@ -1,0 +1,90 @@
+                      :-) GROMACS - gmx grompp, 2025.4 (-:
+
+Executable:   /home/lovelace/proj/proj1141/vistavis/gromacs-2025.4/build/bin/gmx
+Data prefix:  /home/lovelace/proj/proj1141/vistavis/gromacs-2025.4 (source tree)
+Working dir:  /home/lovelace/proj/proj1141/vistavis/usp-masters/8-md/md_simulation
+Command line:
+  gmx grompp -f inputs/nvt.mdp -c minim.gro -r minim.gro -p topol.top -pp nvt_processed.top -o /tmp/check_nvt.tpr
+
+Generating 1-4 interactions: fudge = 1
+
+NOTE 1 [file topol.top, line 51]:
+  In moleculetype 'Ion_chain_A' 3 atoms are not bound by a potential or
+  constraint to any other atom in the same moleculetype. Although
+  technically this might not cause issues in a simulation, this often means
+  that the user forgot to add a bond/potential/constraint or put multiple
+  molecules in the same moleculetype definition by mistake. Run with -v to
+  get information for each atom.
+
+Number of degrees of freedom in T-Coupling group System is 423336.00
+
+NOTE 2 [file inputs/nvt.mdp]:
+  Removing center of mass motion in the presence of position restraints
+  might cause artifacts. When you are using position restraints to
+  equilibrate a macro-molecule, the artifacts are usually negligible.
+
+
+NOTE 3 [file inputs/nvt.mdp]:
+  You are using geometric combination rules in LJ-PME, but your non-bonded
+  C6 parameters do not follow these rules. This will introduce very small
+  errors in the forces and energies in your simulations. If your system is
+  homogeneous, consider using dispersion correction for the total energy
+  and pressure.
+
+
+There were 3 NOTEs
+
+GROMACS reminds you: "I Can't Shake It" (Dinosaur Jr)
+
+Setting the LD random seed to -6292601
+
+Generated 169542 of the 169653 non-bonded parameter combinations
+
+Generated 118878 of the 169653 1-4 parameter combinations
+
+Excluding 3 bonded neighbours molecule type 'Protein'
+
+turning H bonds into constraints...
+
+Excluding 3 bonded neighbours molecule type 'Ion_chain_A'
+
+turning H bonds into constraints...
+
+Excluding 2 bonded neighbours molecule type 'CRW'
+
+turning H bonds into constraints...
+
+Excluding 2 bonded neighbours molecule type 'SOL'
+
+turning H bonds into constraints...
+
+Excluding 3 bonded neighbours molecule type 'NA'
+
+turning H bonds into constraints...
+
+Setting gen_seed to -16848065
+
+Velocities were taken from a Maxwell distribution at 310 K
+Analysing residue names:
+There are:   492    Protein residues
+There are:    15        Ion residues
+There are:     6      Other residues
+There are: 67263      Water residues
+Analysing Protein...
+Analysing residues not classified as Protein/DNA/RNA/Water and splitting into groups...
+
+The largest distance between excluded atoms is 0.427 nm between atom 5215 and 5223
+
+Determining Verlet buffer for a tolerance of 0.005 kJ/mol/ps at 310 K
+
+Calculated rlist for 1x1 atom pair-list as 1.298 nm, buffer size 0.098 nm
+
+Set rlist, assuming 4x4 atom pair-list, to 1.225 nm, buffer size 0.025 nm
+
+Note that mdrun will redetermine rlist based on the actual pair-list setup
+Calculating fourier grid dimensions for X Y Z
+Using a fourier grid of 128x128x128, spacing 0.113 0.113 0.113
+
+Estimate for the relative computational load of the PME mesh part: 0.33
+
+This run will generate roughly 27 Mb of data
