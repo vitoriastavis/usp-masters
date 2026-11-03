@@ -2,7 +2,7 @@
 ;	File 'mdout.mdp' was generated
 ;	By user: vistavis (7833)
 ;	On host: lovelace.ada.cenapad.unicamp.br
-;	At date: Wed Oct 28 16:03:32 2026
+;	At date: Mon Nov  2 12:40:31 2026
 ;
 ;	Created by:
 ;	                     :-) GROMACS - gmx grompp, 2025.4 (-:
@@ -11,7 +11,7 @@
 ;	Data prefix:  /home/lovelace/proj/proj1141/vistavis/gromacs-2025.4 (source tree)
 ;	Working dir:  /home/lovelace/proj/proj1141/vistavis/usp-masters/8-md/md_simulation
 ;	Command line:
-;	  gmx grompp -f inputs/npt.mdp -c nvt.gro -r minim.gro -t nvt.cpt -p topol.top -o npt.tpr
+;	  gmx grompp -f inputs/npt2.mdp -c npt.gro -r minim.gro -t npt.cpt -p topol.top -o npt2.tpr
 
 ; VARIOUS PREPROCESSING OPTIONS
 ; Preprocessor information: use cpp syntax.
@@ -25,7 +25,7 @@ integrator               = md
 ; Start time and timestep in ps
 tinit                    = 0
 dt                       = 0.002
-nsteps                   = 50000
+nsteps                   = 500000
 ; For exact run continuation or redoing part of a run
 init-step                = 0
 ; Part index is updated automatically on checkpointing (keeps files separate)
@@ -151,7 +151,7 @@ pcoupl                   = C-rescale
 pcoupltype               = isotropic
 nstpcouple               = -1
 ; Time constant (ps), compressibility (1/bar) and reference P (bar)
-tau-p                    = 5.0
+tau-p                    = 2.5
 compressibility          = 4.5e-5
 ref-p                    = 1.0
 ; Scaling of reference coordinates, No, All or COM
@@ -175,7 +175,7 @@ annealing-temp           =
 ; GENERATE VELOCITIES FOR STARTUP RUN
 gen_vel                  = no
 gen-temp                 = 300
-gen-seed                 = -33612289
+gen-seed                 = 1811376125
 
 ; OPTIONS FOR BONDS    
 constraints              = h-bonds
