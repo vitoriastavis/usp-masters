@@ -46,10 +46,10 @@ output: html_document
 
 ```{R}
 library(dplyr)
-# df_name_cid <- read.csv("/home/gbiuser/Documents/vitoria/usp-masters/1-gutmgene/data/all_name_cid.csv")
-df_name_cid <- read.csv("~/usp/usp-masters/1-gutmgene/data/all_name_cid.csv", header=FALSE)
-# load("~/Documents/vitoria/usp-masters/1-gutmgene/data/gutmgenem_processed.RData")
-load("~/usp/usp-masters/1-gutmgene/data/gutmgenem_processed.RData")
+df_name_cid <- read.csv("/home/gbiuser/Documents/vitoria/usp-masters/1-gutmgene/data/all_name_cid.csv", header = FALSE)
+# df_name_cid <- read.csv("~/usp/usp-masters/1-gutmgene/data/all_name_cid.csv", header=FALSE)
+load("~/Documents/vitoria/usp-masters/1-gutmgene/data/gutmgenem_processed.RData")
+# load("~/usp/usp-masters/1-gutmgene/data/gutmgenem_processed.RData")
 
 # Get the row indices where CID is NA
 na_rows <- is.na(gutmgene_m$Metabolite_CID)
@@ -64,8 +64,8 @@ gutmgene_m <- gutmgene_m[gutmgene_m$Microbe_Species != "unclassified",]
 edges_species_met <- data.frame(
                             Source = gutmgene_m$Microbe_Species,
                             Target = gutmgene_m$Metabolite_CID)
-# Save information about species and metabolites nodes
 
+# Save information about species and metabolites nodes
 nodes <- data.frame(name = unique(c(edges_species_met$Source, edges_species_met$Target)),
                       type = c(rep("Species", length(unique(edges_species_met$Source))), rep("Metabolite", length(unique(edges_species_met$Target)))))
 ```
@@ -77,14 +77,14 @@ nodes <- data.frame(name = unique(c(edges_species_met$Source, edges_species_met$
 # ```{r}
 # source("../../get_metabolites.R")
 # all_targets <- read.table("../../4-twas/jad/targets_both.csv")$V1
-# 
-# targets_to_metabolites_all <- get_metabolites(all_targets, "casa" )
+# targets_to_metabolites_all <- get_metabolites(all_targets, "lab" )
 # targets_to_metabolites_all <- lapply(targets_to_metabolites_all, unique)
 # 
 # save(targets_to_metabolites_all, file="targets_metabolites_all.RData")
 # ```
 
 ```{R}
+## Conections between targets and metabolites
 load("targets_metabolites_all.RData")
 
 edges_target_met <- do.call(rbind, lapply(names(targets_to_metabolites_all), function(gene) {
@@ -100,6 +100,7 @@ met_targets <- unique(unname(unlist(targets_to_metabolites_all)))
 diff <- setdiff(met_targets, met_all)
 met_targets <- met_targets[!met_targets %in% diff]
 edges_target_met <- edges_target_met[!(edges_target_met$Target %in% diff),]
+write.table(unique(edges_target_met$Target), file = "~/Documents/vitoria/usp-masters/paper_jad/extras/jad_targets.tsv", row.names=FALSE, col.names=FALSE)
 
 # Save information about gene and metabolite nodes
 nodes <- rbind(nodes, data.frame(
