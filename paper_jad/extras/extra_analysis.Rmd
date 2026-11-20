@@ -1,0 +1,202 @@
+---
+title: "extra_analysis"
+output: html_document
+---
+
+```{R}
+library(tidyverse)
+library(igraph)
+
+nodes <- read_csv("../network/nodes.csv", show_col_types = FALSE)
+edges <- read_csv("../network/edges.csv", show_col_types = FALSE)
+
+glimpse(nodes)
+glimpse(edges)
+
+# Verificar nós duplicados
+nodes %>%
+  count(name) %>%
+  filter(n > 1)
+
+# Verificar arestas com nós inexistentes
+setdiff(
+  unique(c(edges$Source, edges$Target)),
+  nodes$name
+)
+
+# Verificar tipos e camadas
+table(nodes$type, nodes$layer)
+
+# Contar NAs
+colSums(is.na(edges))
+
+colSums(is.na(nodes))
+
+
+# Visualizar as linhas com NA
+edges %>%
+  filter(is.na(Source) | is.na(Target))
+
+nodes %>%
+  filter(is.na(name))
+```
+
+```{r}
+edges <- edges %>%
+  filter(!is.na(Source), !is.na(Target))
+
+nodes <- nodes %>%
+  filter(!is.na(name))
+
+g <- graph_from_data_frame(
+  d = edges,
+  vertices = nodes %>% rename(name = name),
+  directed = FALSE
+)
+
+# Remover loops e arestas duplicadas
+g <- simplify(
+  g,
+  remove.multiple = TRUE,
+  remove.loops = TRUE
+)
+
+vcount(g)
+ecount(g)
+
+table(V(g)$type, V(g)$layer)
+
+components(g)$no
+```
+
+```{r}
+comp <- components(g)
+
+# Tamanho de cada componente
+comp$csize
+
+# Distribuição dos tipos de nós por componente
+table(
+  Component = comp$membership,
+  Type = V(g)$type
+)
+
+# Listar os nós que não pertencem ao maior componente
+main_comp <- which.max(comp$csize)
+
+V(g)$name[comp$membership != main_comp]
+```
+
+```{r}
+g_no_mdd <- delete_vertices(
+  g,
+  V(g)[type == "Disorder"]
+)
+
+
+vcount(g_no_mdd)
+ecount(g_no_mdd)
+
+table(V(g_no_mdd)$type, V(g_no_mdd)$layer)
+components(g_no_mdd)$csize
+
+# Identificar nós isolados após remover MDD
+isolated <- V(g_no_mdd)[degree(g_no_mdd) == 0]
+
+# Verificar os tipos
+table(isolated$type)
+
+# Listar os nomes
+isolated$name
+
+
+isolated_names <- isolated$name
+
+# Vizinhos desses nós na rede original
+neighbors_info <- purrr::map_dfr(isolated_names, function(n) {
+  tibble(
+    name = n,
+    neighbors = paste(
+      as_ids(neighbors(g, n)),
+      collapse = "; "
+    )
+  )
+})
+
+print(neighbors_info, n = Inf)
+```
+
+````{r}
+g_leiden <- delete_vertices(
+  g_no_mdd,
+  V(g_no_mdd)[degree(g_no_mdd) == 0]
+)
+
+# Conferir
+vcount(g_leiden)
+ecount(g_leiden)
+components(g_leiden)$no
+
+g_leiden_B <- induced_subgraph(
+  g_leiden,
+  vids = V(g_leiden)[type != "Pathway"]
+)
+
+# Verificar estrutura
+vcount(g_leiden_B)
+ecount(g_leiden_B)
+
+table(V(g_leiden_B)$type)
+components(g_leiden_B)$csize
+
+````
+
+````{r}
+library(igraph)
+
+set.seed(123)
+
+leiden_B <- cluster_leiden(
+  g_leiden_B,
+  objective_function = "modularity",
+  resolution = 1,
+  n_iterations = 10
+)
+
+# Número de comunidades
+length(leiden_B)
+
+# Tamanho das comunidades
+sizes(leiden_B)
+
+# Modularidade
+mod_B <- modularity(
+  g_leiden_B,
+  membership(leiden_B)
+)
+
+V(g_leiden_B)$community <- membership(leiden_B)
+
+table(
+  Community = V(g_leiden_B)$community,
+  Type = V(g_leiden_B)$type
+)
+````
+
+````{r}
+# Genes da comunidade 4
+V(g_leiden_B)$name[
+  V(g_leiden_B)$community == 4 &
+  V(g_leiden_B)$type == "Gene"
+]
+
+gene_4 <- V(g_leiden_B)[
+  community == 4 & type == "Gene"
+]
+
+gene_neighb <- data.frame(
+  Gene = gene_4$name,
+  Degree = degree(g_leiden_B, gene_4)
+) |>
+  dplyr::arrange(desc(Degree))
+````
