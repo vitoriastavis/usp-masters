@@ -1,0 +1,27 @@
+#!/bin/bash
+#PBS -N em_10394
+#PBS -q duasgpus
+#PBS -l walltime=02:00:00
+#PBS -j oe
+
+cd "$PBS_O_WORKDIR" || exit 1
+
+module load gromacs/nvidia-ngc
+
+export OMP_NUM_THREADS=4
+
+$nv_gromacs gmx grompp \
+    -f inputs/minim.mdp \
+    -c solv_ions.gro \
+    -p topol.top \
+    -o em.tpr \
+    > grompp_em.log 2>&1 || exit 1
+
+$nv_gromacs gmx mdrun \
+    -deffnm em \
+    -ntmpi 8 \
+    -ntomp 4 \
+    -nb gpu \
+    -pme cpu \
+    -pin on \
+    -v

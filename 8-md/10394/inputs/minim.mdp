@@ -1,19 +1,22 @@
-; minim.mdp - parameter file for energy minimization 
-
-integrator      = steep         ; Steepest descent minimization
-emtol           = 500.0         ; Stop when Fmax < 500 kJ/mol/nm
-emstep          = 0.01          ; Energy step size
-nsteps          = 50000         ; Maximum number of (minimization) steps to perform
+; Energy minimization
+integrator      = steep
+emtol           = 500.0
+emstep          = 0.01
+nsteps          = 50000
 
 ; Neighbor searching
-cutoff-scheme   = Verlet	; Buffered neighbor searching
-nstlist         = 1		; Frequency to update the neighbor list and long range forces
-ns_type         = grid		; Method to determine neighbor list (simple, grid)
+cutoff-scheme   = Verlet
+nstlist         = 1
 
-; Electrostatics / VDW
-coulombtype     = PME		; Treatment of long range electrostatic interactions
-rcoulomb        = 1.0
-rvdw            = 1.0
+; Electrostatics
+coulombtype     = PME
+rcoulomb        = 1.2
+
+; Van der Waals
+vdwtype         = PME
+rvdw            = 1.2
+lj-pme-comb-rule = Geometric
+DispCorr        = no
 
 ; Constraints
 constraints     = none
