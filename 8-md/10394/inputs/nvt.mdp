@@ -1,0 +1,54 @@
+; nvt.mdp - parameter file for NVT equilibration
+
+; Run settings
+integrator      = md
+nsteps          = 50000         ; 100 ps at 2 fs
+dt              = 0.002
+
+; Output control
+nstenergy           = 1000
+nstlog              = 1000
+nstxout-compressed  = 5000
+compressed-x-grps   = System
+
+; Neighbor searching and cutoffs
+cutoff-scheme   = Verlet
+nstlist         = 20
+rcoulomb        = 1.2
+
+; Electrostatics
+coulombtype     = PME
+pme_order       = 4
+fourierspacing  = 0.12
+
+; van der Waals (LJ-PME)
+vdwtype          = PME
+vdw-modifier     = Potential-shift
+rvdw             = 1.2
+lj-pme-comb-rule = Geometric
+DispCorr         = no
+
+; Temperature coupling
+tcoupl          = V-rescale
+tc-grps = System
+tau-t   = 0.1
+ref-t   = 310
+
+; Pressure coupling (off in NVT)
+pcoupl          = no
+
+; Constraints
+constraints           = h-bonds
+constraint_algorithm  = lincs
+lincs_iter            = 1
+lincs_order           = 4
+continuation          = no
+define = -DPOSRES -DPOSRES_CRYWAT
+
+; Periodic boundary
+pbc             = xyz
+
+; Misc
+gen_vel         = yes
+gen_temp        = 310
+gen_seed        = -1
