@@ -1,7 +1,7 @@
 #!/bin/bash
-#PBS -N em_10394
-#PBS -q duasgpus
-#PBS -l walltime=02:00:00
+#PBS -N em_10394_testegpu
+#PBS -q testegpu
+#PBS -l walltime=00:30:00
 #PBS -j oe
 
 cd "$PBS_O_WORKDIR" || exit 1
@@ -14,12 +14,13 @@ $nv_gromacs gmx grompp \
     -f inputs/minim.mdp \
     -c solv_ions.gro \
     -p topol.top \
-    -o em.tpr \
-    > grompp_em.log 2>&1 || exit 1
+    -o em_testegpu.tpr \
+    -po mdout_testegpu.mdp \
+    > grompp_em_testegpu.log 2>&1 || exit 1
 
 $nv_gromacs gmx mdrun \
-    -deffnm em \
-    -ntmpi 8 \
+    -deffnm em_testegpu \
+    -ntmpi 2 \
     -ntomp 4 \
     -nb gpu \
     -pme cpu \

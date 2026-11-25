@@ -1,0 +1,31 @@
+#!/bin/bash
+#PBS -N nvt_10394_testegpu
+#PBS -q testegpu
+#PBS -l walltime=00:30:00
+#PBS -j oe
+
+cd "$PBS_O_WORKDIR" || exit 1
+
+module load gromacs/nvidia-ngc
+
+export OMP_NUM_THREADS=4
+
+$nv_gromacs gmx grompp \
+    -f inputs/nvt.mdp \
+    -c em_testegpu.gro \
+    -r em_testegpu.gro \
+    -p topol.top \
+    -o nvt_testegpu.tpr \
+    -po mdout_nvt_testegpu.mdp \
+    > grompp_nvt_testegpu.log 2>&1 || exit 1
+
+$nv_gromacs gmx mdrun \
+    -deffnm nvt_testegpu \
+    -ntmpi 2 \
+    -ntomp 4 \
+    -nb gpu \
+    -pme cpu \
+    -pin on \
+    -cpt 5 \
+    -maxh 0.4 \
+    -v

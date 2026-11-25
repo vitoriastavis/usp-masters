@@ -1,0 +1,71 @@
+    :-) GROMACS - gmx grompp, 2023.2-dev-20230712-a3d6917-dirty-unknown (-:
+
+Executable:   /usr/local/gromacs/avx2_256/bin/gmx
+Data prefix:  /usr/local/gromacs/avx2_256
+Working dir:  /host_pwd
+Command line:
+  gmx grompp -f inputs/minim.mdp -c solv_ions.gro -p topol.top -o em_testegpu.tpr -po mdout_testegpu.mdp
+
+
+NOTE 1 [file inputs/minim.mdp]:
+  With Verlet lists the optimal nstlist is >= 10, with GPUs >= 20. Note
+  that with the Verlet scheme, nstlist has no effect on the accuracy of
+  your simulation.
+
+Generating 1-4 interactions: fudge = 1
+
+NOTE 2 [file topol.top, line 54]:
+  In moleculetype 'Ion_chain_A' 3 atoms are not bound by a potential or
+  constraint to any other atom in the same moleculetype. Although
+  technically this might not cause issues in a simulation, this often means
+  that the user forgot to add a bond/potential/constraint or put multiple
+  molecules in the same moleculetype definition by mistake. Run with -v to
+  get information for each atom.
+
+Number of degrees of freedom in T-Coupling group rest is 427317.00
+The integrator does not provide a ensemble temperature, there is no system ensemble temperature
+
+NOTE 3 [file inputs/minim.mdp]:
+  You are using geometric combination rules in LJ-PME, but your non-bonded
+  C6 parameters do not follow these rules. This will introduce very small
+  errors in the forces and energies in your simulations. If your system is
+  homogeneous, consider using dispersion correction for the total energy
+  and pressure.
+
+
+There were 3 NOTEs
+
+GROMACS reminds you: "At school I had a teacher that didn't like me and I didn't like him. At the end of the year he decided to fail me. The ironic thing is that the topic was chemistry. I have the distinction of being the only Chemistry Laurate who failed the topic in high school." (Thomas Lindahl)
+
+Setting the LD random seed to -1094779985
+
+Generated 169542 of the 169653 non-bonded parameter combinations
+
+Generated 118878 of the 169653 1-4 parameter combinations
+
+Excluding 3 bonded neighbours molecule type 'Protein'
+
+Excluding 3 bonded neighbours molecule type 'Ion_chain_A'
+
+Excluding 2 bonded neighbours molecule type 'CRW'
+
+Excluding 3 bonded neighbours molecule type '10394'
+
+Excluding 2 bonded neighbours molecule type 'SOL'
+
+Excluding 3 bonded neighbours molecule type 'NA'
+Analysing residue names:
+There are:   492    Protein residues
+There are:    16        Ion residues
+There are:     7      Other residues
+There are: 67266      Water residues
+Analysing Protein...
+Analysing residues not classified as Protein/DNA/RNA/Water and splitting into groups...
+
+The largest distance between excluded atoms is 0.429 nm between atom 6266 and 6274
+Calculating fourier grid dimensions for X Y Z
+Using a fourier grid of 128x128x128, spacing 0.113 0.113 0.113
+
+Estimate for the relative computational load of the PME mesh part: 0.34
+
+This run will generate roughly 16 Mb of data

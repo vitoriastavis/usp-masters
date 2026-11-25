@@ -43,7 +43,7 @@ constraint_algorithm  = lincs
 lincs_iter            = 1
 lincs_order           = 4
 continuation          = no
-define = -DPOSRES -DPOSRES_CRYWAT
+define = -DPOSRES -DPOSRES_CRYWAT -DPOSRES_LIG
 
 ; Periodic boundary
 pbc             = xyz

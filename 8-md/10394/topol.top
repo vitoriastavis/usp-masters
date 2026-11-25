@@ -40,6 +40,10 @@
 
 #include "10394_re.itp"
 
+#ifdef POSRES_LIG
+#include "posre_10394.itp"
+#endif
+
 [ system ]
 ; Name
 Protein in water
