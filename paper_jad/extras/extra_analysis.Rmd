@@ -393,7 +393,7 @@ mets_merged <- mets_merged |>
   )
 
 mets_classified <- mets_merged |>
-  select(CID, Name, Classification) |>
+  select(CID, Name, InChIKey, Classification) |>
   distinct()
 ```
 
@@ -413,8 +413,50 @@ coverage <- mets_classified |>
   )
 
 
+missing <- mets_classified |>
+            filter(is.na(Classification) | Classification == "") |>
+            select(CID, Name, InChIKey)
 
-class_frequency <- metabolite_classes |>
+manual_classes <- tribble(
+  ~InChIKey, ~Classification_manual,
+
+  "MLQDDSFDIGRHMD-VOTSOKGWSA-N",
+  "organic compounds; phenylpropanoids and polyketides; stilbenes; phenols",
+
+  "BVPQUFPFMVPKTA-UHFFFAOYSA-N",
+  "organic compounds; benzenoids; benzene and substituted derivatives",
+
+  "TVKBBTQJNQDZRU-UHFFFAOYSA-N",
+  "organic compounds; organic acids and derivatives; carboxylic acids and derivatives; carboxylic acids; dicarboxylic acids and derivatives; keto acids and derivatives",
+
+  "AWXFMDXNWSGWNE-UHFFFAOYSA-N",
+  "organic compounds; phenols; organoheterocyclic compounds",
+
+  "LIESPHUWOOUJGT-UHFFFAOYSA-N",
+  "organic compounds; phenols; phenylpropanoids and polyketides; cinnamic acids and derivatives; hydroxycinnamic acids and derivatives",
+
+  "CBCIWEQMPVKOHC-SNVBAGLBSA-N",
+  "organic compounds; phenols; organic acids and derivatives; carboxylic acids and derivatives; carboxylic acids; hydroxy acids and derivatives",
+
+  "CBCIWEQMPVKOHC-JTQLQIEISA-N",
+  "organic compounds; phenols; organic acids and derivatives; carboxylic acids and derivatives; carboxylic acids; hydroxy acids and derivatives",
+
+  "FCLPAEDZIOXNSO-LLVKDONJSA-N",
+  "organic compounds; phenols; phenylpropanoids and polyketides; flavonoids; chalcones and dihydrochalcones"
+)
+
+mets_classified <- mets_classified |>
+  rows_update(
+    manual_classes |>
+      rename(Classification = Classification_manual),
+    by = "InChIKey"
+  )
+```
+
+```{r}
+class_frequency <- mets_classified |>
+  separate_rows(Classification, sep = ";") |>
+  mutate(Classification = str_trim(Classification)) |>
   filter(!is.na(Classification), Classification != "") |>
   group_by(Classification) |>
   summarise(
@@ -436,9 +478,7 @@ class_frequency |>
     y = "Number of metabolites"
   ) +
   theme_minimal()
-```
 
-```{r}
 eligible_classes <- class_frequency |>
   filter(
     n_metabolites >= 3,
@@ -446,8 +486,42 @@ eligible_classes <- class_frequency |>
   ) |>
   pull(Classification)
 
-metabolite_classes_filtered <- metabolite_classes |>
-  filter(Classification %in% eligible_classes)
+metabolite_classes_filtered <- mets_classified |>
+  separate_rows(Classification, sep = ";") |>
+  mutate(Classification = str_trim(Classification)) |>
+  filter(Classification %in% eligible_classes) |>
+  distinct()
+```
+
+```{r}
+metabolite_classes <- metabolite_communities |>
+  rename(CID = name) |>
+  mutate(CID = as.character(CID)) |>
+  left_join(
+    mets_classified |>
+      mutate(CID = as.character(CID)) |>
+      select(CID, Name, Classification),
+    by = "CID"
+  ) |>
+  separate_rows(Classification, sep = ";") |>
+  mutate(Classification = str_trim(Classification)) |>
+  distinct()
+```
+
+```{r}
+dir.create("checkpoints", showWarnings = FALSE)
+
+save(g_leiden_B, file = "checkpoints/g_leiden_B.RData")
+
+write_csv(metabolite_communities, "checkpoints/metabolite_communities.csv")
+
+write_csv(mets_classified, "checkpoints/mets_classified.csv")
+
+write_csv(community_nodes, "checkpoints/community_nodes.csv")
+
+write_csv(community_stability, "checkpoints/community_stability.csv")
+
+write_csv(class_frequency, "checkpoints/class_frequency.csv")
 ```
 
 ```{R}
@@ -488,15 +562,10 @@ enrichment <- expand_grid(
   arrange(p_adj, p_value)
 ```
 
-```{R}
-enrichment |>
-  filter(p_adj < 0.05) |>
-  select(
-    community, Classification, a, expected,
-    fold_enrichment, p_value, p_adj
-  ) |>
-  print(n = Inf)
+```{r}
+save(enrichment, file = "checkpoints/enrich.RData")
 ```
+
 ```{R}
 # validacao
 all(V(g_leiden_B)$community == representative_B)
@@ -525,30 +594,31 @@ nrow(enrichment)
 library(ggplot2)
 
 enrichment_sig <- enrichment |>
-  filter(p_adj < 0.05)
+  filter(p_adj < 0.01)
 
-ggplot(
-  enrichment_sig,
-  aes(
-    x = factor(community, levels = sort(unique(universe$community))),
-    y = Classification,
-    size = fold_enrichment,
-    color = -log10(p_adj)
-  )
-) +
-  geom_point() +
-  scale_x_discrete(drop = FALSE) +
-  scale_color_viridis_c(option = "plasma") +
-  scale_size_continuous(range = c(3, 10)) +
-  labs(
-    x = "Community",
-    y = "Chemical classification",
-    size = "Fold enrichment",
-    color = expression(-log[10](FDR))
-  ) +
-  theme_bw()
+plot_communities <- ggplot(
+                      enrichment_sig,
+                      aes(
+                        x = factor(community, levels = sort(unique(universe$community))),
+                        y = Classification,
+                        size = fold_enrichment,
+                        color = -log10(p_adj)
+                      )
+                    ) +
+                      geom_point() +
+                      scale_x_discrete(drop = FALSE) +
+                      scale_color_viridis_c(option = "plasma") +
+                      scale_size_continuous(range = c(3, 10)) +
+                      labs(
+                        x = "Community",
+                        y = "Chemical classification",
+                        size = "Fold enrichment",
+                        color = expression(-log[10](FDR))
+                      ) +
+                      theme_bw()
 
 ```
+
 ```{R}
 gene_communities <- community_nodes |>
   filter(type == "Gene") |>
@@ -560,7 +630,7 @@ gene_communities |>
   summarise(genes = paste(name, collapse = ", "))
 
 gene_comm<- gene_communities |>
-  filter(community %in% c(1, 4, 6))
+  filter(community %in% c(1, 4))
 ```
 
 # louvain
@@ -661,3 +731,400 @@ best_matches <- jaccard_comparison |>
 best_matches
 ```
 
+# Subnetworks
+
+```{r}
+library(igraph)
+library(ggraph)
+library(tidyverse)
+
+g_c1 <- induced_subgraph(
+  g_leiden_B,
+  vids = V(g_leiden_B)[community == 1 & type != "Species"]
+)
+
+g_c4 <- induced_subgraph(
+  g_leiden_B,
+  vids = V(g_leiden_B)[community == 4 & type != "Species"]
+)
+
+plot_network <- function(g, g_layout) {
+  set.seed(123)
+
+  ggraph(g, layout = g_layout) +
+    geom_edge_link(
+      alpha = 0.15,
+      colour = "grey60",
+      linewidth = 0.3
+    ) +
+    geom_node_point(
+      aes(colour = type, shape = type),
+      size = 3
+    ) +
+    geom_node_text(
+      aes(label = ifelse(type == "Gene", name, "")),
+      repel = TRUE,
+      size = 3
+    ) +
+    scale_colour_manual(values = c(
+      "Gene" = "#D95F02",
+      "Metabolite" = "#1B9E77"
+    )) +
+    theme_graph()
+}
+```
+
+```{r}
+plot_c1 <- plot_network(g_c1, "circle")
+plot_c4 <- plot_network(g_c4, "circle")
+```
+
+```{r}
+met_gene_edges <- as_data_frame(g_leiden_B, what = "edges") |>
+  transmute(
+    CID = if_else(from %in% gene_communities$name, to, from),
+    Gene = if_else(from %in% gene_communities$name, from, to)
+  ) |>
+  filter(
+    Gene %in% gene_communities$name,
+    CID %in% universe$CID
+  ) |>
+  distinct()
+
+heatmap_classes <- metabolite_classes |>
+  mutate(community = as.integer(community)) |>
+  inner_join(
+    enrichment_sig |>
+      mutate(community = as.integer(community)) |>
+      filter(community %in% c(1, 4)) |>
+      select(community, Classification),
+    by = c("community", "Classification")
+  ) |>
+  distinct(CID, community, Classification)
+
+class_totals <- heatmap_classes |>
+  group_by(community, Classification) |>
+  summarise(
+    n_total = n_distinct(CID),
+    .groups = "drop"
+  )
+
+heatmap_data <- heatmap_classes |>
+  inner_join(met_gene_edges, by = "CID",
+             relationship = "many-to-many") |>
+  group_by(community, Classification, Gene) |>
+  summarise(
+    n_interacting = n_distinct(CID),
+    .groups = "drop"
+  ) |>
+  complete(
+    nesting(community, Classification),
+    Gene = gene_communities$name,
+    fill = list(n_interacting = 0)
+  ) |>
+  left_join(
+    class_totals,
+    by = c("community", "Classification")
+  ) |>
+  mutate(
+    percentage = 100 * n_interacting / n_total
+  )
+
+plot_heatmap <- ggplot(
+  heatmap_data,
+  aes(x = Gene, y = Classification, fill = percentage)
+) +
+  geom_tile(colour = "white", linewidth = 0.3) +
+  facet_grid(
+    community ~ .,
+    scales = "free_y",
+    space = "free_y",
+    labeller = label_both
+  ) +
+  scale_fill_viridis_c(
+    option = "plasma",
+    limits = c(0, 100),
+    name = "Interacting\nmetabolites (%)"
+  ) +
+  labs(
+    x = "Molecular target",
+    y = "Chemical classification"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+    panel.grid = element_blank()
+  )
+
+ggsave(
+  filename = "heatmap_communities.pdf",
+  plot = plot_heatmap,
+  width = 16,
+  height = 6,
+  units = "in"
+)
+
+write_csv(heatmap_data, "heatmap_data.csv")
+```
+
+```{r}
+community_totals <- universe |>
+  mutate(community = as.integer(community)) |>
+  filter(community %in% c(1, 4)) |>
+  dplyr::count(community, name = "n_total")
+
+gene_preference <- universe |>
+  mutate(community = as.integer(community)) |>
+  filter(community %in% c(1, 4)) |>
+  inner_join(met_gene_edges, by = "CID") |>
+  group_by(community, Gene) |>
+  summarise(
+    n_interacting = n_distinct(CID),
+    .groups = "drop"
+  ) |>
+  complete(
+    community = c(1, 4),
+    Gene = gene_communities$name,
+    fill = list(n_interacting = 0)
+  ) |>
+  left_join(community_totals, by = "community") |>
+  mutate(percentage = 100 * n_interacting / n_total)
+
+gene_difference <- gene_preference |>
+  select(Gene, community, percentage) |>
+  pivot_wider(
+    names_from = community,
+    values_from = percentage,
+    names_prefix = "C"
+  ) |>
+  mutate(
+    difference = C1 - C4,
+    preference = case_when(
+      difference > 0 ~ "Community 1",
+      difference < 0 ~ "Community 4",
+      TRUE ~ "No difference"
+    )
+  ) |>
+  arrange(desc(difference))
+
+print(gene_difference, n = Inf)
+
+plot_difference <- ggplot(
+  gene_difference,
+  aes(
+    x = difference,
+    y = reorder(Gene, difference),
+    fill = preference
+  )
+) +
+  geom_col() +
+  geom_vline(xintercept = 0, colour = "grey40") +
+  scale_fill_manual(values = c(
+    "Community 1" = "#0072B2",
+    "Community 4" = "#D55E00",
+    "No difference" = "grey70"
+  )) +
+  scale_x_continuous(
+    limits = c(-100, 100),
+    breaks = seq(-100, 100, 25)
+  ) +
+  labs(
+    x = "Difference in interacting metabolites (percentage points)",
+    y = "Molecular target",
+    fill = NULL
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "top",
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+ggsave(
+  "gene_preference.pdf",
+  plot_difference,
+  width = 9,
+  height = 10
+)
+
+write_csv(gene_difference, "gene_difference.csv")
+```
+
+```{r}
+top_c1 <- gene_difference |>
+  slice_max(difference, n = 7) |>
+  pull(Gene)
+
+top_c4 <- gene_difference |>
+  slice_min(difference, n = 4) |>
+  pull(Gene)
+
+filter_network <- function(g, comm, genes) {
+
+  g_sub <- induced_subgraph(
+    g,
+    vids = V(g)[
+      (community == comm & type == "Metabolite") |
+      (type == "Gene" & name %in% genes)
+    ]
+  )
+
+  # Remover nós sem interações
+  g_sub <- delete_vertices(
+    g_sub,
+    V(g_sub)[degree(g_sub) == 0]
+  )
+
+  g_sub
+}
+
+g_c1_top <- filter_network(g_leiden_B, 1, top_c1)
+g_c4_top <- filter_network(g_leiden_B, 4, top_c4)
+```
+
+```{r}
+node_classes <- metabolite_classes |>
+  mutate(community = as.integer(community)) |>
+  inner_join(
+    enrichment_sig |>
+      mutate(community = as.integer(community)) |>
+      select(community, Classification, p_adj),
+    by = c("community", "Classification")
+  ) |>
+  group_by(CID, community) |>
+  slice_min(p_adj, n = 1, with_ties = FALSE) |>
+  ungroup()
+
+add_classes <- function(g) {
+  V(g)$chemical_class <- node_classes$Classification[
+    match(V(g)$name, node_classes$CID)
+  ]
+
+  V(g)$chemical_class <- case_when(
+    V(g)$type == "Gene" ~ "Molecular target",
+    is.na(V(g)$chemical_class) ~ "Other metabolites",
+    TRUE ~ V(g)$chemical_class
+  )
+
+  g
+}
+g_c1_top <- add_classes(g_c1_top)
+g_c4_top <- add_classes(g_c4_top)
+```
+
+```{r}
+classes <- sort(unique(c(
+  V(g_c1_top)$chemical_class,
+  V(g_c4_top)$chemical_class
+)))
+
+classes <- setdiff(
+  classes,
+  c("Molecular target", "Other metabolites")
+)
+
+palette <- c(
+  setNames(scales::hue_pal()(length(classes)), classes),
+  "Molecular target" = "#222222",
+  "Other metabolites" = "#CCCCCC"
+)
+
+print(palette)
+
+plot_network_top <- function(g, title) {
+
+  set.seed(123)
+
+  ggraph(g, layout = "circle") +
+    geom_edge_link(
+      alpha = 0.15,
+      colour = "grey50",
+      linewidth = 0.3
+    ) +
+    geom_node_point(
+      aes(colour = chemical_class, shape = type),
+      size = 3
+    ) +
+    geom_node_text(
+      aes(label = name, fontface = ifelse(
+        type == "Gene", "bold", "plain"
+      )),
+      repel = TRUE,
+      size = 2.5,
+      max.overlaps = Inf
+    ) +
+    scale_colour_manual(values = palette) +
+    scale_shape_manual(values = c(
+      "Gene" = 17,
+      "Metabolite" = 16
+    )) +
+    labs(
+      title = title,
+      colour = "Chemical classification",
+      shape = "Node type"
+    ) +
+    theme_graph() +
+    theme(
+      legend.position = "bottom",
+      plot.title = element_text(hjust = 0.5)
+    )
+}
+
+plot_c1_top <- plot_network_top(g_c1_top, "Community 1")
+plot_c4_top <- plot_network_top(g_c4_top, "Community 4")
+```
+
+```{r}
+selected_metabolites <- metabolite_classes |>
+  mutate(community = as.integer(community)) |>
+  filter(
+    (community == 1 & Classification == "amino acids and derivatives") |
+    (community == 4 & Classification == "flavonoids")
+  ) |>
+  distinct(CID, community, Classification)
+
+filter_chemical <- function(g, comm) {
+
+  cids <- selected_metabolites |>
+    filter(community == comm) |>
+    pull(CID)
+
+  g_sub <- induced_subgraph(
+    g,
+    vids = V(g)[type == "Gene" | name %in% cids]
+  )
+
+  g_sub <- delete_vertices(
+    g_sub,
+    V(g_sub)[degree(g_sub) == 0]
+  )
+
+  g_sub
+}
+
+g_c1_chemical <- filter_chemical(g_c1_top, 1)
+g_c4_chemical <- filter_chemical(g_c4_top, 4)
+
+V(g_c1_chemical)$chemical_class <- ifelse(
+  V(g_c1_chemical)$type == "Gene",
+  "Molecular target",
+  "Amino acids and derivatives"
+)
+
+V(g_c4_chemical)$chemical_class <- ifelse(
+  V(g_c4_chemical)$type == "Gene",
+  "Molecular target",
+  "Flavonoids"
+)
+
+classes <- c("Target", "Amino acids and derivatives", "Flavonoids")
+palette <- c(
+  setNames(scales::hue_pal()(length(classes)), classes),
+  "Molecular target" = "#222222",
+  "Other metabolites" = "#CCCCCC"
+)
+
+
+plot_c1_chem <- plot_network_top(g_c1_chemical, "Community 1")
+plot_c4_chem <- plot_network_top(g_c4_chemical, "Community 4")
+```
