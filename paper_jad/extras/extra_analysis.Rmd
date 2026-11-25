@@ -10,13 +10,10 @@ library(igraph)
 nodes <- read_csv("../network/nodes.csv", show_col_types = FALSE)
 edges <- read_csv("../network/edges.csv", show_col_types = FALSE)
 
-glimpse(nodes)
-glimpse(edges)
-
 # Verificar nós duplicados
 nodes %>%
-  count(name) %>%
-  filter(n > 1)
+  dplyr::count(name) %>%
+  dplyr::filter(n > 1)
 
 # Verificar arestas com nós inexistentes
 setdiff(
@@ -93,7 +90,6 @@ g_no_mdd <- delete_vertices(
   V(g)[type == "Disorder"]
 )
 
-
 vcount(g_no_mdd)
 ecount(g_no_mdd)
 
@@ -109,7 +105,6 @@ table(isolated$type)
 # Listar os nomes
 isolated$name
 
-
 isolated_names <- isolated$name
 
 # Vizinhos desses nós na rede original
@@ -123,7 +118,7 @@ neighbors_info <- purrr::map_dfr(isolated_names, function(n) {
   )
 })
 
-print(neighbors_info, n = Inf)
+# print(neighbors_info, n = Inf)
 ```
 
 ````{r}
@@ -142,6 +137,20 @@ g_leiden_B <- induced_subgraph(
   vids = V(g_leiden)[type != "Pathway"]
 )
 
+new_ids <- c(
+  "no7"  = "m4",
+  "no12" = "m1",
+  "no13" = "m2",
+  "no17" = "m3",
+  "no3"  = "m5"
+)
+
+idx <- V(g_leiden_B)$name %in% names(new_ids)
+
+V(g_leiden_B)$name[idx] <- unname(
+  new_ids[V(g_leiden_B)$name[idx]]
+)
+
 # Verificar estrutura
 vcount(g_leiden_B)
 ecount(g_leiden_B)
@@ -151,52 +160,504 @@ components(g_leiden_B)$csize
 
 ````
 
-````{r}
-library(igraph)
-
+```{r}
+library(mclust)
 set.seed(123)
+seeds <- sample.int(100000, 30)
 
-leiden_B <- cluster_leiden(
-  g_leiden_B,
-  objective_function = "modularity",
-  resolution = 1,
-  n_iterations = 10
+partitions_B <- lapply(seeds, function(s) {
+  set.seed(s)
+
+  membership(cluster_leiden(
+    g_leiden_B,
+    objective_function = "modularity",
+    resolution = 1,
+    n_iterations = 10,
+    weights = NA
+  ))
+})
+
+ari_matrix_B <- outer(
+  seq_along(partitions_B),
+  seq_along(partitions_B),
+  Vectorize(function(i, j) {
+    adjustedRandIndex(
+      partitions_B[[i]],
+      partitions_B[[j]]
+    )
+  })
 )
 
-# Número de comunidades
-length(leiden_B)
+summary(ari_matrix_B[upper.tri(ari_matrix_B)])
 
-# Tamanho das comunidades
-sizes(leiden_B)
+# Frequência do número de comunidades
+table(sapply(partitions_B, function(x) {
+  length(unique(x))
+}))
+```
+
+```{r}
+library(purrr)
+
+resolutions <- c(0.5, 0.75, 1, 1.25, 1.5, 2)
+
+results <- map_dfr(resolutions, function(res) {
+
+  partitions <- lapply(seeds, function(s) {
+    set.seed(s)
+
+    membership(cluster_leiden(
+      g_leiden_B,
+      objective_function = "modularity",
+      resolution = res,
+      n_iterations = 10,
+      weights = NA
+    ))
+  })
+
+  # Modularidade convencional
+  mods <- sapply(partitions, function(p) {
+    modularity(g_leiden_B, p, weights = NA)
+  })
+
+  # Número de comunidades
+  n_communities <- sapply(partitions, function(p) {
+    length(unique(p))
+  })
+
+  # ARI entre todos os pares
+  pairs <- combn(seq_along(partitions), 2)
+
+  ari <- apply(pairs, 2, function(idx) {
+    adjustedRandIndex(
+      partitions[[idx[1]]],
+      partitions[[idx[2]]]
+    )
+  })
+
+  tibble(
+    resolution = res,
+    modularity_mean = mean(mods),
+    modularity_sd = sd(mods),
+    ari_mean = mean(ari),
+    ari_median = median(ari),
+    communities_mean = mean(n_communities),
+    communities_min = min(n_communities),
+    communities_max = max(n_communities)
+  )
+})
+
+print(results, width = Inf)
+```
+```{r}
+ggplot(results, aes(x = resolution, y = modularity_mean)) +
+  geom_line() +
+  geom_point(size = 3) +
+  geom_errorbar(
+    aes(
+      ymin = modularity_mean - modularity_sd,
+      ymax = modularity_mean + modularity_sd
+    ),
+    width = 0.05
+  ) +
+  scale_x_continuous(breaks = resolutions) +
+  labs(
+    x = "Resolution",
+    y = "Mean modularity"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+# Excluir autocomparações
+diag(ari_matrix_B) <- NA
+
+# ARI médio de cada partição em relação às demais
+mean_ari <- rowMeans(ari_matrix_B, na.rm = TRUE)
+
+# Partição mais representativa
+best_idx <- which.max(mean_ari)
+
+representative_B <- partitions_B[[best_idx]]
+
+# Semente correspondente
+seeds[best_idx]
+
+# ARI médio da partição representativa
+mean_ari[best_idx]
 
 # Modularidade
-mod_B <- modularity(
+modularity(g_leiden_B, representative_B, weights = NA)
+
+# Tamanho das comunidades
+table(representative_B)
+
+# Composição das comunidades
+table(
+  Community = representative_B,
+  Type = V(g_leiden_B)$type
+)
+```
+
+```{R}
+community_stability <- lapply(
+  sort(unique(representative_B)),
+  function(comm) {
+
+    original_nodes <- which(representative_B == comm)
+
+    jaccard <- sapply(partitions_B[-best_idx], function(p) {
+
+      max(sapply(unique(p), function(c) {
+
+        other_nodes <- which(p == c)
+
+        length(intersect(original_nodes, other_nodes)) /
+          length(union(original_nodes, other_nodes))
+
+      }))
+    })
+
+    data.frame(
+      Community = comm,
+      Size = length(original_nodes),
+      Jaccard_mean = mean(jaccard),
+      Jaccard_median = median(jaccard),
+      Jaccard_min = min(jaccard),
+      Jaccard_sd = sd(jaccard)
+    )
+  }
+) |>
+  dplyr::bind_rows()
+
+community_stability
+# c1 c2 e c4 para interpretacao biologica
+```
+
+```{R}
+V(g_leiden_B)$community <- representative_B
+
+community_nodes <- as_data_frame(
   g_leiden_B,
-  membership(leiden_B)
+  what = "vertices"
 )
 
-V(g_leiden_B)$community <- membership(leiden_B)
+head(community_nodes)
+```
+
+```{r}
+metabolite_communities <- as_data_frame(
+  g_leiden_B,
+  what = "vertices"
+) |>
+  filter(type == "Metabolite") |>
+  select(name, community)
+
+head(metabolite_communities)
+
+table(metabolite_communities$community)
+```
+
+```{r}
+library(tidyverse)
+
+mimedb <- read_csv("mimedb.csv", show_col_types = FALSE)
+classyfire <- read_csv("classyfire.csv", show_col_types = FALSE)
+
+mets_merged <- mimedb |>
+  left_join(classyfire, by = "InChIKey",
+            na_matches = "never",
+            suffix = c("_mimedb", "_classyfire"))
+
+mets_merged <- mets_merged |>
+  rowwise() |>
+  mutate(
+    Classification = {
+      x <- str_trim(c_across(c(MiMeDB_classification, Kingdom:`Parent Level 4`)))
+      paste(x[!is.na(x) & x != ""], collapse = "; ")
+    }
+  ) |>
+  ungroup()
+
+mets_merged <- mets_merged |>
+  mutate(
+    Classification = map_chr(Classification, function(x) {
+      if (is.na(x)) return(NA_character_)
+
+      x <- str_split(x, ";")[[1]]
+      x <- str_to_lower(str_trim(x))
+      x <- unique(x[x != ""])
+
+      paste(x, collapse = "; ")
+    })
+  )
+
+mets_classified <- mets_merged |>
+  select(CID, Name, Classification) |>
+  distinct()
+```
+
+```{R}
+coverage <- mets_classified |>
+  separate_rows(Classification, sep = ";") |>
+  mutate(Classification = str_trim(Classification)) |>
+  summarise(
+    n_metabolites = n_distinct(CID),
+    n_classified = n_distinct(
+      CID[!is.na(Classification) & Classification != ""]
+    ),
+    n_classes = n_distinct(
+      Classification[!is.na(Classification) & Classification != ""]
+    ),
+    coverage = 100 * n_classified / n_metabolites
+  )
+
+
+
+class_frequency <- metabolite_classes |>
+  filter(!is.na(Classification), Classification != "") |>
+  group_by(Classification) |>
+  summarise(
+    n_metabolites = n_distinct(CID),
+    .groups = "drop"
+  ) |>
+  arrange(desc(n_metabolites))
+
+class_frequency |>
+  slice_max(n_metabolites, n = 20, with_ties = FALSE) |>
+  ggplot(aes(
+    x = reorder(Classification, n_metabolites),
+    y = n_metabolites
+  )) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    x = "Metabolite classification",
+    y = "Number of metabolites"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+eligible_classes <- class_frequency |>
+  filter(
+    n_metabolites >= 3,
+    Classification != "Unclassified"
+  ) |>
+  pull(Classification)
+
+metabolite_classes_filtered <- metabolite_classes |>
+  filter(Classification %in% eligible_classes)
+```
+
+```{R}
+universe <- metabolite_classes |>
+  distinct(CID, community)
+
+enrichment <- expand_grid(
+  community = sort(unique(universe$community)),
+  Classification = eligible_classes
+) |>
+  rowwise() |>
+  mutate(
+    class_members = list(
+      unique(metabolite_classes$CID[
+        metabolite_classes$Classification == Classification
+      ])
+    ),
+
+    a = sum(universe$community == community &
+              universe$CID %in% class_members),
+    b = sum(universe$community == community) - a,
+    c = length(class_members) - a,
+    d = nrow(universe) - a - b - c,
+
+    expected = (a + b) * (a + c) / nrow(universe),
+    fold_enrichment = a / expected,
+
+    p_value = fisher.test(
+      matrix(c(a, b, c, d), nrow = 2, byrow = TRUE),
+      alternative = "greater"
+    )$p.value
+  ) |>
+  ungroup() |>
+  select(-class_members) |>
+  mutate(
+    p_adj = p.adjust(p_value, method = "BH")
+  ) |>
+  arrange(p_adj, p_value)
+```
+
+```{R}
+enrichment |>
+  filter(p_adj < 0.05) |>
+  select(
+    community, Classification, a, expected,
+    fold_enrichment, p_value, p_adj
+  ) |>
+  print(n = Inf)
+```
+```{R}
+# validacao
+all(V(g_leiden_B)$community == representative_B)
 
 table(
   Community = V(g_leiden_B)$community,
   Type = V(g_leiden_B)$type
 )
-````
 
-````{r}
-# Genes da comunidade 4
-V(g_leiden_B)$name[
-  V(g_leiden_B)$community == 4 &
-  V(g_leiden_B)$type == "Gene"
-]
+table(V(g_leiden_B)$community)
 
-gene_4 <- V(g_leiden_B)[
-  community == 4 & type == "Gene"
-]
+community_stability[, c("Community", "Size")]
 
-gene_neighb <- data.frame(
-  Gene = gene_4$name,
-  Degree = degree(g_leiden_B, gene_4)
+all(
+  universe$community ==
+    V(g_leiden_B)$community[
+      match(universe$CID, V(g_leiden_B)$name)
+    ]
+)
+
+nrow(universe)
+nrow(enrichment)
+```
+
+```{r}
+library(ggplot2)
+
+enrichment_sig <- enrichment |>
+  filter(p_adj < 0.05)
+
+ggplot(
+  enrichment_sig,
+  aes(
+    x = factor(community, levels = sort(unique(universe$community))),
+    y = Classification,
+    size = fold_enrichment,
+    color = -log10(p_adj)
+  )
+) +
+  geom_point() +
+  scale_x_discrete(drop = FALSE) +
+  scale_color_viridis_c(option = "plasma") +
+  scale_size_continuous(range = c(3, 10)) +
+  labs(
+    x = "Community",
+    y = "Chemical classification",
+    size = "Fold enrichment",
+    color = expression(-log[10](FDR))
+  ) +
+  theme_bw()
+
+```
+```{R}
+gene_communities <- community_nodes |>
+  filter(type == "Gene") |>
+  select(name, community) |>
+  arrange(community)
+
+gene_communities |>
+  group_by(community) |>
+  summarise(genes = paste(name, collapse = ", "))
+
+gene_comm<- gene_communities |>
+  filter(community %in% c(1, 4, 6))
+```
+
+# louvain
+
+```{R}
+partitions_louvain <- lapply(seeds, function(s) {
+  set.seed(s)
+
+  membership(
+    cluster_louvain(
+      g_leiden_B,
+      resolution = 1,
+      weights = NA
+    )
+  )
+})
+```
+
+```{R}
+ari_matrix_louvain <- outer(
+  seq_along(partitions_louvain),
+  seq_along(partitions_louvain),
+  Vectorize(function(i, j) {
+    mclust::adjustedRandIndex(
+      partitions_louvain[[i]],
+      partitions_louvain[[j]]
+    )
+  })
+)
+
+summary(ari_matrix_louvain[upper.tri(ari_matrix_louvain)])
+
+# Número de comunidades por execução
+table(sapply(partitions_louvain, function(x) length(unique(x))))
+```
+```{R}
+diag(ari_matrix_louvain) <- NA
+
+mean_ari_louvain <- rowMeans(ari_matrix_louvain, na.rm = TRUE)
+
+best_idx_louvain <- which.max(mean_ari_louvain)
+
+representative_louvain <- partitions_louvain[[best_idx_louvain]]
+```
+
+```{r}
+comparison <- data.frame(
+  Algorithm = c("Leiden", "Louvain"),
+
+  Modularity = c(
+    modularity(g_leiden_B, representative_B, weights = NA),
+    modularity(g_leiden_B, representative_louvain, weights = NA)
+  ),
+
+  Communities = c(
+    length(unique(representative_B)),
+    length(unique(representative_louvain))
+  ),
+
+  Median_ARI = c(
+    median(ari_matrix_B[upper.tri(ari_matrix_B)]),
+    median(ari_matrix_louvain[upper.tri(ari_matrix_louvain)])
+  )
+)
+
+comparison
+```
+```{r}
+mclust::adjustedRandIndex(
+  representative_B,
+  representative_louvain
+)
+
+
+```
+
+```{r}
+jaccard_comparison <- expand_grid(
+  Leiden = sort(unique(representative_B)),
+  Louvain = sort(unique(representative_louvain))
 ) |>
-  dplyr::arrange(desc(Degree))
-````
+  rowwise() |>
+  mutate(
+    nodes_leiden = list(which(representative_B == Leiden)),
+    nodes_louvain = list(which(representative_louvain == Louvain)),
+
+    Jaccard = length(intersect(nodes_leiden, nodes_louvain)) /
+              length(union(nodes_leiden, nodes_louvain))
+  ) |>
+  ungroup() |>
+  select(-nodes_leiden, -nodes_louvain)
+
+best_matches <- jaccard_comparison |>
+  group_by(Leiden) |>
+  slice_max(Jaccard, n = 1, with_ties = FALSE) |>
+  ungroup()
+
+best_matches
+```
+
