@@ -26,7 +26,7 @@ gutmgene_m$Genus <- gsub("\\.|\\]", "", gutmgene_m$Genus)
 ```
 
 ```{R}
-mets <- c("10559720", "104775", "348154", "107", "10394", "6047")
+mets <- c("10559720", "104775", "348154", "107", "10394", "49831816")
 
 genus_mets <- list()
 for (met in mets){
@@ -72,4 +72,58 @@ ggsave(
   dpi = 300
 )
 
+```
+
+```{r}
+library(tidyverse)
+
+df_assoc <- stack(genus_mets) |>
+  rename(Genus = values, CID = ind) |>
+  mutate(CID = as.character(CID)) |>
+  distinct(Genus, CID)
+
+# Ordenar gêneros por número de metabólitos
+genus_order <- df_assoc |>
+  dplyr::count(Genus, sort = TRUE) |>
+  pull(Genus)
+
+# Ordenar metabólitos por número de gêneros
+met_order <- df_assoc |>
+  dplyr::count(CID, sort = TRUE) |>
+  pull(CID)
+
+df_assoc <- df_assoc |>
+  mutate(
+    Genus = factor(Genus, levels = genus_order),
+    CID = factor(CID, levels = met_order)
+  )
+
+p_genus_mets <- ggplot(df_assoc, aes(x = Genus, y = CID)) +
+  geom_tile(fill = "#6FAF9C", colour = "white", linewidth = 0.2) +
+  labs(
+    x = "Bacterial genus",
+    y = "Metabolite CID"
+  ) +
+  theme_classic(base_size = 16) +
+  theme(
+    axis.text.x = element_text(
+      angle = 80,
+      hjust = 1,
+      size = 12,
+      face = "italic"
+    ),
+    axis.text.y = element_text(size = 14),
+    axis.title = element_text(size = 16),
+    axis.line = element_blank(),
+    axis.ticks = element_blank()
+  )
+
+ggsave(
+  "p_genera_mets.png",
+  plot = p_genus_mets,
+  width = 14,
+  height = 6,
+  units = "in",
+  dpi = 300
+)
 ```

@@ -615,8 +615,27 @@ plot_communities <- ggplot(
                         size = "Fold enrichment",
                         color = expression(-log[10](FDR))
                       ) +
-                      theme_bw()
-
+                      theme_classic(base_size = 16) +
+                      theme(
+                        axis.title = element_text(size = 18),
+                        axis.text = element_text(size = 14, color = "black"),
+                        legend.title = element_text(size = 16),
+                        legend.text = element_text(size = 14),
+                        plot.title = element_text(size = 20),
+                        axis.line = element_line(color = "black", linewidth = 0.5),
+                        panel.grid.major.x = element_line(color = "grey85",
+                                                          linewidth = 0.5),
+                        panel.grid.major.y = element_blank(),
+                        panel.grid.minor = element_blank())
+ggsave(
+  "communities.png",
+  plot = plot_communities,
+  width = 14,
+  height = 8,
+  units = "in",
+  dpi = 600,
+  bg = "white"
+)
 ```
 
 ```{R}
@@ -925,25 +944,31 @@ plot_difference <- ggplot(
     "No difference" = "grey70"
   )) +
   scale_x_continuous(
-    limits = c(-100, 100),
-    breaks = seq(-100, 100, 25)
+    limits = c(-90, 90),
+    breaks = seq(-90, 90, 10)
   ) +
   labs(
     x = "Difference in interacting metabolites (percentage points)",
     y = "Molecular target",
     fill = NULL
   ) +
-  theme_bw() +
+  theme_classic() +
   theme(
-    legend.position = "top",
+    legend.position = "right",
     panel.grid.major.y = element_blank(),
-    panel.grid.minor = element_blank()
-  )
+    panel.grid.minor = element_blank(),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 11),
+    legend.text = element_text(size = 12)) +
+  geom_vline(xintercept = c(-10, 10),
+  colour = "grey70",
+  linetype = "dashed",
+  linewidth = 0.5) 
 
 ggsave(
-  "gene_preference.pdf",
+  "gene_preference.png",
   plot_difference,
-  width = 9,
+  width = 10,
   height = 10
 )
 
@@ -952,11 +977,11 @@ write_csv(gene_difference, "gene_difference.csv")
 
 ```{r}
 top_c1 <- gene_difference |>
-  slice_max(difference, n = 7) |>
+  filter(difference >= 10) |>
   pull(Gene)
 
 top_c4 <- gene_difference |>
-  slice_min(difference, n = 4) |>
+  filter(difference <= -10) |>
   pull(Gene)
 
 filter_network <- function(g, comm, genes) {
@@ -981,6 +1006,33 @@ filter_network <- function(g, comm, genes) {
 g_c1_top <- filter_network(g_leiden_B, 1, top_c1)
 g_c4_top <- filter_network(g_leiden_B, 4, top_c4)
 ```
+
+```{r}
+class_metrics <- enrichment_sig |>
+  filter(community %in% c(1, 4)) |>
+  mutate(
+    coverage = a / (a + b),
+    specificity = a / (a + c)
+  ) |>
+  select(
+    community,
+    Classification,
+    n_metabolites = a,
+    fold_enrichment,
+    coverage,
+    specificity,
+    p_adj
+  ) |>
+  arrange(community, desc(fold_enrichment))
+
+print(class_metrics, n = Inf)
+
+top_classes <- class_metrics |>
+  group_by(community) |>
+  slice_max(fold_enrichment, n = 2, with_ties = FALSE) |>
+  ungroup()
+```
+
 
 ```{r}
 node_classes <- metabolite_classes |>
@@ -1010,32 +1062,27 @@ add_classes <- function(g) {
 }
 g_c1_top <- add_classes(g_c1_top)
 g_c4_top <- add_classes(g_c4_top)
+
+plot_c1_top <- plot_network_top(g_c1_top, "Community 1")
+plot_c4_top <- plot_network_top(g_c4_top, "Community 4")
 ```
 
 ```{r}
-classes <- sort(unique(c(
-  V(g_c1_top)$chemical_class,
-  V(g_c4_top)$chemical_class
-)))
-
-classes <- setdiff(
-  classes,
-  c("Molecular target", "Other metabolites")
-)
-
 palette <- c(
-  setNames(scales::hue_pal()(length(classes)), classes),
+  "Amino acids and derivatives" = "#0072B2",
+  "Flavonoids" = "#D55E00",
   "Molecular target" = "#222222",
   "Other metabolites" = "#CCCCCC"
 )
 
-print(palette)
-
 plot_network_top <- function(g, title) {
+
+  coords <- concentric_layout(g)
 
   set.seed(123)
 
-  ggraph(g, layout = "circle") +
+  ggraph(g, layout = "manual", 
+         x = coords$x, y = coords$y) +
     geom_edge_link(
       alpha = 0.15,
       colour = "grey50",
@@ -1043,35 +1090,39 @@ plot_network_top <- function(g, title) {
     ) +
     geom_node_point(
       aes(colour = chemical_class, shape = type),
-      size = 3
+      size = 5
     ) +
     geom_node_text(
-      aes(label = name, fontface = ifelse(
-        type == "Gene", "bold", "plain"
-      )),
+      aes(
+        label = name,
+        fontface = ifelse(type == "Gene", "bold", "plain")
+      ),
+      family = "sans",
       repel = TRUE,
-      size = 2.5,
-      max.overlaps = Inf
+      size = 5,
+      max.overlaps = Inf,
+      box.padding = 0.5,
+      point.padding = 0.8
     ) +
     scale_colour_manual(values = palette) +
-    scale_shape_manual(values = c(
-      "Gene" = 17,
-      "Metabolite" = 16
-    )) +
+    scale_shape_manual(
+      values = c("Gene" = 17, "Metabolite" = 16)
+    ) +
     labs(
       title = title,
       colour = "Chemical classification",
       shape = "Node type"
     ) +
-    theme_graph() +
-    theme(
-      legend.position = "bottom",
-      plot.title = element_text(hjust = 0.5)
-    )
+    coord_fixed() +
+    theme_graph(base_family = "sans",
+                base_size = 16) +
+    theme(plot.title = element_text(hjust = 0.5, size = 20),
+          legend.title = element_text(size = 16),
+          legend.text = element_text(size = 14),
+          legend.position = "bottom",
+          legend.box = "vertical",
+          legend.box.just = "center")
 }
-
-plot_c1_top <- plot_network_top(g_c1_top, "Community 1")
-plot_c4_top <- plot_network_top(g_c4_top, "Community 4")
 ```
 
 ```{r}
@@ -1117,14 +1168,92 @@ V(g_c4_chemical)$chemical_class <- ifelse(
   "Flavonoids"
 )
 
-classes <- c("Target", "Amino acids and derivatives", "Flavonoids")
-palette <- c(
-  setNames(scales::hue_pal()(length(classes)), classes),
-  "Molecular target" = "#222222",
-  "Other metabolites" = "#CCCCCC"
-)
+concentric_layout <- function(g) {
 
+  nodes <- igraph::as_data_frame(g, what = "vertices") |>
+    group_by(type) |>
+    mutate(
+      angle = 2 * pi * (row_number() - 1) / n(),
+      radius = if_else(type == "Gene", 0.4, 1),
+      x = radius * cos(angle),
+      y = radius * sin(angle)
+    ) |>
+    dplyr::ungroup()
+
+  nodes
+}
 
 plot_c1_chem <- plot_network_top(g_c1_chemical, "Community 1")
 plot_c4_chem <- plot_network_top(g_c4_chemical, "Community 4")
+
+ggsave(
+  "network_c1.png",
+  plot = plot_c1_chem,
+  width = 10,
+  height = 10,
+  units = "in",
+  dpi = 600,
+  bg = "white"
+)
+
+ggsave(
+  "network_c4.png",
+  plot = plot_c4_chem,
+  width = 10,
+  height = 10,
+  units = "in",
+  dpi = 600,
+  bg = "white"
+)
+```
+
+```{r}
+mets_c1 <- metabolite_communities |>
+  filter(community == 1) |>
+  pull(name)
+
+mets_c4 <- metabolite_communities |>
+  filter(community == 4) |>
+  pull(name)
+
+# Metabólitos em comum
+overlap <- intersect(mets_c1, mets_c4)
+
+# Quantidade
+length(overlap)
+
+# CIDs compartilhados
+overlap
+```
+
+```{r}
+mets_classified |>
+  filter(CID %in% c(10559720, 104775, 348154, 107, 10394, 49831816)) |>
+  mutate(
+    phenylpropanoid = str_detect(
+      Classification,
+      fixed("phenylpropanoids and polyketides")
+    )
+  ) |>
+  select(CID, Name, phenylpropanoid)
+
+mets_classified |>
+  filter(CID %in% c(10559720, 104775, 348154, 107, 10394, 49831816)) |>
+  mutate(
+    fla = str_detect(
+      Classification,
+      fixed("flavonoids")
+    )
+  ) |>
+  select(CID, Name, fla)
+
+mets_classified |>
+  filter(CID %in% c(10559720, 104775, 348154, 107, 10394, 49831816)) |>
+  mutate(
+    fla = str_detect(
+      Classification,
+      fixed("amino acids and derivatives")
+    )
+  ) |>
+  select(CID, Name, fla)
 ```
